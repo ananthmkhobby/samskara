@@ -16,9 +16,19 @@ import './styles/familyBuilder.css'
 import './styles/interview.css'
 import './styles/welcomeIntro.css'
 import App from './App.jsx'
+import { initDataLayer } from './data/people.js'
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+const rootEl = document.getElementById('root');
+
+// Hydrates PEOPLE/MARRIAGES/contributions defaults from the shared Supabase
+// backend before the app ever renders — every view reads those as plain
+// synchronous module exports, so rendering first and hydrating after would
+// leave a stale/empty tree with nothing to trigger a re-render once the
+// fetch resolves.
+initDataLayer().finally(() => {
+  createRoot(rootEl).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+});

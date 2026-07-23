@@ -215,67 +215,70 @@ export const CHALLENGES = [
 ];
 
 // Anyone can replace the sample Rao family with their own, built via the
-// Family Builder wizard. It lives in this browser's localStorage — no
-// account, no server — and swapping families reloads the app so every view
-// picks up the new data automatically (they all import PEOPLE/MARRIAGES from
-// this one module).
-const CUSTOM_FAMILY_KEY = "vamsha.customFamily.v1";
+// Family Builder wizard. This now lives in the shared Supabase `app_state`
+// table rather than one browser's localStorage, so every device sees the
+// same family — swapping still reloads the app so every view picks up the
+// new data (they all import PEOPLE/MARRIAGES from this one module).
+//
+// Because this is now shared, replacing or resetting the family affects
+// everyone using this deployment, not just the browser that clicked the
+// button — worth knowing before treating it as a casual "start over" action.
+import { fetchKV, saveKV, deleteKV } from "../lib/kvStore";
 
-function loadCustomFamily() {
-  try {
-    const raw = localStorage.getItem(CUSTOM_FAMILY_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+const CUSTOM_FAMILY_KEY = "vamsha.customFamily";
+const ADDITIONS_KEY = "vamsha.additions";
+
+export async function saveCustomFamily(people, marriages) {
+  await saveKV(CUSTOM_FAMILY_KEY, { people, marriages: marriages || [] });
+  await Promise.all([deleteKV("vamsha.contributions"), deleteKV("vamsha.overrides"), deleteKV(ADDITIONS_KEY)]);
 }
 
-export function saveCustomFamily(people, marriages) {
-  localStorage.setItem(CUSTOM_FAMILY_KEY, JSON.stringify({ people, marriages: marriages || [] }));
-  localStorage.removeItem("vamsha.contributions");
-  localStorage.removeItem("vamsha.overrides");
-  localStorage.removeItem(ADDITIONS_KEY);
+export async function clearCustomFamily() {
+  await deleteKV(CUSTOM_FAMILY_KEY);
+  await Promise.all([deleteKV("vamsha.contributions"), deleteKV("vamsha.overrides"), deleteKV(ADDITIONS_KEY)]);
 }
 
-export function clearCustomFamily() {
-  localStorage.removeItem(CUSTOM_FAMILY_KEY);
-  localStorage.removeItem("vamsha.contributions");
-  localStorage.removeItem("vamsha.overrides");
-  localStorage.removeItem(ADDITIONS_KEY);
-}
-
+// Synchronous — reflects whatever was hydrated at boot by initDataLayer().
+// A swap/reset always reloads the page right after, so this can never go
+// stale within a single session.
 export function hasCustomFamily() {
-  return typeof window !== "undefined" && !!localStorage.getItem(CUSTOM_FAMILY_KEY);
+  return IS_CUSTOM_FAMILY;
 }
 
-const custom = typeof window !== "undefined" ? loadCustomFamily() : null;
+let additions = { people: [], marriages: [] };
 
-// Family members added one at a time (e.g. "Add son/daughter" or "Add spouse"
-// from a folio, once admin-approved) live in their own localStorage layer on
-// top of whichever base family (sample or custom) is active, so approving one
-// doesn't require rebuilding the whole tree.
-const ADDITIONS_KEY = "vamsha.additions.v1";
+export const PEOPLE = [...SAMPLE_PEOPLE];
+export const MARRIAGES = [...SAMPLE_MARRIAGES];
+export let INITIAL_CONTRIBUTIONS = SAMPLE_CONTRIBUTIONS;
+export let INITIAL_OVERRIDES = {};
+export let IS_CUSTOM_FAMILY = false;
 
-function loadAdditions() {
-  try {
-    const raw = typeof window !== "undefined" ? localStorage.getItem(ADDITIONS_KEY) : null;
-    const parsed = raw ? JSON.parse(raw) : null;
-    return { people: parsed?.people || [], marriages: parsed?.marriages || [] };
-  } catch {
-    return { people: [], marriages: [] };
-  }
+// Populates PEOPLE/MARRIAGES/INITIAL_CONTRIBUTIONS/INITIAL_OVERRIDES/
+// IS_CUSTOM_FAMILY from the shared Supabase backend. Must run — and be
+// awaited — before the app's first render (see main.jsx), since every view
+// reads these as plain synchronous module exports rather than reactive
+// state; arriving too late would leave a stale/empty tree on screen with
+// nothing to trigger a re-render.
+export async function initDataLayer() {
+  const [custom, additionsRaw, contributions, overrides] = await Promise.all([
+    fetchKV(CUSTOM_FAMILY_KEY, null),
+    fetchKV(ADDITIONS_KEY, { people: [], marriages: [] }),
+    fetchKV("vamsha.contributions", undefined),
+    fetchKV("vamsha.overrides", {}),
+  ]);
+  additions = { people: additionsRaw?.people || [], marriages: additionsRaw?.marriages || [] };
+  IS_CUSTOM_FAMILY = !!custom;
+
+  PEOPLE.length = 0;
+  PEOPLE.push(...(custom?.people?.length ? custom.people : SAMPLE_PEOPLE), ...additions.people);
+  MARRIAGES.length = 0;
+  MARRIAGES.push(...(custom ? (custom.marriages || []) : SAMPLE_MARRIAGES), ...additions.marriages);
+  // A `vamsha.contributions` row only exists once someone has actually
+  // submitted or approved something — until then, fall back to the sample
+  // set (or none, for a from-scratch custom family), same as before.
+  INITIAL_CONTRIBUTIONS = contributions !== undefined ? contributions : (custom ? [] : SAMPLE_CONTRIBUTIONS);
+  INITIAL_OVERRIDES = overrides || {};
 }
-
-function saveAdditions(additions) {
-  try { localStorage.setItem(ADDITIONS_KEY, JSON.stringify(additions)); } catch { /* storage unavailable */ }
-}
-
-const additions = loadAdditions();
-
-export const PEOPLE = [...(custom?.people?.length ? custom.people : SAMPLE_PEOPLE), ...additions.people];
-export const MARRIAGES = [...(custom ? (custom.marriages || []) : SAMPLE_MARRIAGES), ...additions.marriages];
-export const INITIAL_CONTRIBUTIONS = custom ? [] : SAMPLE_CONTRIBUTIONS;
-export const IS_CUSTOM_FAMILY = !!custom;
 
 function slugify(name) {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "person";
@@ -299,5 +302,8 @@ export function addPerson(person, marriage) {
     additions.marriages.push(marriage);
     MARRIAGES.push(marriage);
   }
-  saveAdditions(additions);
+  // Fire-and-forget — the in-memory arrays above are already updated for
+  // instant UI feedback; this just makes the addition visible to other
+  // devices on their next load.
+  saveKV(ADDITIONS_KEY, additions);
 }

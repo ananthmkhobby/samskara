@@ -46,15 +46,15 @@ export default function FamilyBuilderView({ onNav }) {
   function handleAddChild(key, child) { setRoot((r) => addChild(r, key, child)); }
   function handleRemove(key) { setRoot((r) => removeChild(r, key)); }
 
-  function handleSave() {
+  async function handleSave() {
     const { people, marriages } = flattenFamily(root);
     if (!people.length) return;
-    saveCustomFamily(people, marriages);
+    await saveCustomFamily(people, marriages);
     window.location.reload();
   }
 
-  function handleResetToSample() {
-    clearCustomFamily();
+  async function handleResetToSample() {
+    await clearCustomFamily();
     window.location.reload();
   }
 

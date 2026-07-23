@@ -16,9 +16,10 @@ import AddFamilyMemberModal from "./components/AddFamilyMemberModal";
 import AIInterviewModal from "./components/AIInterviewModal";
 import FolioVoiceWizard from "./components/FolioVoiceWizard";
 import WelcomeIntro from "./components/WelcomeIntro";
-import { INITIAL_CONTRIBUTIONS, addPerson, makeUniquePersonId } from "./data/people";
+import { INITIAL_CONTRIBUTIONS, INITIAL_OVERRIDES, addPerson, makeUniquePersonId } from "./data/people";
 import { byId, todayStr, applyOverrides } from "./data/helpers";
 import { useLocalStorageState } from "./hooks/useLocalStorageState";
+import { useSupabaseSyncedState } from "./hooks/useSupabaseSyncedState";
 
 const VIEW_PATHS = { cover: "/", tree: "/tree", treasury: "/treasury", vault: "/vault", map: "/journey", admin: "/admin", builder: "/builder" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
@@ -46,8 +47,8 @@ export default function App() {
       return false;
     }
   });
-  const [contributions, setContributions] = useLocalStorageState("vamsha.contributions", INITIAL_CONTRIBUTIONS);
-  const [overrides, setOverrides] = useLocalStorageState("vamsha.overrides", {});
+  const [contributions, setContributions] = useSupabaseSyncedState("vamsha.contributions", INITIAL_CONTRIBUTIONS);
+  const [overrides, setOverrides] = useSupabaseSyncedState("vamsha.overrides", INITIAL_OVERRIDES);
   // Lightweight, honor-system role — there's no backend/accounts yet, so this
   // is "which hat am I wearing on this device" rather than real access
   // control. Admin/Family Head get a direct-apply fast path instead of
