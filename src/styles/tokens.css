@@ -1,0 +1,30 @@
+:root {
+  --parchment: #EFE1BB; --parchment-deep: #E4D097; --parchment-paper: #F8F0DA;
+  --ink: #3B2712; --ink-soft: #6B4E30; --ink-faint: #9C8058;
+  --line: rgba(59, 39, 18, .18); --line-strong: rgba(59, 39, 18, .34);
+  --maroon: #8A2222; --maroon-deep: #5C1414; --maroon-wash: rgba(138, 34, 34, .12); --maroon-ink: #6B1A1A;
+  --gold: #A9791C; --gold-deep: #7A5714; --gold-wash: rgba(169, 121, 28, .16);
+  --forest: #3D5A34; --forest-deep: #26381F; --forest-wash: rgba(61, 90, 52, .15); --forest-ink: #2C4224;
+  --forest-light: #6B8B5A;
+  --bark: #7A5233; --bark-deep: #4E3018;
+  --radius: 10px; --radius-sm: 7px;
+  --shadow-1: 0 1px 2px rgba(59, 39, 18, .14);
+  --shadow-2: 0 16px 36px -16px rgba(59, 39, 18, .5);
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --font-devanagari: 'Tiro Devanagari Hindi', 'Kohinoor Devanagari', 'Noto Serif Devanagari', 'Nirmala UI', serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --parchment: #20140A; --parchment-deep: #2A1B0D; --parchment-paper: #2E1F10;
+  --ink: #F1E1BE; --ink-soft: #D8BD90; --ink-faint: #A5875D;
+  --line: rgba(241, 225, 190, .14); --line-strong: rgba(241, 225, 190, .26);
+  --maroon: #E28B7D; --maroon-deep: #B4544A; --maroon-wash: rgba(226, 139, 125, .16); --maroon-ink: #F0AFA3;
+  --gold: #E3B558; --gold-deep: #B9862E; --gold-wash: rgba(227, 181, 88, .18);
+  --forest: #7FAE72; --forest-deep: #547A48; --forest-wash: rgba(127, 174, 114, .16); --forest-ink: #A8CE9C;
+  --forest-light: #9BC488;
+  --bark: #9C7550; --bark-deep: #6B4A2E;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow-2: 0 16px 36px -16px rgba(0, 0, 0, .7);
+}

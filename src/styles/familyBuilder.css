@@ -1,0 +1,16 @@
+.link-btn { background: none; border: 0; padding: 0; color: var(--maroon-ink); text-decoration: underline; cursor: pointer; font: inherit; }
+
+.fam-builder-paths { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 8px; }
+.fam-builder-path { padding: 20px; }
+.fam-builder-path h3 { font-size: 17px; margin-bottom: 12px; }
+
+.fam-builder-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+
+.fam-node { margin-left: calc(var(--depth, 0) * 0px); }
+.fam-children { margin-left: 26px; padding-left: 20px; border-left: 2px dashed var(--line-strong); margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+.fam-node-card { background: var(--parchment-paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow-1); margin-bottom: 4px; }
+.fam-node-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.fam-node-field { flex: 1; min-width: 160px; }
+.fam-node-field label { display: block; font-size: 11px; font-weight: 700; color: var(--ink-soft); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .03em; }
+.fam-node-field input { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--parchment); color: var(--ink); font-size: 13.5px; }
+.fam-node-actions { display: flex; gap: 8px; margin-top: 4px; }

@@ -1,0 +1,25 @@
+.cover-hero { padding: 54px 22px 20px; text-align: center; max-width: 760px; margin: 0 auto; }
+.cover-hero .eyebrow { display: block; margin-bottom: 10px; }
+.cover-hero h1 { font-family: var(--font-devanagari); font-size: clamp(34px, 7vw, 54px); color: var(--maroon-deep); line-height: 1.15; }
+.cover-hero .translit { display: block; margin-top: 10px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); font-weight: 700; }
+.cover-hero p.lede { margin-top: 16px; color: var(--ink-soft); font-size: 16px; max-width: 520px; margin-left: auto; margin-right: auto; }
+.counters { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; max-width: 820px; margin: 34px auto 0; padding: 0 22px; }
+.counter { padding: 18px 10px; text-align: center; border-radius: var(--radius); background: var(--parchment-paper); border: 1px solid var(--line); }
+.counter b { display: block; font-family: var(--font-display); font-size: 26px; color: var(--maroon-deep); }
+.counter span { font-size: 11px; color: var(--ink-faint); letter-spacing: .04em; text-transform: uppercase; }
+@media (max-width: 640px) { .counters { grid-template-columns: repeat(2, 1fr); } }
+.challenge-card {
+  max-width: 640px; margin: 34px auto 0; padding: 22px; border-radius: var(--radius); background: linear-gradient(160deg, var(--gold-wash), transparent 60%), var(--parchment-paper);
+  border: 1px solid var(--line); text-align: left;
+}
+.challenge-card .eyebrow { color: var(--gold-deep); }
+.challenge-card h3 { font-size: 19px; margin-top: 6px; }
+.challenge-card p { color: var(--ink-soft); margin-top: 6px; font-size: 14px; }
+.challenge-card .btn { margin-top: 14px; }
+.cover-cta { display: flex; justify-content: center; gap: 12px; margin-top: 30px; flex-wrap: wrap; }
+.cover-links { display: flex; justify-content: center; gap: 26px; margin-top: 22px; flex-wrap: wrap; }
+.cover-links button { background: none; border: 0; color: var(--ink-soft); font-weight: 600; font-size: 13.5px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong); }
+
+.cover-enter { opacity: 0; transform: translateY(14px); animation: coverEnter .6s ease-out forwards; animation-delay: var(--enter-delay, 0s); }
+@keyframes coverEnter { to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .cover-enter { animation: none; opacity: 1; transform: none; } }

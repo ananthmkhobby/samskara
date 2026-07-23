@@ -1,0 +1,18 @@
+.vault-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; perspective: 1000px; }
+.month-card {
+  padding: 16px; transform-origin: top center; opacity: 0; transform: rotateX(-70deg);
+  animation: monthFlipIn .5s cubic-bezier(.2,.7,.3,1) forwards; animation-delay: var(--flip-delay, 0s);
+}
+@keyframes monthFlipIn { to { opacity: 1; transform: rotateX(0deg); } }
+@media (prefers-reduced-motion: reduce) { .month-card { animation: none; opacity: 1; transform: none; } }
+.month-card h4 { font-size: 15px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+.month-card h4 span { font-size: 11px; color: var(--ink-faint); font-weight: 600; }
+.date-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12.5px; border-top: 1px solid var(--line); }
+.date-row:first-of-type { border-top: 0; }
+.date-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.date-dot.birth { background: var(--forest); }
+.date-dot.marriage { background: var(--gold); }
+.date-dot.remembrance { background: var(--maroon); }
+.date-dot.milestone { background: var(--bark); }
+.date-day { font-family: var(--font-mono); font-weight: 700; width: 20px; flex: none; }
+.date-label { color: var(--ink-soft); flex: 1; }

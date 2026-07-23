@@ -1,0 +1,10 @@
+.value-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 22px; }
+.treasury-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.lesson-card { padding: 20px; cursor: pointer; display: flex; flex-direction: column; gap: 12px; text-align: left; border: none; }
+.lesson-card .quote { font-family: var(--font-display); font-style: italic; font-size: 16.5px; line-height: 1.4; color: var(--maroon-deep); }
+.lesson-card .quote::before { content: "\201C"; }
+.lesson-card .quote::after { content: "\201D"; }
+.lesson-who { display: flex; align-items: center; gap: 10px; }
+.lesson-who .avatar { width: 36px; height: 36px; }
+.lesson-who b { font-size: 13px; display: block; }
+.lesson-who span { font-size: 11px; color: var(--ink-faint); }

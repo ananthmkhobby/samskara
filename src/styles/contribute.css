@@ -1,0 +1,17 @@
+.form-row { margin-top: 16px; }
+.form-row label { display: block; font-size: 12px; font-weight: 700; color: var(--ink-soft); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .03em; }
+.form-row select, .form-row input[type=text], .form-row input[type=date], .form-row textarea, .form-row input[type=file] {
+  width: 100%; padding: 11px 12px; border-radius: 9px; border: 1px solid var(--line-strong); background: var(--parchment); color: var(--ink); font-size: 14px; font-family: inherit;
+}
+.form-row textarea { min-height: 100px; resize: vertical; }
+.type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.type-grid button {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px; border-radius: 10px; border: 1px solid var(--line-strong);
+  background: var(--parchment); cursor: pointer; font-size: 11px; font-weight: 700; color: var(--ink-soft);
+}
+.type-grid button svg { width: 20px; height: 20px; }
+.type-grid button.active { border-color: var(--maroon-deep); color: var(--maroon-ink); background: var(--maroon-wash); }
+.record-toggle { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--parchment); }
+.record-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--maroon); flex: none; }
+.record-dot.on { animation: pulse 1.1s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }

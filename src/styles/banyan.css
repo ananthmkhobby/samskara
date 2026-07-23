@@ -1,0 +1,74 @@
+.banyan-wrap {
+  position: relative; width: 100%; aspect-ratio: 3 / 2; border-radius: var(--radius); overflow: hidden;
+  border: 1px solid var(--line); box-shadow: var(--shadow-1); background: #0d0a06;
+  touch-action: none; cursor: grab;
+}
+.banyan-wrap.grabbing { cursor: grabbing; }
+.banyan-inner { position: absolute; inset: 0; width: 100%; height: 100%; transform-origin: 0 0; }
+.banyan-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 38%; }
+.banyan-scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(10,7,3,.28) 0%, rgba(10,7,3,0) 30%, rgba(10,7,3,0) 60%, rgba(10,7,3,.35) 100%);
+  pointer-events: none;
+}
+.banyan-credit {
+  position: absolute; right: 8px; bottom: 6px; font-size: 9.5px; color: rgba(255,255,255,.65);
+  background: rgba(10,7,3,.4); padding: 2px 7px; border-radius: 999px; z-index: 3;
+}
+.banyan-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; z-index: 1; }
+.banyan-link {
+  stroke: var(--gold); stroke-width: .28; opacity: 0; vector-effect: non-scaling-stroke;
+  animation: linkFadeIn .5s ease-out forwards; animation-delay: var(--grow-delay, 0s);
+}
+.banyan-link.spouse { stroke: #F3E6C4; stroke-width: .4; }
+@keyframes linkFadeIn { to { opacity: .55; } }
+.banyan-link.spouse { animation-name: linkFadeInSpouse; }
+@keyframes linkFadeInSpouse { to { opacity: .7; } }
+
+.banyan-marker {
+  position: absolute; display: flex; flex-direction: column; align-items: center;
+  cursor: pointer; z-index: 2; background: none; border: 0; padding: 0; color: inherit;
+  opacity: 0; transform: translate(-50%, -50%) scale(.35);
+  animation: markerGrowIn .5s cubic-bezier(.34, 1.56, .64, 1) forwards; animation-delay: var(--grow-delay, 0s);
+}
+@keyframes markerGrowIn { to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+.banyan-marker:hover { z-index: 5; }
+.banyan-marker .dot-glow {
+  position: absolute; top: 50%; left: 50%; width: 64px; height: 64px; border-radius: 50%;
+  transform: translate(-50%, -50%); background: radial-gradient(circle, var(--gold) 0%, transparent 68%);
+  opacity: .22; filter: blur(1px); transition: opacity .25s;
+}
+.banyan-marker.glow-soft .dot-glow { opacity: .5; }
+.banyan-marker.glow-strong .dot-glow { opacity: .85; animation: dotPulse 2.6s ease-in-out infinite; }
+@keyframes dotPulse { 0%, 100% { opacity: .68; } 50% { opacity: 1; } }
+.banyan-marker .dot {
+  position: relative; width: 24px; height: 24px; border-radius: 50%; border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.25);
+}
+.banyan-marker .dot::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.55), transparent 55%);
+}
+.banyan-marker .m-label {
+  margin-top: 5px; font-family: var(--font-display); font-size: 12.5px; font-weight: 700; color: #fff;
+  white-space: nowrap; pointer-events: none; padding: 2px 8px; border-radius: 999px;
+  background: rgba(15, 10, 5, .62); backdrop-filter: blur(2px);
+  box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+.banyan-marker.dimmed { opacity: .28 !important; }
+.banyan-marker.dimmed .dot-glow { opacity: .08; }
+.banyan-marker.highlighted .dot-glow { background: radial-gradient(circle, var(--forest-light) 0%, transparent 68%); opacity: 1; }
+.banyan-marker.highlighted .dot { box-shadow: 0 0 0 3px var(--forest-light), 0 2px 6px rgba(0,0,0,.6); }
+@media (prefers-reduced-motion: reduce) {
+  .banyan-marker.glow-strong .dot-glow { animation: none; }
+  .banyan-marker { animation: none; opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  .banyan-link { animation: none; opacity: .55; }
+  .banyan-link.spouse { opacity: .7; }
+}
+
+.banyan-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+@media (max-width: 640px) {
+  .banyan-wrap { aspect-ratio: 3 / 4; }
+  .banyan-marker .dot { width: 19px; height: 19px; border-width: 2.5px; }
+  .banyan-marker .m-label { font-size: 10.5px; padding: 1.5px 6px; }
+}
