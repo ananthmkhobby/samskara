@@ -272,13 +272,17 @@ export default function App() {
           // silently resolves to Jan 1 1970 rather than failing, so a
           // marriage record here would show up as a bogus date in the Vault.
           // Only add one once we actually have a date to record.
-          addPerson(newPerson);
           anchor.spouse = id;
-          updatePersonSpouse(familyId, anchor.id, id).catch((err) => console.error("Failed to persist spouse link:", err.message));
+          // The anchor's spouse column can only point at this new person
+          // once the person row actually exists — awaiting the insert first
+          // avoids a foreign-key violation from the two writes racing.
+          addPerson(newPerson)
+            .then(() => updatePersonSpouse(familyId, anchor.id, id))
+            .catch((err) => console.error("Failed to persist spouse link:", err.message));
         } else {
           newPerson.gen = anchor.gen + 1;
           newPerson.parents = anchor.spouse ? [anchor.id, anchor.spouse] : [anchor.id];
-          addPerson(newPerson);
+          addPerson(newPerson).catch((err) => console.error("Failed to persist new person:", err.message));
         }
       }
     }

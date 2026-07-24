@@ -52,7 +52,7 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
         <div className="modal-body">
           <span className="eyebrow">Propose a change</span>
           <h2 style={{ fontSize: 20, marginTop: 6 }}>Edit: {request.fieldLabel}</h2>
-          <p className="form-hint" style={{ marginTop: 6 }}>{canModerate ? "You're viewing as Admin/Family Head — this applies immediately, no review needed." : "Your change goes to an admin for verification. It won't appear on the folio until approved."}</p>
+          <p className="form-hint" style={{ marginTop: 6 }}>{canModerate ? "As an Admin/Family Head, this applies immediately — no review needed." : "Your change goes to an admin for verification. It won't appear on the folio until approved."}</p>
           <form onSubmit={submit}>
             {isHeritage ? (
               <>

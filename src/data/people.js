@@ -138,12 +138,18 @@ export function makeUniquePersonId(name) {
 
 // Appends a newly-approved family member directly to the live PEOPLE/
 // MARRIAGES arrays (picked up on next render — no reload needed) and
-// persists it to Supabase in the background.
+// persists it to Supabase in the background. Returns the persistence
+// promise (rejecting if the insert fails) rather than swallowing it here,
+// so a caller that needs to sequence a follow-up write against the same
+// row — e.g. linking an existing person's `spouse` column to this new
+// person's id, which the database can only accept once this row actually
+// exists — can await it first instead of racing it.
 export function addPerson(person, marriage) {
   PEOPLE.push({ ...person, parents: person.parents || [], chapters: person.chapters || [], timeline: person.timeline || [], experience: person.experience || [] });
   if (marriage) MARRIAGES.push(marriage);
   recomputeMinMaxGen();
 
-  dbInsertPerson(CURRENT_FAMILY_ID, person).catch((err) => console.error("Failed to persist new person:", err.message));
-  if (marriage) dbInsertMarriage(CURRENT_FAMILY_ID, marriage).catch((err) => console.error("Failed to persist marriage:", err.message));
+  const personInsert = dbInsertPerson(CURRENT_FAMILY_ID, person);
+  const marriageInsert = marriage ? dbInsertMarriage(CURRENT_FAMILY_ID, marriage) : Promise.resolve();
+  return Promise.all([personInsert, marriageInsert]);
 }

@@ -38,7 +38,7 @@ export default function AddFamilyMemberModal({ request, onCancel, onSubmit, canM
           <h2 style={{ fontSize: 20, marginTop: 6 }}>
             {isSpouse ? `Add a spouse for ${request.anchorName}` : `Add a son or daughter for ${request.anchorName}`}
           </h2>
-          <p className="form-hint" style={{ marginTop: 6 }}>{canModerate ? "You're viewing as Admin/Family Head — they'll be added to the tree immediately." : "This goes to an admin for review. Once approved, they'll appear in the tree right away."}</p>
+          <p className="form-hint" style={{ marginTop: 6 }}>{canModerate ? "As an Admin/Family Head, they'll be added to the tree immediately." : "This goes to an admin for review. Once approved, they'll appear in the tree right away."}</p>
           <form onSubmit={submit}>
             <div className="form-row">
               <label>{isSpouse ? "Spouse's name" : "Their name"}</label>
