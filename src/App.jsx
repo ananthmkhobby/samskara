@@ -16,6 +16,7 @@ import AddFamilyMemberModal from "./components/AddFamilyMemberModal";
 import AIInterviewModal from "./components/AIInterviewModal";
 import FolioVoiceWizard from "./components/FolioVoiceWizard";
 import WelcomeIntro from "./components/WelcomeIntro";
+import SuperAdminView from "./components/SuperAdminView";
 import { INITIAL_CONTRIBUTIONS, addPerson, makeUniquePersonId } from "./data/people";
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
 import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID } from "./data/session";
@@ -32,7 +33,7 @@ async function withMediaUrl(contribution) {
   return { ...contribution, mediaUrl };
 }
 
-const VIEW_PATHS = { cover: "/", tree: "/tree", treasury: "/treasury", vault: "/vault", map: "/journey", admin: "/admin", builder: "/builder" };
+const VIEW_PATHS = { cover: "/", tree: "/tree", treasury: "/treasury", vault: "/vault", map: "/journey", admin: "/admin", builder: "/builder", superadmin: "/superadmin" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
 const pathForView = (v) => VIEW_PATHS[v] || "/";
 const viewForPath = (p) => PATH_TO_VIEW[p] || "cover";
@@ -439,6 +440,7 @@ export default function App() {
         {view === "map" && <JourneyMapView onSelectPerson={selectPerson} />}
         {view === "admin" && <AdminView contributions={contributions} onApprove={approveContribution} onReject={rejectContribution} canModerate={canModerate} />}
         {view === "builder" && <FamilyBuilderView onNav={goTo} />}
+        {view === "superadmin" && <SuperAdminView />}
       </main>
       <BottomBar view={view} onNav={goTo} pendingCount={pendingCount} />
 
