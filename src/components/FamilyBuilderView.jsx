@@ -5,6 +5,7 @@ import { PEOPLE } from "../data/people";
 import { bulkInsertFamily } from "../data/familyDb";
 import { CURRENT_FAMILY_ID } from "../data/session";
 import { callApi } from "../lib/apiFetch";
+import { downloadTemplate, parseTemplateWorkbook } from "../lib/familyTemplate";
 import FamilyNodeEditor from "./FamilyNodeEditor";
 
 export default function FamilyBuilderView({ onNav }) {
@@ -15,7 +16,12 @@ export default function FamilyBuilderView({ onNav }) {
   const [scanError, setScanError] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [excelPreview, setExcelPreview] = useState(null);
+  const [excelParsing, setExcelParsing] = useState(false);
+  const [excelImporting, setExcelImporting] = useState(false);
+  const [excelImportError, setExcelImportError] = useState("");
   const fileRef = useRef(null);
+  const excelInputRef = useRef(null);
 
   // A one-time tool for populating a freshly-provisioned, currently-empty
   // family — once people already exist, ids are added one at a time (via
@@ -71,6 +77,36 @@ export default function FamilyBuilderView({ onNav }) {
     }
   }
 
+  async function handleExcelFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setExcelPreview(null);
+    setExcelImportError("");
+    setExcelParsing(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const result = await parseTemplateWorkbook(buffer);
+      setExcelPreview(result);
+    } catch (err) {
+      setExcelPreview({ people: [], marriages: [], errors: [err.message || "Couldn't read that file — make sure it's the downloaded template."], warnings: [] });
+    } finally {
+      setExcelParsing(false);
+    }
+  }
+
+  async function handleExcelImport() {
+    if (!excelPreview?.people.length || excelPreview.errors.length) return;
+    setExcelImporting(true);
+    setExcelImportError("");
+    try {
+      await bulkInsertFamily(CURRENT_FAMILY_ID, excelPreview.people, excelPreview.marriages);
+      window.location.reload();
+    } catch (err) {
+      setExcelImportError(err.message);
+      setExcelImporting(false);
+    }
+  }
+
   if (alreadyHasPeople) {
     return (
       <section className="wrap fam-builder-intro">
@@ -109,6 +145,40 @@ export default function FamilyBuilderView({ onNav }) {
             <input ref={fileRef} type="file" accept="image/*" onChange={handleScan} disabled={scanning} />
             {scanning && <p className="form-hint">Reading the photo… this can take a moment.</p>}
             {scanError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{scanError}</p>}
+          </div>
+          <div className="card fam-builder-path">
+            <h3>Or fill in a spreadsheet template</h3>
+            <p className="form-hint" style={{ marginTop: 0 }}>Best for a large family — fill in everyone's details offline, at your own pace, then upload it all in one go. Photos and recordings still get added afterward, inside the app.</p>
+            <button type="button" className="btn small" onClick={downloadTemplate} style={{ marginBottom: 12 }}>Download template (.xlsx)</button>
+            <input ref={excelInputRef} type="file" accept=".xlsx,.xls" onChange={handleExcelFile} disabled={excelParsing || excelImporting} />
+            {excelParsing && <p className="form-hint">Reading the file… looking up any cities, this can take a few seconds.</p>}
+            {excelPreview && (
+              <div style={{ marginTop: 12 }}>
+                {excelPreview.errors.length > 0 ? (
+                  <>
+                    <p className="form-hint" style={{ color: "var(--maroon-ink)", fontWeight: 700 }}>Fix these in the file and re-upload:</p>
+                    <ul className="form-hint" style={{ color: "var(--maroon-ink)", marginTop: 4, paddingLeft: 18 }}>
+                      {excelPreview.errors.map((e, i) => <li key={i}>{e}</li>)}
+                    </ul>
+                  </>
+                ) : (
+                  <>
+                    <p className="form-hint">
+                      Found <strong>{excelPreview.people.length}</strong> {excelPreview.people.length === 1 ? "person" : "people"} across <strong>{new Set(excelPreview.people.map((p) => p.gen)).size}</strong> generation{new Set(excelPreview.people.map((p) => p.gen)).size === 1 ? "" : "s"}, {excelPreview.marriages.length} marriage{excelPreview.marriages.length === 1 ? "" : "s"}.
+                    </p>
+                    {excelPreview.warnings.length > 0 && (
+                      <ul className="form-hint" style={{ marginTop: 4, paddingLeft: 18 }}>
+                        {excelPreview.warnings.map((w, i) => <li key={i}>{w}</li>)}
+                      </ul>
+                    )}
+                    <button type="button" className="btn primary small" onClick={handleExcelImport} disabled={excelImporting} style={{ marginTop: 8 }}>
+                      {excelImporting ? "Importing…" : `Import ${excelPreview.people.length} ${excelPreview.people.length === 1 ? "person" : "people"}`}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+            {excelImportError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{excelImportError}</p>}
           </div>
         </div>
       </section>

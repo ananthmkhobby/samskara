@@ -204,11 +204,11 @@ export async function deleteExperienceEntry(entryId) {
 
 // ---- Bulk family population (repurposed Family Builder wizard) -----------
 
-// Inserts (never replaces) a whole tree built via the wizard into an
-// already-provisioned, currently-empty family. One multi-row insert for all
-// people at once (not one insert per person) — required so the deferred
-// spouse foreign key can see mutually-referencing spouses before the
-// transaction commits.
+// Inserts (never replaces) a whole tree built via the wizard or the Excel
+// template import into an already-provisioned, currently-empty family. One
+// multi-row insert for all people at once (not one insert per person) —
+// required so the deferred spouse foreign key can see mutually-referencing
+// spouses before the transaction commits.
 export async function bulkInsertFamily(familyId, people, marriages) {
   const db = requireClient();
   const peopleRows = people.map((p) => ({
@@ -217,9 +217,16 @@ export async function bulkInsertFamily(familyId, people, marriages) {
     name: p.name,
     gen: p.gen,
     born: p.born ?? null,
+    died: p.died ?? null,
     spouse: p.spouse ?? null,
     parents: p.parents ?? [],
+    rashi: p.rashi ?? null,
+    gotra: p.gotra ?? null,
     trust: p.trust ?? "approx",
+    geo: p.geo ?? null,
+    summary: p.summary ?? null,
+    places: p.places ?? null,
+    life_lesson: p.lifeLesson ?? null,
   }));
   const { error: peopleError } = await db.from("people").insert(peopleRows);
   if (peopleError) throw new Error(peopleError.message);
