@@ -1,0 +1,25 @@
+// Auth/tenancy state resolved once, at boot, before the app's first render
+// (see initDataLayer in data/people.js and main.jsx) — same "mutable module
+// bindings, hydrated pre-render" pattern the rest of the data layer already
+// uses, so every component that reads these gets a stable value with zero
+// reactivity plumbing needed.
+export const DEMO_FAMILY_ID = "00000000-0000-0000-0000-000000000001";
+
+export let CURRENT_USER_ID = null;
+export let CURRENT_FAMILY_ID = DEMO_FAMILY_ID;
+export let CURRENT_FAMILY_NAME = null;
+export let CURRENT_ROLE = null; // 'head' | 'admin' | 'member' | null (null in demo mode)
+export let IS_DEMO = true;
+// True when a real account is signed in but has no family_members row yet —
+// a distinct, real state (e.g. an invite redemption that failed partway),
+// never silently treated as either "demo" or "a member".
+export let ACCOUNT_NEEDS_FAMILY = false;
+
+export function setSession(next) {
+  CURRENT_USER_ID = next.userId ?? null;
+  CURRENT_FAMILY_ID = next.familyId ?? DEMO_FAMILY_ID;
+  CURRENT_FAMILY_NAME = next.familyName ?? null;
+  CURRENT_ROLE = next.role ?? null;
+  IS_DEMO = next.isDemo ?? true;
+  ACCOUNT_NEEDS_FAMILY = next.needsFamily ?? false;
+}

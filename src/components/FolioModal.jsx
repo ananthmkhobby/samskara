@@ -2,7 +2,9 @@ import { useRef } from "react";
 import { byId, yearsLabel, trustLabel, contributionsFor, verifiedMediaFor, personHasContent, roleTag, MIN_GEN, MAX_GEN } from "../data/helpers";
 import { MEDIA_ICONS, EXP_LABELS, ExpIcon, AUDIO_EXP_TYPES, EditPencilIcon } from "./Icons";
 import PersonAvatar from "./PersonAvatar";
-import { fileToResizedDataUrl } from "../lib/imageResize";
+import { resizeImage } from "../lib/imageResize";
+import { uploadFamilyMedia, resolveMediaUrl } from "../lib/mediaUpload";
+import { CURRENT_FAMILY_ID } from "../data/session";
 
 export default function FolioModal({ person, contributions, onClose, onEdit, onShare, onOpenBiography, onChangePhoto, onAddFamily, onOpenInterview, onOpenVoiceWizard, playingExp, onToggleExpPlay, canModerate, onRemoveExperience }) {
   const contribs = contributionsFor(contributions, person.id);
@@ -16,10 +18,12 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
     const file = e.target.files[0];
     if (!file) return;
     try {
-      const dataUrl = await fileToResizedDataUrl(file);
-      onChangePhoto(person.id, dataUrl);
+      const { blob } = await resizeImage(file);
+      const path = await uploadFamilyMedia(CURRENT_FAMILY_ID, person.id, blob, "jpg");
+      const url = await resolveMediaUrl(path);
+      onChangePhoto(person.id, path, url);
     } catch {
-      // ignore unreadable file; input stays empty
+      // ignore unreadable file / failed upload; input stays empty
     }
     e.target.value = "";
   }
@@ -116,10 +120,10 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
                       const playing = playingExp === key;
                       return (
                         <div key={i} className={`exp-card${playing ? " playing" : ""}${e.mediaUrl ? " has-media" : ""}`}>
-                          {canModerate && (
+                          {canModerate && e.id != null && (
                             <div className="exp-mod-actions">
-                              <button type="button" className="icon-only" aria-label="Propose edit to this experience" onClick={() => onEdit({ field: `experience:${i}`, fieldLabel: "Experience caption", value: e.caption })}><EditPencilIcon /></button>
-                              <button type="button" className="icon-only" aria-label="Remove this experience" onClick={() => onRemoveExperience(i)}>✕</button>
+                              <button type="button" className="icon-only" aria-label="Propose edit to this experience" onClick={() => onEdit({ field: `experience:${e.id}`, fieldLabel: "Experience caption", value: e.caption })}><EditPencilIcon /></button>
+                              <button type="button" className="icon-only" aria-label="Remove this experience" onClick={() => onRemoveExperience(e.id)}>✕</button>
                             </div>
                           )}
                           <button
@@ -163,8 +167,8 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
                 <div className="folio-section-head"><h4>Media</h4></div>
                 <div className="gallery">
                   {media.map((m, i) => {
-                    if (m.type === "photo" && m.content?.startsWith("data:")) {
-                      return <div className="gallery-item has-photo" key={i}><img src={m.content} alt="" /></div>;
+                    if (m.type === "photo" && m.mediaUrl) {
+                      return <div className="gallery-item has-photo" key={i}><img src={m.mediaUrl} alt="" /></div>;
                     }
                     const Icon = MEDIA_ICONS[m.type] || MEDIA_ICONS.document;
                     return <div className="gallery-item" key={i}><Icon /><span>{m.type}</span></div>;
@@ -175,8 +179,8 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
               <div className="folio-section">
                 <div className="folio-section-head"><h4>Contributions ({contribs.length})</h4></div>
                 {contribs.length ? contribs.map((c) => {
-                  const isRealAudio = c.type === "audio" && c.content?.startsWith("blob:");
-                  const isRealVideo = c.type === "video" && c.content?.startsWith("blob:");
+                  const isRealAudio = c.type === "audio" && !!c.mediaUrl;
+                  const isRealVideo = c.type === "video" && !!c.mediaUrl;
                   return (
                     <div className="contrib-item" key={c.id} style={{ flexDirection: isRealAudio || isRealVideo ? "column" : "row", alignItems: "stretch" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
@@ -186,8 +190,8 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
                         </div>
                         <span className={`status-pill ${c.status}`}>{c.status}</span>
                       </div>
-                      {isRealAudio && <audio src={c.content} controls style={{ width: "100%", marginTop: 8 }} />}
-                      {isRealVideo && <video src={c.content} controls style={{ width: "100%", marginTop: 8, borderRadius: 8, maxHeight: 220 }} />}
+                      {isRealAudio && <audio src={c.mediaUrl} controls style={{ width: "100%", marginTop: 8 }} />}
+                      {isRealVideo && <video src={c.mediaUrl} controls style={{ width: "100%", marginTop: 8, borderRadius: 8, maxHeight: 220 }} />}
                     </div>
                   );
                 }) : <p style={{ color: "var(--ink-faint)", fontSize: 13 }}>No contributions yet.</p>}

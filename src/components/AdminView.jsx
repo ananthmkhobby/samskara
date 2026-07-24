@@ -1,10 +1,58 @@
 import { useState } from "react";
-import { MIN_GEN, MAX_GEN, byId, applyOverrides } from "../data/helpers";
+import { MIN_GEN, MAX_GEN, byId } from "../data/helpers";
+import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID } from "../data/session";
+import { createInvite } from "../data/familyDb";
 import PersonAvatar from "./PersonAvatar";
 
 const TABS = ["Pending", "Verified", "Rejected", "All"];
 
-export default function AdminView({ contributions, overrides, onApprove, onReject, canModerate }) {
+function InviteCard() {
+  const [link, setLink] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  async function generate() {
+    setBusy(true);
+    setError("");
+    setCopied(false);
+    try {
+      const code = await createInvite(CURRENT_FAMILY_ID, CURRENT_USER_ID);
+      setLink(`${window.location.origin}/?code=${code}`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard unavailable — link is still visible to copy manually */ }
+  }
+
+  return (
+    <div className="card" style={{ marginBottom: 18, padding: 16 }}>
+      <h4 style={{ marginTop: 0 }}>Invite a new member</h4>
+      <p className="form-hint" style={{ marginTop: 0 }}>Generates a one-time link — anyone who opens it can create an account and join this family as a member.</p>
+      {link ? (
+        <div className="tag-row" style={{ alignItems: "center" }}>
+          <input type="text" readOnly value={link} style={{ flex: 1, minWidth: 240 }} onFocus={(e) => e.target.select()} />
+          <button type="button" className="btn small" onClick={copy}>{copied ? "Copied!" : "Copy link"}</button>
+          <button type="button" className="btn small ghost" onClick={generate} disabled={busy}>New link</button>
+        </div>
+      ) : (
+        <button type="button" className="btn small primary" onClick={generate} disabled={busy}>{busy ? "Generating…" : "Generate invite link"}</button>
+      )}
+      {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+    </div>
+  );
+}
+
+export default function AdminView({ contributions, onApprove, onReject, canModerate }) {
   const [tab, setTab] = useState("Pending");
   const pendingCount = contributions.filter((c) => c.status === "Pending").length;
   const rows = contributions.filter((c) => tab === "All" || c.status === tab).slice().reverse();
@@ -36,8 +84,9 @@ export default function AdminView({ contributions, overrides, onApprove, onRejec
       <div className="section-head">
         <h2>Review queue</h2>
         <p>Everything the family has submitted or proposed to edit, waiting for a second pair of eyes before it changes the archive.</p>
-        {!canModerate && <p className="form-hint" style={{ marginTop: 6 }}>You're viewing as a Member — you can see what's pending, but only Admins or the Family Head can approve or reject. Switch your role in the top bar.</p>}
+        {!canModerate && <p className="form-hint" style={{ marginTop: 6 }}>You can see what's pending, but only Admins or the Family Head can approve or reject.</p>}
       </div>
+      {!IS_DEMO && canModerate && <InviteCard />}
       <div className="admin-tabs">
         {TABS.map((t) => (
           <button key={t} className={`chip${tab === t ? " active" : ""}`} onClick={() => setTab(t)}>
@@ -47,10 +96,10 @@ export default function AdminView({ contributions, overrides, onApprove, onRejec
       </div>
       <div className="card">
         {rows.length ? rows.map((c) => {
-          const person = c.personId ? applyOverrides(byId(c.personId), overrides) : null;
+          const person = c.personId ? byId(c.personId) : null;
           const target = person ? person.name : c.type === "newPerson" ? `New: ${c.name}` : `New: ${c.newPersonName}`;
-          const isRealAudio = c.type === "audio" && c.content?.startsWith("blob:");
-          const isRealVideo = c.type === "video" && c.content?.startsWith("blob:");
+          const isRealAudio = c.type === "audio" && !!c.mediaUrl;
+          const isRealVideo = c.type === "video" && !!c.mediaUrl;
           return (
             <div className="queue-row" key={c.id}>
               {person
@@ -59,8 +108,8 @@ export default function AdminView({ contributions, overrides, onApprove, onRejec
               <div className="queue-main">
                 <b>{target}</b>
                 <div className="queue-meta"><span className={`type-badge${c.type === "edit" ? " edit" : ""}`}>{c.type === "newPerson" ? "new family member" : c.type === "interview" ? "AI interview" : c.type}</span> · from {c.contributor} · {c.date}</div>
-                {isRealAudio ? <audio src={c.content} controls style={{ maxWidth: 260, marginTop: 6 }} />
-                  : isRealVideo ? <video src={c.content} controls style={{ maxWidth: 260, marginTop: 6, borderRadius: 6 }} />
+                {isRealAudio ? <audio src={c.mediaUrl} controls style={{ maxWidth: 260, marginTop: 6 }} />
+                  : isRealVideo ? <video src={c.mediaUrl} controls style={{ maxWidth: 260, marginTop: 6, borderRadius: 6 }} />
                     : <div className="queue-snippet">{snippetFor(c)}</div>}
               </div>
               <div className="queue-actions">

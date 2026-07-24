@@ -1,6 +1,5 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { PEOPLE, VALUES } from "../data/people";
-import { applyOverrides } from "../data/helpers";
 import BanyanTree from "./BanyanTree";
 import ClassicTree from "./ClassicTree";
 
@@ -8,10 +7,13 @@ import ClassicTree from "./ClassicTree";
 // rather than deleted so it's a one-line change to bring the toggle back.
 const SHOW_BANYAN_TOGGLE = false;
 
-export default function TreeView({ contributions, overrides, onSelectPerson }) {
+export default function TreeView({ contributions, onSelectPerson }) {
   const [valueFilter, setValueFilter] = useState(null);
   const [mode, setMode] = useState(SHOW_BANYAN_TOGGLE ? "banyan" : "classic");
-  const people = useMemo(() => PEOPLE.map((p) => applyOverrides(p, overrides)), [overrides]);
+  // A fresh array reference each render — PEOPLE is mutated in place after
+  // edits, and BanyanTree/ClassicTree's own layout memoization is keyed on
+  // this reference.
+  const people = [...PEOPLE];
 
   return (
     <section className="wrap">

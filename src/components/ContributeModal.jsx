@@ -4,7 +4,9 @@ import { PhotoIcon, AudioIcon, VideoIcon, DocumentIcon, DateIcon, MemoryIcon, EX
 import { useMediaRecorder } from "../hooks/useMediaRecorder";
 import { useSpeechToText } from "../hooks/useSpeechToText";
 import { callApi } from "../lib/apiFetch";
-import { fileToResizedDataUrl } from "../lib/imageResize";
+import { resizeImage } from "../lib/imageResize";
+import { uploadFamilyMedia } from "../lib/mediaUpload";
+import { CURRENT_FAMILY_ID } from "../data/session";
 
 const TYPE_DEFS = [
   { key: "memory", label: "Memory", Icon: MemoryIcon },
@@ -20,13 +22,20 @@ const SPEECH_LANGS = [
   { code: "kn-IN", label: "ಕನ್ನಡ (Kannada)" }
 ];
 
-function RecorderPanel({ kind }) {
-  const { recording, mediaUrl, stream, error, start, stop, reset } = useMediaRecorder(kind);
+function RecorderPanel({ kind, onMediaReady }) {
+  const { recording, mediaUrl, mediaBlob, stream, error, start, stop, reset } = useMediaRecorder(kind);
   const videoRef = useRef(null);
 
   useEffect(() => {
     if (videoRef.current) videoRef.current.srcObject = stream || null;
   }, [stream]);
+
+  // Lifts the recorded blob up to the parent form — the actual upload
+  // happens at submit time, not here, so a re-recorded or cancelled take
+  // never gets uploaded needlessly.
+  useEffect(() => {
+    onMediaReady(mediaBlob, mediaUrl);
+  }, [mediaBlob, mediaUrl, onMediaReady]);
 
   return (
     <div>
@@ -56,7 +65,6 @@ function RecorderPanel({ kind }) {
         </span>
       </div>
       {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
-      <input type="hidden" data-media-url={mediaUrl || ""} />
     </div>
   );
 }
@@ -69,7 +77,10 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
   const [speechLang, setSpeechLang] = useState("en-IN");
   const [fileName, setFileName] = useState("");
   const [photoDataUrl, setPhotoDataUrl] = useState("");
+  const [photoBlob, setPhotoBlob] = useState(null);
   const [photoError, setPhotoError] = useState("");
+  const [avBlob, setAvBlob] = useState(null);
+  const [avUrl, setAvUrl] = useState(null);
   const [expCategory, setExpCategory] = useState("");
   const [date, setDate] = useState("");
   const [dateLabel, setDateLabel] = useState("");
@@ -77,6 +88,8 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
   const [recorderKey, setRecorderKey] = useState(0);
   const [translating, setTranslating] = useState(false);
   const [translateError, setTranslateError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const { listening, supported: speechSupported, start: startSpeech, stop: stopSpeech } = useSpeechToText();
 
   const locked = !!initial.personId;
@@ -86,6 +99,8 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
     setType(key);
     setRecorderKey((k) => k + 1);
     setExpCategory("");
+    setAvBlob(null);
+    setAvUrl(null);
     if (listening) stopSpeech();
   }
 
@@ -94,7 +109,9 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
     if (!file) return;
     setPhotoError("");
     try {
-      setPhotoDataUrl(await fileToResizedDataUrl(file));
+      const { dataUrl, blob } = await resizeImage(file);
+      setPhotoDataUrl(dataUrl);
+      setPhotoBlob(blob);
     } catch {
       setPhotoError("Couldn't read that image — try a different file.");
     }
@@ -123,24 +140,40 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
     }
   }
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
-    let content = "";
-    if (type === "memory") content = text.trim() || "(no text provided)";
-    else if (type === "audio" || type === "video") {
-      const mediaEl = e.target.querySelector("[data-media-url]");
-      content = mediaEl?.dataset.mediaUrl || "";
-      if (!content) return;
-    }
-    else if (type === "photo") { content = photoDataUrl; if (!content) return; }
-    else if (type === "document") content = fileName || "document.pdf";
-    else if (type === "date") content = `${date || "date TBD"} — ${dateLabel.trim() || "Untitled date"}`;
+    if (submitting) return;
+    // Media contributions about someone not yet in the tree have no real
+    // person id to scope the Storage path under yet — "unassigned" is safe
+    // since Storage RLS only checks the family_id segment of the path.
+    const uploadPersonId = personId === "__new__" ? "unassigned" : personId;
 
-    onSubmit({
+    let content = "";
+    setSubmitError("");
+    try {
+      if (type === "memory") content = text.trim() || "(no text provided)";
+      else if (type === "audio" || type === "video") {
+        if (!avBlob) return;
+        setSubmitting(true);
+        content = await uploadFamilyMedia(CURRENT_FAMILY_ID, uploadPersonId, avBlob, type === "video" ? "webm" : "webm");
+      } else if (type === "photo") {
+        if (!photoBlob) return;
+        setSubmitting(true);
+        content = await uploadFamilyMedia(CURRENT_FAMILY_ID, uploadPersonId, photoBlob, "jpg");
+      } else if (type === "document") content = fileName || "document.pdf";
+      else if (type === "date") content = `${date || "date TBD"} — ${dateLabel.trim() || "Untitled date"}`;
+    } catch (err) {
+      setSubmitError(err.message);
+      setSubmitting(false);
+      return;
+    }
+
+    await onSubmit({
       personId: personId === "__new__" ? null : personId,
       newPersonName: personId === "__new__" ? (newName.trim() || "Unnamed relative") : undefined,
       type, content, expCategory: expCategory || undefined, contributor: contributor.trim() || "Anonymous"
     });
+    setSubmitting(false);
   }
 
   return (
@@ -202,7 +235,7 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
                   {!speechSupported && <p className="form-hint">Voice dictation isn't supported in this browser — Chrome or Edge work best.</p>}
                 </>
               )}
-              {(type === "audio" || type === "video") && <RecorderPanel key={recorderKey} kind={type} />}
+              {(type === "audio" || type === "video") && <RecorderPanel key={recorderKey} kind={type} onMediaReady={(blob, url) => { setAvBlob(blob); setAvUrl(url); }} />}
               {type === "photo" && (
                 <>
                   <label>Upload photo</label>
@@ -242,9 +275,10 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
               <label>Your name</label>
               <input type="text" placeholder="e.g. Kavya Reddy" value={contributor} onChange={(e) => setContributor(e.target.value)} />
             </div>
+            {submitError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{submitError}</p>}
             <div className="folio-actions">
-              <button type="submit" className="btn primary">{canModerate ? "Add now" : "Submit for review"}</button>
-              <button type="button" className="btn ghost" onClick={onCancel}>Cancel</button>
+              <button type="submit" className="btn primary" disabled={submitting}>{submitting ? "Uploading…" : canModerate ? "Add now" : "Submit for review"}</button>
+              <button type="button" className="btn ghost" onClick={onCancel} disabled={submitting}>Cancel</button>
             </div>
           </form>
         </div>

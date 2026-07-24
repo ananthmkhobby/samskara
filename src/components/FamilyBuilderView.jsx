@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
 import { makeNode, flattenFamily, countPeople, hydrateNode } from "../lib/familyBuilder";
 import { updateNode, addChild, removeChild } from "../lib/familyTreeOps";
-import { saveCustomFamily, hasCustomFamily, clearCustomFamily } from "../data/people";
+import { PEOPLE } from "../data/people";
+import { bulkInsertFamily } from "../data/familyDb";
+import { CURRENT_FAMILY_ID } from "../data/session";
 import { callApi } from "../lib/apiFetch";
 import FamilyNodeEditor from "./FamilyNodeEditor";
 
@@ -11,7 +13,16 @@ export default function FamilyBuilderView({ onNav }) {
   const [starterSpouse, setStarterSpouse] = useState("");
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const fileRef = useRef(null);
+
+  // A one-time tool for populating a freshly-provisioned, currently-empty
+  // family — once people already exist, ids are added one at a time (via
+  // "+ Add son/daughter" from a Folio) instead, since this wizard's id
+  // generation only avoids collisions within the tree it's building, not
+  // against whatever's already saved.
+  const alreadyHasPeople = PEOPLE.length > 0;
 
   function beginManually(e) {
     e.preventDefault();
@@ -49,20 +60,34 @@ export default function FamilyBuilderView({ onNav }) {
   async function handleSave() {
     const { people, marriages } = flattenFamily(root);
     if (!people.length) return;
-    await saveCustomFamily(people, marriages);
-    window.location.reload();
+    setSaving(true);
+    setSaveError("");
+    try {
+      await bulkInsertFamily(CURRENT_FAMILY_ID, people, marriages);
+      window.location.reload();
+    } catch (err) {
+      setSaveError(err.message);
+      setSaving(false);
+    }
   }
 
-  async function handleResetToSample() {
-    await clearCustomFamily();
-    window.location.reload();
+  if (alreadyHasPeople) {
+    return (
+      <section className="wrap fam-builder-intro">
+        <div className="section-head">
+          <h2>Your family tree already has people in it</h2>
+          <p>This wizard is only for populating a brand-new, empty tree. To add more people, open anyone's folio and use "+ Add son or daughter" or "+ Add spouse" instead.</p>
+        </div>
+        <button type="button" className="btn primary" onClick={() => onNav("tree")}>Go to the family tree →</button>
+      </section>
+    );
   }
 
   if (!root) {
     return (
       <section className="wrap fam-builder-intro">
         <div className="section-head">
-          <h2>Start your own family tree</h2>
+          <h2>Start your family tree</h2>
           <p>Build your Vamsha Vruksha from scratch — no technical terms, just names. You'll start with a couple, then add their children one at a time, and each child's own children after that.</p>
         </div>
         <div className="fam-builder-paths">
@@ -86,11 +111,6 @@ export default function FamilyBuilderView({ onNav }) {
             {scanError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{scanError}</p>}
           </div>
         </div>
-        {hasCustomFamily() && (
-          <p className="form-hint" style={{ marginTop: 18, color: "var(--maroon-ink)" }}>
-            Heads up — you already have a saved family tree. Anything you build below will <strong>replace it</strong> once you save. <button type="button" className="link-btn" onClick={() => onNav("cover")}>Go back to your existing tree</button> instead, or <button type="button" className="link-btn" onClick={handleResetToSample}>reset to the sample archive</button>.
-          </p>
-        )}
       </section>
     );
   }
@@ -107,9 +127,10 @@ export default function FamilyBuilderView({ onNav }) {
         <span className="eyebrow tnum">{total} {total === 1 ? "person" : "people"} so far</span>
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" className="btn ghost" onClick={() => setRoot(null)}>Start over</button>
-          <button type="button" className="btn primary" onClick={handleSave}>Save &amp; view my family tree</button>
+          <button type="button" className="btn primary" onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save & view my family tree"}</button>
         </div>
       </div>
+      {saveError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{saveError}</p>}
       <FamilyNodeEditor node={root} depth={0} onUpdate={handleUpdate} onAddChild={handleAddChild} onRemove={handleRemove} />
     </section>
   );

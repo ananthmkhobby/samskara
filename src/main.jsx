@@ -15,6 +15,7 @@ import './styles/biography.css'
 import './styles/familyBuilder.css'
 import './styles/interview.css'
 import './styles/welcomeIntro.css'
+import './styles/auth.css'
 import App from './App.jsx'
 import { initDataLayer } from './data/people.js'
 

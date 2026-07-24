@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import TopBar from "./components/TopBar";
 import BottomBar from "./components/BottomBar";
 import CoverPage from "./components/CoverPage";
@@ -16,10 +16,21 @@ import AddFamilyMemberModal from "./components/AddFamilyMemberModal";
 import AIInterviewModal from "./components/AIInterviewModal";
 import FolioVoiceWizard from "./components/FolioVoiceWizard";
 import WelcomeIntro from "./components/WelcomeIntro";
-import { INITIAL_CONTRIBUTIONS, INITIAL_OVERRIDES, addPerson, makeUniquePersonId } from "./data/people";
-import { byId, todayStr, applyOverrides } from "./data/helpers";
-import { useLocalStorageState } from "./hooks/useLocalStorageState";
-import { useSupabaseSyncedState } from "./hooks/useSupabaseSyncedState";
+import { INITIAL_CONTRIBUTIONS, addPerson, makeUniquePersonId } from "./data/people";
+import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
+import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID } from "./data/session";
+import { insertContribution, updateContributionStatus, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry } from "./data/familyDb";
+import { resolveMediaUrl } from "./lib/mediaUpload";
+
+// Audio/video/photo contributions store a Storage path in `content` — this
+// resolves it to a directly-playable signed URL right after submission, so
+// playback works immediately without waiting for a reload (boot hydration
+// does the same resolution for everything fetched at startup).
+async function withMediaUrl(contribution) {
+  if (!["audio", "video", "photo"].includes(contribution.type)) return contribution;
+  const mediaUrl = await resolveMediaUrl(contribution.content);
+  return { ...contribution, mediaUrl };
+}
 
 const VIEW_PATHS = { cover: "/", tree: "/tree", treasury: "/treasury", vault: "/vault", map: "/journey", admin: "/admin", builder: "/builder" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
@@ -47,16 +58,16 @@ export default function App() {
       return false;
     }
   });
-  const [contributions, setContributions] = useSupabaseSyncedState("vamsha.contributions", INITIAL_CONTRIBUTIONS);
-  const [overrides, setOverrides] = useSupabaseSyncedState("vamsha.overrides", INITIAL_OVERRIDES);
-  // Lightweight, honor-system role — there's no backend/accounts yet, so this
-  // is "which hat am I wearing on this device" rather than real access
-  // control. Admin/Family Head get a direct-apply fast path instead of
-  // waiting in the review queue; Family Head is otherwise equivalent to
-  // Admin, just the person the family recognizes as having set up the tree.
-  const [myRole, setMyRole] = useLocalStorageState("vamsha.myRole", "member");
-  const canModerate = myRole === "admin" || myRole === "head";
-  const nextContribId = useRef(Math.max(0, ...contributions.map((c) => c.id)) + 1);
+  const [contributions, setContributions] = useState(INITIAL_CONTRIBUTIONS);
+  // Real per-family role from Supabase Auth (data/session.js), resolved once
+  // at boot — the demo family stays fully open to match its original
+  // honor-system behavior, so it always grants the moderator fast-path.
+  const canModerate = IS_DEMO || CURRENT_ROLE === "admin" || CURRENT_ROLE === "head";
+  // A few actions (photo change, chapter reset, experience removal) mutate
+  // PEOPLE in place without an accompanying contribution being queued, so
+  // there's no other state change to ride along on to trigger a re-render —
+  // this tick is a plain "something changed, please re-render" signal.
+  const [, bump] = useReducer((x) => x + 1, 0);
   const [selectedPersonId, setSelectedPersonId] = useState(null);
   const [biographyPersonId, setBiographyPersonId] = useState(null);
   const [contributeRequest, setContributeRequest] = useState(null);
@@ -152,51 +163,61 @@ export default function App() {
     window.history.back();
   }
 
-  function submitContribution(data) {
-    const contribution = { id: nextContribId.current++, status: canModerate ? "Verified" : "Pending", date: todayStr(), ...data };
-    setContributions((prev) => [...prev, contribution]);
-    if (canModerate) applyContributionEffects(contribution);
-    closeOverlay();
-    showToast(canModerate ? "Added — now visible on the folio." : "Thanks — submitted for admin review.");
+  async function submitContribution(data) {
+    const status = canModerate ? "Verified" : "Pending";
+    try {
+      const contribution = await withMediaUrl(await insertContribution(CURRENT_FAMILY_ID, { ...data, status, date: todayStr(), contributorUserId: CURRENT_USER_ID }));
+      setContributions((prev) => [...prev, contribution]);
+      if (canModerate) applyContributionEffects(contribution);
+      closeOverlay();
+      showToast(canModerate ? "Added — now visible on the folio." : "Thanks — submitted for admin review.");
+    } catch (err) {
+      showToast(`Couldn't save that: ${err.message}`);
+    }
   }
 
-  function submitEdit(data) {
-    const contribution = { id: nextContribId.current++, type: "edit", personId: editRequest.personId, status: canModerate ? "Verified" : "Pending", date: todayStr(), ...data };
-    setContributions((prev) => [...prev, contribution]);
-    if (canModerate) applyContributionEffects(contribution);
-    closeOverlay();
-    showToast(canModerate ? "Edit applied." : "Edit proposed — sent for admin review.");
+  async function submitEdit(data) {
+    const status = canModerate ? "Verified" : "Pending";
+    try {
+      const contribution = await insertContribution(CURRENT_FAMILY_ID, { ...data, type: "edit", personId: editRequest.personId, status, date: todayStr(), contributorUserId: CURRENT_USER_ID });
+      setContributions((prev) => [...prev, contribution]);
+      if (canModerate) applyContributionEffects(contribution);
+      closeOverlay();
+      showToast(canModerate ? "Edit applied." : "Edit proposed — sent for admin review.");
+    } catch (err) {
+      showToast(`Couldn't save that: ${err.message}`);
+    }
   }
 
-  function submitAddFamily(data) {
-    const contribution = {
-      id: nextContribId.current++,
-      type: "newPerson",
-      anchorPersonId: addFamilyRequest.personId,
-      relation: addFamilyRequest.relation,
-      status: canModerate ? "Verified" : "Pending",
-      date: todayStr(),
-      ...data,
-    };
-    setContributions((prev) => [...prev, contribution]);
-    if (canModerate) applyContributionEffects(contribution);
-    closeOverlay();
-    showToast(canModerate ? "Added to the family tree." : "Proposed — sent for admin review.");
+  async function submitAddFamily(data) {
+    const status = canModerate ? "Verified" : "Pending";
+    try {
+      const contribution = await insertContribution(CURRENT_FAMILY_ID, {
+        ...data, type: "newPerson", anchorPersonId: addFamilyRequest.personId, relation: addFamilyRequest.relation,
+        status, date: todayStr(), contributorUserId: CURRENT_USER_ID,
+      });
+      setContributions((prev) => [...prev, contribution]);
+      if (canModerate) applyContributionEffects(contribution);
+      closeOverlay();
+      showToast(canModerate ? "Added to the family tree." : "Proposed — sent for admin review.");
+    } catch (err) {
+      showToast(`Couldn't save that: ${err.message}`);
+    }
   }
 
-  function submitInterview(data) {
-    const contribution = {
-      id: nextContribId.current++,
-      type: "interview",
-      personId: interviewRequest.personId,
-      status: canModerate ? "Verified" : "Pending",
-      date: todayStr(),
-      ...data,
-    };
-    setContributions((prev) => [...prev, contribution]);
-    if (canModerate) applyContributionEffects(contribution);
-    closeOverlay();
-    showToast(canModerate ? "Chapter added to the biography." : "Chapter proposed — sent for admin review.");
+  async function submitInterview(data) {
+    const status = canModerate ? "Verified" : "Pending";
+    try {
+      const contribution = await insertContribution(CURRENT_FAMILY_ID, {
+        ...data, type: "interview", personId: interviewRequest.personId, status, date: todayStr(), contributorUserId: CURRENT_USER_ID,
+      });
+      setContributions((prev) => [...prev, contribution]);
+      if (canModerate) applyContributionEffects(contribution);
+      closeOverlay();
+      showToast(canModerate ? "Chapter added to the biography." : "Chapter proposed — sent for admin review.");
+    } catch (err) {
+      showToast(`Couldn't save that: ${err.message}`);
+    }
   }
 
   // Called once per step by the voice walkthrough wizard — each field goes
@@ -204,21 +225,19 @@ export default function App() {
   // from the Folio, just triggered from a different UI. Submitting (rather
   // than batching to the end) is what makes a half-finished walkthrough safe
   // to resume later: whatever's answered is already saved.
-  function submitWizardField(personId, field, fieldLabel, content, contributor) {
-    const contribution = {
-      id: nextContribId.current++,
-      type: "edit",
-      field,
-      fieldLabel,
-      personId,
-      content,
-      status: canModerate ? "Verified" : "Pending",
-      date: todayStr(),
-      contributor: contributor.trim() || "Anonymous",
-    };
-    setContributions((prev) => [...prev, contribution]);
-    if (canModerate) applyContributionEffects(contribution);
-    showToast(canModerate ? `${fieldLabel} updated.` : `${fieldLabel} proposed — sent for review.`);
+  async function submitWizardField(personId, field, fieldLabel, content, contributor) {
+    const status = canModerate ? "Verified" : "Pending";
+    try {
+      const contribution = await insertContribution(CURRENT_FAMILY_ID, {
+        type: "edit", field, fieldLabel, personId, content, status, date: todayStr(),
+        contributor: contributor.trim() || "Anonymous", contributorUserId: CURRENT_USER_ID,
+      });
+      setContributions((prev) => [...prev, contribution]);
+      if (canModerate) applyContributionEffects(contribution);
+      showToast(canModerate ? `${fieldLabel} updated.` : `${fieldLabel} proposed — sent for review.`);
+    } catch (err) {
+      showToast(`Couldn't save that: ${err.message}`);
+    }
   }
 
   function toggleExpPlay(key) {
@@ -232,11 +251,13 @@ export default function App() {
   // The actual data mutation behind an approved contribution — shared by the
   // admin queue's Approve button and by the direct-apply fast path so
   // Admin/Family Head get identical behavior whether they submit it
-  // themselves or approve someone else's proposal.
+  // themselves or approve someone else's proposal. Each branch updates the
+  // in-memory PEOPLE entry immediately (for instant UI feedback) and fires
+  // the matching Supabase write in the background.
   function applyContributionEffects(c) {
+    const familyId = CURRENT_FAMILY_ID;
     if (c.type === "newPerson" && c.anchorPersonId) {
-      const rawAnchor = byId(c.anchorPersonId);
-      const anchor = rawAnchor ? applyOverrides(rawAnchor, overrides) : null;
+      const anchor = byId(c.anchorPersonId);
       if (anchor) {
         const id = makeUniquePersonId(c.name);
         const newPerson = { id, name: c.name, trust: "approx" };
@@ -248,10 +269,11 @@ export default function App() {
           newPerson.spouse = anchor.id;
           // No real wedding date is collected in this flow — `new Date(null)`
           // silently resolves to Jan 1 1970 rather than failing, so a
-          // MARRIAGES record here would show up as a bogus date in the
-          // Vault. Only add one once we actually have a date to record.
+          // marriage record here would show up as a bogus date in the Vault.
+          // Only add one once we actually have a date to record.
           addPerson(newPerson);
-          setOverrides((prev) => ({ ...prev, [anchor.id]: { ...(prev[anchor.id] || {}), spouse: id } }));
+          anchor.spouse = id;
+          updatePersonSpouse(familyId, anchor.id, id).catch((err) => console.error("Failed to persist spouse link:", err.message));
         } else {
           newPerson.gen = anchor.gen + 1;
           newPerson.parents = anchor.spouse ? [anchor.id, anchor.spouse] : [anchor.id];
@@ -260,96 +282,134 @@ export default function App() {
       }
     }
     if (c.type === "interview" && c.personId) {
-      setOverrides((prev) => {
-        const cur = prev[c.personId] || {};
-        const nextNewChapters = [...(cur.newChapters || []), { title: c.title, text: c.text }];
-        return { ...prev, [c.personId]: { ...cur, newChapters: nextNewChapters } };
-      });
+      const person = byId(c.personId);
+      if (person) {
+        const chapter = { title: c.title, text: c.text };
+        person.chapters = [...(person.chapters || []), chapter];
+        appendChapter(familyId, c.personId, chapter).catch((err) => console.error("Failed to persist chapter:", err.message));
+        bump();
+      }
     }
     // A memory/photo/audio/video/document contribution tagged with an
     // experience category (e.g. "Photograph", "Voice") also gets appended to
     // that person's "Their Experience" grid, in addition to showing up in
     // the plain Contributions list.
     if (c.expCategory && c.personId) {
-      setOverrides((prev) => {
-        const cur = prev[c.personId] || {};
+      const person = byId(c.personId);
+      if (person) {
         const entry = {
+          personId: c.personId,
           type: c.expCategory,
           caption: c.type === "memory" ? c.content : "",
-          mediaUrl: c.type === "photo" ? c.content : undefined
+          mediaPath: c.type === "photo" ? c.content : undefined,
         };
-        return { ...prev, [c.personId]: { ...cur, experienceAdds: [...(cur.experienceAdds || []), entry] } };
-      });
+        // c.mediaUrl was already resolved to a signed URL at submission time
+        // (see withMediaUrl) — reuse it instead of the raw Storage path,
+        // which isn't directly renderable.
+        const localEntry = { id: null, ...entry, mediaUrl: c.type === "photo" ? c.mediaUrl : undefined };
+        person.experience = [...(person.experience || []), localEntry];
+        bump();
+        insertExperienceEntry(familyId, entry)
+          .then((id) => { localEntry.id = id; })
+          .catch((err) => console.error("Failed to persist experience entry:", err.message));
+      }
     }
     if (c.type === "edit" && c.personId) {
-      setOverrides((prev) => {
-        const cur = prev[c.personId] || {};
-        let next = cur;
-        if (c.field === "summary") next = { ...cur, summary: c.content };
-        else if (c.field === "lifeLesson") {
-          try {
-            const { quote, values } = JSON.parse(c.content);
-            next = { ...cur, lifeLesson: { quote, values } };
-          } catch { /* malformed content, skip */ }
+      const person = byId(c.personId);
+      if (!person) return;
+      if (c.field === "summary") {
+        person.summary = c.content;
+        updatePersonFields(familyId, c.personId, { summary: c.content }).catch((err) => console.error(err.message));
+      } else if (c.field === "lifeLesson") {
+        try {
+          const { quote, values } = JSON.parse(c.content);
+          person.lifeLesson = { ...person.lifeLesson, quote, values };
+          mergeLifeLesson(familyId, c.personId, { quote, values }).catch((err) => console.error(err.message));
+        } catch { /* malformed content, skip */ }
+      } else if (c.field === "places") {
+        const places = c.content.split(",").map((s) => s.trim()).filter(Boolean);
+        person.places = places;
+        updatePersonFields(familyId, c.personId, { places }).catch((err) => console.error(err.message));
+      } else if (c.field === "geo") {
+        try {
+          const geo = JSON.parse(c.content);
+          person.geo = geo;
+          updatePersonFields(familyId, c.personId, { geo }).catch((err) => console.error(err.message));
+        } catch { /* malformed content, skip */ }
+      } else if (c.field?.startsWith("chapter:")) {
+        const idx = +c.field.split(":")[1];
+        const chapters = getBiographyChapters(person).map((ch, i) => (i === idx ? { ...ch, text: c.content } : ch));
+        person.chapters = chapters;
+        updatePersonFields(familyId, c.personId, { chapters }).catch((err) => console.error(err.message));
+      } else if (c.field?.startsWith("experience:")) {
+        const entryId = c.field.slice("experience:".length);
+        const entry = (person.experience || []).find((e) => String(e.id) === entryId);
+        if (entry) {
+          entry.caption = c.content;
+          updateExperienceCaption(entry.id, c.content).catch((err) => console.error(err.message));
         }
-        else if (c.field === "places") next = { ...cur, places: c.content.split(",").map((s) => s.trim()).filter(Boolean) };
-        else if (c.field === "geo") {
-          try { next = { ...cur, geo: JSON.parse(c.content) }; } catch { /* malformed content, skip */ }
-        }
-        else if (c.field?.startsWith("chapter:")) {
-          const idx = +c.field.split(":")[1];
-          next = { ...cur, chapters: { ...(cur.chapters || {}), [idx]: c.content } };
-        } else if (c.field?.startsWith("experience:")) {
-          const idx = +c.field.split(":")[1];
-          next = { ...cur, experienceEdits: { ...(cur.experienceEdits || {}), [idx]: { caption: c.content } } };
-        } else if (c.field === "heritage") {
-          try {
-            const { rashi, gotra } = JSON.parse(c.content);
-            next = { ...cur, rashi: rashi || undefined, gotra: gotra || undefined };
-          } catch { /* malformed content, skip */ }
-        }
-        return { ...prev, [c.personId]: next };
-      });
+      } else if (c.field === "heritage") {
+        try {
+          const { rashi, gotra } = JSON.parse(c.content);
+          person.rashi = rashi || undefined;
+          person.gotra = gotra || undefined;
+          updatePersonFields(familyId, c.personId, { rashi: rashi || null, gotra: gotra || null }).catch((err) => console.error(err.message));
+        } catch { /* malformed content, skip */ }
+      }
+      bump();
     }
   }
 
-  function approveContribution(c) {
-    setContributions((prev) => prev.map((x) => (x.id === c.id ? { ...x, status: "Verified" } : x)));
-    applyContributionEffects(c);
-    showToast(c.type === "edit" ? "Edit applied — now visible on the folio." : c.type === "newPerson" ? "Added to the family tree." : c.type === "interview" ? "Chapter added to the biography." : "Marked Verified — now visible on the folio.");
+  async function approveContribution(c) {
+    try {
+      await updateContributionStatus(c.id, "Verified");
+      setContributions((prev) => prev.map((x) => (x.id === c.id ? { ...x, status: "Verified" } : x)));
+      applyContributionEffects(c);
+      showToast(c.type === "edit" ? "Edit applied — now visible on the folio." : c.type === "newPerson" ? "Added to the family tree." : c.type === "interview" ? "Chapter added to the biography." : "Marked Verified — now visible on the folio.");
+    } catch (err) {
+      showToast(`Couldn't approve: ${err.message}`);
+    }
   }
 
-  function rejectContribution(c) {
-    setContributions((prev) => prev.map((x) => (x.id === c.id ? { ...x, status: "Rejected" } : x)));
-    showToast("Submission rejected.");
+  async function rejectContribution(c) {
+    try {
+      await updateContributionStatus(c.id, "Rejected");
+      setContributions((prev) => prev.map((x) => (x.id === c.id ? { ...x, status: "Rejected" } : x)));
+      showToast("Submission rejected.");
+    } catch (err) {
+      showToast(`Couldn't reject: ${err.message}`);
+    }
   }
 
-  function changePhoto(personId, dataUrl) {
-    setOverrides((prev) => ({ ...prev, [personId]: { ...(prev[personId] || {}), photoUrl: dataUrl } }));
+  function changePhoto(personId, photoPath, photoUrl) {
+    const person = byId(personId);
+    if (person) { person.photoPath = photoPath; person.photoUrl = photoUrl; }
+    bump();
+    updatePersonFields(CURRENT_FAMILY_ID, personId, { photo_path: photoPath }).catch((err) => showToast(`Couldn't save photo: ${err.message}`));
     showToast("Photo updated.");
   }
 
-  // Admin/Family Head only — undoes a bad chapter edit (e.g. one submitted
-  // with duplicated or garbled text) by dropping the override, reverting to
-  // the auto-generated fallback built from summary/life lesson/places.
-  function resetChapterOverride(personId, idx) {
-    setOverrides((prev) => {
-      const cur = prev[personId];
-      if (!cur?.chapters || cur.chapters[idx] === undefined) return prev;
-      const nextChapters = { ...cur.chapters };
-      delete nextChapters[idx];
-      return { ...prev, [personId]: { ...cur, chapters: nextChapters } };
-    });
+  // Admin/Family Head only — undoes a bad chapter edit by removing it from
+  // the stored chapters, reverting to the auto-generated fallback built from
+  // summary/life lesson/places (there's no separate "original" text to
+  // restore to now that edits write the person's row directly).
+  function clearChapter(personId, idx) {
+    const person = byId(personId);
+    if (!person) return;
+    const chapters = (person.chapters || []).filter((_, i) => i !== idx);
+    person.chapters = chapters;
+    bump();
+    updatePersonFields(CURRENT_FAMILY_ID, personId, { chapters }).catch((err) => showToast(`Couldn't reset chapter: ${err.message}`));
     showToast("Chapter reset to the auto-generated version.");
   }
 
   // Admin/Family Head only — hides a bad/duplicate Experience card without
-  // needing a review round-trip, same spirit as the chapter reset above.
-  function removeExperienceEntry(personId, idx) {
-    setOverrides((prev) => {
-      const cur = prev[personId] || {};
-      return { ...prev, [personId]: { ...cur, experienceEdits: { ...(cur.experienceEdits || {}), [idx]: { removed: true } } } };
-    });
+  // needing a review round-trip.
+  function deleteExperienceEntry(personId, entryId) {
+    const person = byId(personId);
+    if (person) person.experience = (person.experience || []).filter((e) => e.id !== entryId);
+    bump();
+    dbDeleteExperienceEntry(entryId).catch((err) => showToast(`Couldn't remove: ${err.message}`));
     showToast("Removed from Their Experience.");
   }
 
@@ -358,21 +418,26 @@ export default function App() {
     setShowIntro(false);
   }
 
-  const rawSelectedPerson = selectedPersonId ? byId(selectedPersonId) : null;
-  const selectedPerson = rawSelectedPerson ? applyOverrides(rawSelectedPerson, overrides) : null;
+  const selectedPerson = selectedPersonId ? byId(selectedPersonId) : null;
   const rawBiographyPerson = biographyPersonId ? byId(biographyPersonId) : null;
-  const biographyPerson = rawBiographyPerson ? applyOverrides(rawBiographyPerson, overrides) : null;
+  // Chapters/timeline are synthesized for display here (not stored back onto
+  // the raw person) exactly where BiographyOverlay needs them ready-made —
+  // every other view only reads summary/lifeLesson/places directly and never
+  // needed this fallback.
+  const biographyPerson = rawBiographyPerson
+    ? { ...rawBiographyPerson, chapters: getBiographyChapters(rawBiographyPerson), timeline: getBiographyTimeline(rawBiographyPerson) }
+    : null;
 
   return (
     <div id="app">
-      <TopBar view={view} onNav={goTo} pendingCount={pendingCount} myRole={myRole} onRoleChange={setMyRole} />
+      <TopBar view={view} onNav={goTo} pendingCount={pendingCount} />
       <main>
         {view === "cover" && <CoverPage contributions={contributions} onNav={goTo} onContribute={openContribute} />}
-        {view === "tree" && <TreeView contributions={contributions} overrides={overrides} onSelectPerson={selectPerson} />}
+        {view === "tree" && <TreeView contributions={contributions} onSelectPerson={selectPerson} />}
         {view === "treasury" && <TreasuryView onSelectPerson={selectPerson} />}
-        {view === "vault" && <VaultView contributions={contributions} overrides={overrides} />}
-        {view === "map" && <JourneyMapView overrides={overrides} onSelectPerson={selectPerson} />}
-        {view === "admin" && <AdminView contributions={contributions} overrides={overrides} onApprove={approveContribution} onReject={rejectContribution} canModerate={canModerate} />}
+        {view === "vault" && <VaultView contributions={contributions} />}
+        {view === "map" && <JourneyMapView onSelectPerson={selectPerson} />}
+        {view === "admin" && <AdminView contributions={contributions} onApprove={approveContribution} onReject={rejectContribution} canModerate={canModerate} />}
         {view === "builder" && <FamilyBuilderView onNav={goTo} />}
       </main>
       <BottomBar view={view} onNav={goTo} pendingCount={pendingCount} />
@@ -396,7 +461,7 @@ export default function App() {
           playingExp={playingExp}
           onToggleExpPlay={toggleExpPlay}
           canModerate={canModerate}
-          onRemoveExperience={(idx) => removeExperienceEntry(selectedPerson.id, idx)}
+          onRemoveExperience={(entryId) => deleteExperienceEntry(selectedPerson.id, entryId)}
         />
       )}
       {biographyPerson && (
@@ -405,8 +470,8 @@ export default function App() {
           onClose={closeOverlay}
           onEditChapter={(idx, text) => commit({ editRequest: { personId: biographyPerson.id, field: `chapter:${idx}`, fieldLabel: `Chapter: ${biographyPerson.chapters[idx].title}`, value: text } })}
           canModerate={canModerate}
-          isChapterOverridden={(idx) => overrides[biographyPerson.id]?.chapters?.[idx] !== undefined}
-          onResetChapter={(idx) => resetChapterOverride(biographyPerson.id, idx)}
+          isChapterOverridden={(idx) => (rawBiographyPerson?.chapters?.length || 0) > idx}
+          onResetChapter={(idx) => clearChapter(biographyPerson.id, idx)}
         />
       )}
       {contributeRequest && (

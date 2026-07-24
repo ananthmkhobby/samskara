@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, CircleMarker, Polyline, Tooltip, useMap } from "react-leaflet";
 import { PEOPLE } from "../data/people";
-import { applyOverrides } from "../data/helpers";
 import { computeMapMarkers, computeRoutes, computeOriginMarkers } from "../lib/journeyMapData";
 
 const GEN_COLOR_STOPS = ["#5C1414", "#8A2222", "#7A5714", "#26381F", "#3D5A34"];
@@ -41,9 +40,12 @@ function AnimatedRoute({ positions }) {
   return <Polyline ref={ref} positions={positions} pathOptions={{ color: "#8A2222", weight: 2.5, opacity: 0.8 }} />;
 }
 
-export default function JourneyMapView({ overrides, onSelectPerson }) {
+export default function JourneyMapView({ onSelectPerson }) {
   const [genFilter, setGenFilter] = useState(null);
-  const people = useMemo(() => PEOPLE.map((p) => applyOverrides(p, overrides)), [overrides]);
+  // A fresh array reference each render — PEOPLE is mutated in place after
+  // edits, so the useMemo calls below (keyed on `people`) need a new
+  // reference to notice anything changed.
+  const people = [...PEOPLE];
   const gens = useMemo(() => Array.from(new Set(people.map((p) => p.gen))).sort((a, b) => a - b), [people]);
   const minGen = gens[0], maxGen = gens[gens.length - 1];
   const visiblePeople = useMemo(() => (genFilter === null ? people : people.filter((p) => p.gen === genFilter)), [people, genFilter]);

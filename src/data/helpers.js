@@ -1,7 +1,10 @@
-import { PEOPLE } from "./people";
+import { PEOPLE, MIN_GEN, MAX_GEN } from "./people";
 
-export const MIN_GEN = Math.min(...PEOPLE.map((p) => p.gen));
-export const MAX_GEN = Math.max(...PEOPLE.map((p) => p.gen));
+// Live bindings re-exported from people.js, where they're recomputed once
+// hydration finishes (see initDataLayer) — must not be computed here at
+// static import time, since that would freeze them at whatever PEOPLE
+// happened to contain before a real family's data replaced it.
+export { MIN_GEN, MAX_GEN };
 
 export function byId(id) {
   return PEOPLE.find((p) => p.id === id);
@@ -79,41 +82,4 @@ export function getBiographyTimeline(person) {
   if (person.born) items.push({ year: person.born.slice(0, 4), event: "Born" });
   if (person.died) items.push({ year: person.died.slice(0, 4), event: "Passed away" });
   return items;
-}
-
-// Applies admin-approved edits (summary / life lesson / places / chapter text /
-// rashi / gotra / photo) on top of the base seed data without mutating the
-// shared PEOPLE array. Also normalizes chapters/timeline so every person has
-// a biography, even one synthesized from their existing folio content.
-export function applyOverrides(person, overrides) {
-  const o = overrides[person.id];
-  const merged = { ...person };
-  merged.chapters = getBiographyChapters(person);
-  merged.timeline = getBiographyTimeline(person);
-  if (!o) return merged;
-  if (o.summary !== undefined) merged.summary = o.summary;
-  if (o.lifeLesson !== undefined) merged.lifeLesson = { ...person.lifeLesson, ...o.lifeLesson };
-  if (o.places !== undefined) merged.places = o.places;
-  if (o.rashi !== undefined) merged.rashi = o.rashi;
-  if (o.gotra !== undefined) merged.gotra = o.gotra;
-  if (o.photoUrl !== undefined) merged.photoUrl = o.photoUrl;
-  if (o.spouse !== undefined) merged.spouse = o.spouse;
-  if (o.geo !== undefined) merged.geo = o.geo;
-  if (o.chapters) {
-    merged.chapters = merged.chapters.map((c, i) => (o.chapters[i] !== undefined ? { ...c, text: o.chapters[i] } : c));
-  }
-  // Chapters drafted from an AI-guided interview are appended rather than
-  // replacing an existing index, since they're new material, not edits.
-  if (o.newChapters?.length) merged.chapters = [...merged.chapters, ...o.newChapters];
-  // Real contributed photos/recordings tagged with an experience category
-  // append onto whatever the seed data already has; edits/removals are keyed
-  // by position in that combined list, so they work the same whether the
-  // entry was hand-authored or contributed later.
-  merged.experience = [...(person.experience || []), ...(o.experienceAdds || [])];
-  if (o.experienceEdits) {
-    merged.experience = merged.experience
-      .map((e, i) => (o.experienceEdits[i] !== undefined ? { ...e, ...o.experienceEdits[i] } : e))
-      .filter((e) => !e.removed);
-  }
-  return merged;
 }

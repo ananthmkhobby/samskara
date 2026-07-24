@@ -1,0 +1,129 @@
+import { useState } from "react";
+import { supabase } from "../lib/supabaseClient";
+import { redeemInvite } from "../data/familyDb";
+import { ACCOUNT_NEEDS_FAMILY } from "../data/session";
+
+// Reads a `?code=` invite link once at module load (mirrors App.jsx's
+// FORCE_INTRO pattern) — if present, the join form opens pre-filled instead
+// of defaulting to the login form.
+const INVITE_CODE_FROM_URL = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("code") : null;
+
+async function handleSignOut() {
+  await supabase?.auth.signOut();
+  window.location.reload();
+}
+
+export default function AuthPanel() {
+  const [mode, setMode] = useState(INVITE_CODE_FROM_URL ? "join" : "login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [code, setCode] = useState(INVITE_CODE_FROM_URL || "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  if (ACCOUNT_NEEDS_FAMILY) {
+    return (
+      <div className="auth-panel card">
+        <span className="eyebrow">Account not linked yet</span>
+        <p className="form-hint" style={{ marginTop: 8 }}>
+          You're signed in, but this account isn't attached to a family yet — whoever set this up needs to add you, or you can redeem an invite code below if you have one.
+        </p>
+        <JoinForm email={email} setEmail={setEmail} password={password} setPassword={setPassword} name={name} setName={setName} code={code} setCode={setCode} busy={busy} setBusy={setBusy} error={error} setError={setError} alreadySignedIn />
+        <button className="link-btn" style={{ marginTop: 10 }} onClick={handleSignOut}>Sign out</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="auth-panel card">
+      <div className="auth-tabs">
+        <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>Log in</button>
+        <button className={mode === "join" ? "active" : ""} onClick={() => setMode("join")}>Have an invite code?</button>
+      </div>
+      {mode === "login" ? (
+        <LoginForm email={email} setEmail={setEmail} password={password} setPassword={setPassword} busy={busy} setBusy={setBusy} error={error} setError={setError} />
+      ) : (
+        <JoinForm email={email} setEmail={setEmail} password={password} setPassword={setPassword} name={name} setName={setName} code={code} setCode={setCode} busy={busy} setBusy={setBusy} error={error} setError={setError} />
+      )}
+    </div>
+  );
+}
+
+function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, error, setError }) {
+  async function submit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (err) {
+      setError(err.message);
+      setBusy(false);
+      return;
+    }
+    window.location.reload();
+  }
+
+  return (
+    <form onSubmit={submit}>
+      <div className="form-row">
+        <label>Email</label>
+        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+      </div>
+      <div className="form-row">
+        <label>Password</label>
+        <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+      </div>
+      {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+      <button type="submit" className="btn primary small" disabled={busy} style={{ marginTop: 10 }}>{busy ? "Signing in…" : "Log in →"}</button>
+    </form>
+  );
+}
+
+function JoinForm({ email, setEmail, password, setPassword, name, setName, code, setCode, busy, setBusy, error, setError, alreadySignedIn }) {
+  async function submit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      if (!alreadySignedIn) {
+        const { error: signUpErr } = await supabase.auth.signUp({
+          email: email.trim(), password, options: { data: { display_name: name.trim() || undefined } },
+        });
+        if (signUpErr) throw signUpErr;
+      }
+      await redeemInvite(code.trim());
+      window.location.reload();
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit}>
+      {!alreadySignedIn && (
+        <>
+          <div className="form-row">
+            <label>Your name</label>
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Kavya Reddy" />
+          </div>
+          <div className="form-row">
+            <label>Email</label>
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+          </div>
+          <div className="form-row">
+            <label>Choose a password</label>
+            <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+        </>
+      )}
+      <div className="form-row">
+        <label>Invite code</label>
+        <input type="text" required value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. a1b2c3d4e5" />
+      </div>
+      {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+      <button type="submit" className="btn primary small" disabled={busy} style={{ marginTop: 10 }}>{busy ? "Joining…" : "Join your family →"}</button>
+    </form>
+  );
+}

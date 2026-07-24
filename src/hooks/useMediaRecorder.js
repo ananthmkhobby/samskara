@@ -1,10 +1,14 @@
 import { useCallback, useRef, useState } from "react";
 
-// Real microphone/camera recording via getUserMedia + MediaRecorder.
-// Returns a blob: URL once stopped, playable immediately in this session.
+// Real microphone/camera recording via getUserMedia + MediaRecorder. Returns
+// a blob: URL for instant in-modal preview/playback (only ever valid in this
+// tab), plus the raw Blob itself — the actual durable upload happens at
+// submit time (see ContributeModal), not here, so a re-recorded or
+// cancelled take never gets uploaded needlessly.
 export function useMediaRecorder(kind) {
   const [recording, setRecording] = useState(false);
   const [mediaUrl, setMediaUrl] = useState(null);
+  const [mediaBlob, setMediaBlob] = useState(null);
   const [stream, setStream] = useState(null);
   const [error, setError] = useState(null);
   const recorderRef = useRef(null);
@@ -25,6 +29,7 @@ export function useMediaRecorder(kind) {
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: kind === "video" ? "video/webm" : "audio/webm" });
+        setMediaBlob(blob);
         setMediaUrl(URL.createObjectURL(blob));
         s.getTracks().forEach((t) => t.stop());
         setStream(null);
@@ -44,7 +49,8 @@ export function useMediaRecorder(kind) {
 
   const reset = useCallback(() => {
     setMediaUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+    setMediaBlob(null);
   }, []);
 
-  return { recording, mediaUrl, stream, error, start, stop, reset };
+  return { recording, mediaUrl, mediaBlob, stream, error, start, stop, reset };
 }

@@ -1,5 +1,5 @@
 import { PEOPLE, MARRIAGES } from "../data/people";
-import { byId, monthName, applyOverrides } from "../data/helpers";
+import { byId, monthName } from "../data/helpers";
 
 // Contributed "Important date" entries are stored as a single string —
 // "YYYY-MM-DD — Label" (or "date TBD — Label" if no date was picked) — not
@@ -14,8 +14,8 @@ function parseDateContribution(content) {
   return { date: d, label: rest.join(" — ") || "Untitled date" };
 }
 
-export default function VaultView({ contributions, overrides }) {
-  const people = PEOPLE.map((p) => applyOverrides(p, overrides || {}));
+export default function VaultView({ contributions }) {
+  const people = PEOPLE;
   const months = Array.from({ length: 12 }, () => []);
 
   function addIfValid(d, entry) {

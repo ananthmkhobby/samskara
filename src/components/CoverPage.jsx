@@ -1,5 +1,7 @@
-import { PEOPLE, CHALLENGES, IS_CUSTOM_FAMILY } from "../data/people";
+import { PEOPLE, CHALLENGES } from "../data/people";
+import { IS_DEMO, CURRENT_FAMILY_NAME } from "../data/session";
 import { useCountUp } from "../hooks/useCountUp";
+import AuthPanel from "./AuthPanel";
 
 function Counter({ value, label, delay }) {
   const shown = useCountUp(value);
@@ -15,17 +17,14 @@ export default function CoverPage({ contributions, onNav, onContribute }) {
   const verifiedStories = contributions.filter((c) => c.status === "Verified" && c.type !== "edit").length;
   const lessons = PEOPLE.filter((p) => p.lifeLesson).length;
   const challenge = CHALLENGES[new Date().getMonth()];
+  const familyLabel = CURRENT_FAMILY_NAME || (IS_DEMO ? "The Rao family" : "Your family");
 
   return (
     <section className="wrap" style={{ paddingTop: 0 }}>
       <div className="cover-hero cover-enter" style={{ "--enter-delay": "0s" }}>
-        <span className="eyebrow">{IS_CUSTOM_FAMILY ? "Your family's archive" : "Est. sample archive"} · {gens.size} generation{gens.size === 1 ? "" : "s"}</span>
+        <span className="eyebrow">{IS_DEMO ? "Public demo · try it out" : "Your family's archive"} · {gens.size} generation{gens.size === 1 ? "" : "s"}</span>
         <h1>संस्कार वंश वृक्ष<span className="translit">Samskara Vamsha Vruksha</span></h1>
-        <p className="lede">
-          {IS_CUSTOM_FAMILY
-            ? "Your family's living record — every birth, marriage, memory, and hard-won lesson, kept in one place and added to by everyone who belongs to it."
-            : "The Rao family's living record — every birth, marriage, memory, and hard-won lesson, kept in one place and added to by everyone who belongs to it."}
-        </p>
+        <p className="lede">{familyLabel}'s living record — every birth, marriage, memory, and hard-won lesson, kept in one place and added to by everyone who belongs to it.</p>
       </div>
 
       <div className="counters">
@@ -51,8 +50,14 @@ export default function CoverPage({ contributions, onNav, onContribute }) {
         <button onClick={() => onNav("map")}>See the family's journey →</button>
       </div>
       <div className="cover-links cover-enter" style={{ "--enter-delay": "0.62s", marginTop: 10 }}>
-        <button onClick={() => onNav("builder")}>{IS_CUSTOM_FAMILY ? "Rebuild your family tree from scratch →" : "Start your own family tree →"}</button>
+        <button onClick={() => onNav("builder")}>Add to this family tree →</button>
       </div>
+
+      {IS_DEMO && (
+        <div className="cover-enter" style={{ "--enter-delay": "0.7s" }}>
+          <AuthPanel />
+        </div>
+      )}
     </section>
   );
 }
