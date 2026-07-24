@@ -18,6 +18,12 @@ export default function PersonAvatar({ person, photoUrl, size = 64, minGen = 1, 
     fontFamily: "var(--font-display)", fontWeight: 700, fontSize: Math.round(size * 0.36), flex: "none",
     overflow: "hidden"
   };
+  // A quiet visual cue for a person who has passed — desaturated rather
+  // than any starker treatment, so it reads as gentle rather than morbid.
+  if (person.died) {
+    style.filter = "grayscale(55%)";
+    style.opacity = 0.86;
+  }
   if (url) {
     style.border = variant === "band" ? "2px solid rgba(255,255,255,.5)" : "2px solid #fff";
     return (

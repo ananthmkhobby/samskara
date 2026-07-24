@@ -25,6 +25,7 @@
 .avatar-edit-btn:hover .avatar-edit-overlay, .avatar-edit-btn:focus-visible .avatar-edit-overlay { opacity: 1; }
 .folio-band h2 { font-size: 23px; color: #FBF0E8; margin-top: 14px; }
 .folio-band .role { font-size: 12.5px; color: rgba(251,240,232,.75); font-style: italic; margin-top: 3px; }
+.folio-band .relationship { font-size: 11.5px; color: rgba(251,240,232,.55); margin-top: 2px; }
 .folio-badges { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .folio-section { margin-top: 24px; }
 .folio-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 7px; margin-bottom: 12px; }

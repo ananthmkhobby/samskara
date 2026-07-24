@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { byId, yearsLabel, trustLabel, contributionsFor, verifiedMediaFor, personHasContent, roleTag, MIN_GEN, MAX_GEN } from "../data/helpers";
+import { byId, yearsLabel, trustLabel, contributionsFor, verifiedMediaFor, personHasContent, roleTag, relationshipCaption, widowedLabel, MIN_GEN, MAX_GEN } from "../data/helpers";
 import { MEDIA_ICONS, EXP_LABELS, ExpIcon, AUDIO_EXP_TYPES, EditPencilIcon } from "./Icons";
 import PersonAvatar from "./PersonAvatar";
 import { resizeImage } from "../lib/imageResize";
@@ -12,6 +12,8 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
   const hasContent = personHasContent(contributions, person);
   const role = roleTag(contributions, person);
   const spouse = person.spouse && byId(person.spouse);
+  const relationship = relationshipCaption(person);
+  const widowed = widowedLabel(person);
   const photoInputRef = useRef(null);
 
   async function handlePhotoFile(e) {
@@ -40,6 +42,9 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
           <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoFile} />
           <h2>{person.name}</h2>
           <div className="role">{role || (spouse ? `m. ${spouse.name}` : "")} — {yearsLabel(person)}</div>
+          {(relationship || widowed) && (
+            <div className="relationship">{[relationship, widowed].filter(Boolean).join(" · ")}</div>
+          )}
           <div className="folio-badges"><span className={`trust ${person.trust}`}>{trustLabel(person.trust)}</span></div>
         </div>
         <div className="modal-body">

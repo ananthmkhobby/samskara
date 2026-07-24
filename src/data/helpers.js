@@ -30,6 +30,53 @@ export function parentsCaption(p) {
   return `Child of ${names}`;
 }
 
+// How this person connects to the family's founding generation — computed
+// from parents/spouse links already on record, no extra data needed.
+// Terms are kept gender-neutral on purpose: authentic regional kinship
+// terms (Kannada "chikkappa" vs "chikkamma", "grandson" vs
+// "granddaughter", etc.) are inherently gendered, and this app doesn't
+// track gender — guessing it from a name risks getting someone's own
+// family record wrong, which is worse than a plainer term.
+const DESCENT_TERMS = ["Child", "Grandchild", "Great-grandchild", "Great-great-grandchild"];
+
+function climbToRoot(person) {
+  let current = person;
+  while (current.gen > MIN_GEN) {
+    if (!current.parents || !current.parents.length) break;
+    const parentObjs = current.parents.map((id) => byId(id)).filter(Boolean);
+    if (!parentObjs.length) break;
+    // Prefer whichever parent actually has traceable ancestry — a parent
+    // who married in has an empty `parents` array and would dead-end here.
+    current = parentObjs.find((p) => p.gen === MIN_GEN || (p.parents && p.parents.length)) || parentObjs[0];
+  }
+  return current;
+}
+
+export function relationshipCaption(p) {
+  if (p.gen === MIN_GEN) return "";
+  if (!p.parents || !p.parents.length) {
+    const spouse = p.spouse && byId(p.spouse);
+    return spouse ? `Spouse of ${spouse.name}` : "";
+  }
+  const root = climbToRoot(p);
+  const rootSpouse = root.spouse && byId(root.spouse);
+  const rootLabel = rootSpouse ? `${root.name.split(" ")[0]} & ${rootSpouse.name.split(" ")[0]}` : root.name;
+  const distance = p.gen - MIN_GEN;
+  const term = DESCENT_TERMS[distance - 1] || `${distance}th-generation descendant`;
+  return `${term} of ${rootLabel}`;
+}
+
+// Only surfaces for someone currently alive whose spouse has passed —
+// deceased/alive itself is already conveyed by yearsLabel's born–died
+// range, so this only adds the one status that isn't otherwise visible
+// at a glance. "Widowed" (adjective) rather than "widow"/"widower" sidesteps
+// the same gender-data gap noted above.
+export function widowedLabel(p) {
+  if (p.died) return "";
+  const spouse = p.spouse && byId(p.spouse);
+  return spouse?.died ? "Widowed" : "";
+}
+
 export function monthName(i) {
   return ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][i];
 }
