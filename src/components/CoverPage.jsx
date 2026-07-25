@@ -1,6 +1,7 @@
 import { PEOPLE, CHALLENGES } from "../data/people";
 import { IS_DEMO, CURRENT_FAMILY_NAME } from "../data/session";
 import { useCountUp } from "../hooks/useCountUp";
+import { parseParamparaContent } from "../lib/parampara";
 import AuthPanel from "./AuthPanel";
 
 function Counter({ value, label, delay }) {
@@ -12,12 +13,26 @@ function Counter({ value, label, delay }) {
   );
 }
 
+// A new one "arrives" each day rather than reshuffling on every render —
+// deterministic per calendar day, not truly random, so it doesn't jitter
+// between re-renders within the same visit.
+function pickOfTheDay(list) {
+  if (!list.length) return null;
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+  return list[dayOfYear % list.length];
+}
+
 export default function CoverPage({ contributions, onNav, onContribute }) {
   const gens = new Set(PEOPLE.map((p) => p.gen));
-  const verifiedStories = contributions.filter((c) => c.status === "Verified" && c.type !== "edit").length;
+  const verifiedStories = contributions.filter((c) => c.status === "Verified" && c.type !== "edit" && c.type !== "parampara").length;
   const lessons = PEOPLE.filter((p) => p.lifeLesson).length;
   const challenge = CHALLENGES[new Date().getMonth()];
   const familyLabel = CURRENT_FAMILY_NAME || (IS_DEMO ? "The Rao family" : "Your family");
+
+  const paramparaEntries = contributions.filter((c) => c.type === "parampara" && c.status === "Verified" && c.field !== "lineage");
+  const wisdomEntries = paramparaEntries.filter((c) => c.field === "wisdom");
+  const featuredParampara = pickOfTheDay(wisdomEntries.length ? wisdomEntries : paramparaEntries);
+  const featuredText = featuredParampara ? parseParamparaContent(featuredParampara.content) : null;
 
   return (
     <section className="wrap" style={{ paddingTop: 0 }}>
@@ -41,10 +56,19 @@ export default function CoverPage({ contributions, onNav, onContribute }) {
         <button className="btn primary small" onClick={() => onContribute({ type: challenge.type })}>Contribute now</button>
       </div>
 
+      {featuredParampara && (
+        <button type="button" className="parampara-highlight-card cover-enter" style={{ "--enter-delay": "0.46s", width: "100%" }} onClick={() => onNav("parampara")}>
+          <span className="eyebrow">✨ Parampara — {wisdomEntries.length ? "Ancestor wisdom, today" : "From your family's heritage"}</span>
+          <p className="quote">{featuredText.description}</p>
+          <p className="who">— {featuredParampara.title} · tap to explore your family's Parampara</p>
+        </button>
+      )}
+
       <div className="cover-cta cover-enter" style={{ "--enter-delay": "0.5s" }}>
         <button className="btn primary" onClick={() => onNav("tree")}>Enter the family tree</button>
       </div>
       <div className="cover-links cover-enter" style={{ "--enter-delay": "0.56s" }}>
+        <button onClick={() => onNav("parampara")}>✨ Discover your family's Parampara →</button>
         <button onClick={() => onNav("treasury")}>Browse the Treasury of Wisdom →</button>
         <button onClick={() => onNav("vault")}>Check the Dates Vault →</button>
         <button onClick={() => onNav("map")}>See the family's journey →</button>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { MIN_GEN, MAX_GEN, byId } from "../data/helpers";
 import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID } from "../data/session";
 import { createInvite } from "../data/familyDb";
+import { categoryFor } from "../lib/parampara";
 import PersonAvatar from "./PersonAvatar";
 
 const TABS = ["Pending", "Verified", "Rejected", "All"];
@@ -58,6 +59,13 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
   const rows = contributions.filter((c) => tab === "All" || c.status === tab).slice().reverse();
 
   function snippetFor(c) {
+    if (c.type === "parampara") {
+      if (c.field === "lineage") return "🕉️ Proposed family lineage details";
+      try {
+        const { description } = JSON.parse(c.content);
+        return `${categoryFor(c.field).icon} ${description.slice(0, 90)}${description.length > 90 ? "…" : ""}`;
+      } catch { return "New Parampara entry"; }
+    }
     if (c.type === "interview") return `🎙️ AI-drafted chapter "${c.title}": "${c.text.slice(0, 80)}${c.text.length > 80 ? "…" : ""}"`;
     if (c.type === "newPerson") {
       const anchor = c.anchorPersonId ? byId(c.anchorPersonId) : null;
@@ -97,7 +105,7 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
       <div className="card">
         {rows.length ? rows.map((c) => {
           const person = c.personId ? byId(c.personId) : null;
-          const target = person ? person.name : c.type === "newPerson" ? `New: ${c.name}` : `New: ${c.newPersonName}`;
+          const target = person ? person.name : c.type === "newPerson" ? `New: ${c.name}` : c.type === "parampara" ? (c.title || categoryFor(c.field).label) : `New: ${c.newPersonName}`;
           const isRealAudio = c.type === "audio" && !!c.mediaUrl;
           const isRealVideo = c.type === "video" && !!c.mediaUrl;
           return (
@@ -107,7 +115,7 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
                 : <div className="avatar" style={{ width: 40, height: 40, background: "var(--ink-faint)" }}>?</div>}
               <div className="queue-main">
                 <b>{target}</b>
-                <div className="queue-meta"><span className={`type-badge${c.type === "edit" ? " edit" : ""}`}>{c.type === "newPerson" ? "new family member" : c.type === "interview" ? "AI interview" : c.type}</span> · from {c.contributor} · {c.date}</div>
+                <div className="queue-meta"><span className={`type-badge${c.type === "edit" ? " edit" : ""}`}>{c.type === "newPerson" ? "new family member" : c.type === "interview" ? "AI interview" : c.type === "parampara" ? `parampara · ${categoryFor(c.field).label}` : c.type}</span> · from {c.contributor} · {c.date}</div>
                 {isRealAudio ? <audio src={c.mediaUrl} controls style={{ maxWidth: 260, marginTop: 6 }} />
                   : isRealVideo ? <video src={c.mediaUrl} controls style={{ maxWidth: 260, marginTop: 6, borderRadius: 6 }} />
                     : <div className="queue-snippet">{snippetFor(c)}</div>}

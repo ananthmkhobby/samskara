@@ -5,3 +5,11 @@ export const MapIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="curren
 export const AdminIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z" /></svg>;
 export const CoverIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 20V10a8 8 0 0 1 16 0v10" /></svg>;
 export const PlusIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>;
+// A small diya (oil lamp) glyph — flame + bowl — for the Parampara section.
+export const ParamparaIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <path d="M12 3c-1.2 1.6-1.6 2.8-1.6 3.8a1.6 1.6 0 0 0 3.2 0c0-1-.4-2.2-1.6-3.8z" />
+    <path d="M4 12c0 3 3.2 5 8 5s8-2 8-5" />
+    <path d="M3 12h18" />
+  </svg>
+);

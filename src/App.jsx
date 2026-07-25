@@ -19,6 +19,8 @@ import WelcomeIntro from "./components/WelcomeIntro";
 import SuperAdminView from "./components/SuperAdminView";
 import HelpView from "./components/HelpView";
 import JoinFamilyModal from "./components/JoinFamilyModal";
+import ParamparaView from "./components/ParamparaView";
+import ParamparaContributeModal from "./components/ParamparaContributeModal";
 import { INITIAL_CONTRIBUTIONS, addPerson, makeUniquePersonId } from "./data/people";
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
 import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY } from "./data/session";
@@ -35,7 +37,7 @@ async function withMediaUrl(contribution) {
   return { ...contribution, mediaUrl };
 }
 
-const VIEW_PATHS = { cover: "/", tree: "/tree", treasury: "/treasury", vault: "/vault", map: "/journey", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help" };
+const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", treasury: "/treasury", vault: "/vault", map: "/journey", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
 const pathForView = (v) => VIEW_PATHS[v] || "/";
 const viewForPath = (p) => PATH_TO_VIEW[p] || "cover";
@@ -85,6 +87,7 @@ export default function App() {
   const [interviewRequest, setInterviewRequest] = useState(null);
   const [voiceWizardRequest, setVoiceWizardRequest] = useState(null);
   const [joinFamilyRequest, setJoinFamilyRequest] = useState(null);
+  const [paramparaContributeOpen, setParamparaContributeOpen] = useState(false);
   const [playingExp, setPlayingExp] = useState(null);
   const [toast, setToast] = useState("");
   const isPoppingRef = useRef(false);
@@ -98,7 +101,7 @@ export default function App() {
   useEffect(() => {
     const initialView = viewForPath(window.location.pathname);
     window.history.replaceState(
-      { view: initialView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null, addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null },
+      { view: initialView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null, addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null, paramparaContributeOpen: false },
       "",
       pathForView(initialView)
     );
@@ -115,6 +118,7 @@ export default function App() {
       setInterviewRequest(s.interviewRequest || null);
       setVoiceWizardRequest(s.voiceWizardRequest || null);
       setJoinFamilyRequest(s.joinFamilyRequest || null);
+      setParamparaContributeOpen(s.paramparaContributeOpen || false);
       requestAnimationFrame(() => { isPoppingRef.current = false; });
     }
     window.addEventListener("popstate", onPopState);
@@ -135,6 +139,7 @@ export default function App() {
       interviewRequest: next.interviewRequest !== undefined ? next.interviewRequest : interviewRequest,
       voiceWizardRequest: next.voiceWizardRequest !== undefined ? next.voiceWizardRequest : voiceWizardRequest,
       joinFamilyRequest: next.joinFamilyRequest !== undefined ? next.joinFamilyRequest : joinFamilyRequest,
+      paramparaContributeOpen: next.paramparaContributeOpen !== undefined ? next.paramparaContributeOpen : paramparaContributeOpen,
     };
     setView(full.view);
     setSelectedPersonId(full.selectedPersonId);
@@ -145,6 +150,7 @@ export default function App() {
     setInterviewRequest(full.interviewRequest);
     setVoiceWizardRequest(full.voiceWizardRequest);
     setJoinFamilyRequest(full.joinFamilyRequest);
+    setParamparaContributeOpen(full.paramparaContributeOpen);
     if (!isPoppingRef.current) {
       window.history.pushState(full, "", pathForView(full.view));
     }
@@ -157,7 +163,7 @@ export default function App() {
   }
 
   function goTo(nextView) {
-    commit({ view: nextView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null, addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null });
+    commit({ view: nextView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null, addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null, paramparaContributeOpen: false });
     window.scrollTo({ top: 0 });
   }
 
@@ -171,6 +177,10 @@ export default function App() {
 
   function openJoinFamily(opts = {}) {
     commit({ joinFamilyRequest: opts });
+  }
+
+  function openParamparaContribute() {
+    commit({ paramparaContributeOpen: true });
   }
 
   // Someone who's already signed in (and already belongs to at least one
@@ -473,6 +483,7 @@ export default function App() {
       <main>
         {view === "cover" && <CoverPage contributions={contributions} onNav={goTo} onContribute={openContribute} />}
         {view === "tree" && <TreeView contributions={contributions} onSelectPerson={selectPerson} />}
+        {view === "parampara" && <ParamparaView contributions={contributions} onContribute={openParamparaContribute} />}
         {view === "treasury" && <TreasuryView onSelectPerson={selectPerson} />}
         {view === "vault" && <VaultView contributions={contributions} />}
         {view === "map" && <JourneyMapView onSelectPerson={selectPerson} />}
@@ -520,6 +531,9 @@ export default function App() {
       )}
       {joinFamilyRequest && (
         <JoinFamilyModal initialCode={joinFamilyRequest.code || ""} onClose={closeOverlay} />
+      )}
+      {paramparaContributeOpen && (
+        <ParamparaContributeModal onCancel={closeOverlay} onSubmit={submitContribution} canModerate={canModerate} />
       )}
       {editRequest && (
         <EditModal request={editRequest} onCancel={closeOverlay} onSubmit={submitEdit} canModerate={canModerate} />
