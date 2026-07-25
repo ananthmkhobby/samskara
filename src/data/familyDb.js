@@ -29,6 +29,40 @@ export async function fetchFamilyName(familyId) {
   return data.name;
 }
 
+// ---- Multi-family membership -----------------------------------------------
+
+// Every family a logged-in user belongs to, for the family switcher —
+// distinct from fetchFamilyData/fetchFamilyName, which only ever look at
+// the single currently-active family.
+export async function fetchMyFamilies(userId) {
+  const db = requireClient();
+  const { data, error } = await db
+    .from("family_members")
+    .select("family_id, role, families(name)")
+    .eq("user_id", userId);
+  if (error) throw new Error(error.message);
+  return (data || []).map((row) => ({ familyId: row.family_id, role: row.role, familyName: row.families?.name || "Family" }));
+}
+
+// The server-verified source of truth for "which family is active" —
+// resolves the caller's stored preference against their real memberships,
+// falling back to their earliest membership. Never returns a family the
+// caller isn't actually a member of.
+export async function fetchActiveFamilyId() {
+  const db = requireClient();
+  const { data, error } = await db.rpc("current_family_id");
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// Switching families is a single verified database write, not a re-login —
+// set_active_family() checks real membership before updating the pointer.
+export async function switchFamily(familyId) {
+  const db = requireClient();
+  const { error } = await db.rpc("set_active_family", { p_family_id: familyId });
+  if (error) throw new Error(error.message);
+}
+
 // ---- Contributions ---------------------------------------------------------
 
 export async function insertContribution(familyId, c) {

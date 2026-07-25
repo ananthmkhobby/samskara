@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabaseClient";
 import { batchResolveMediaUrls } from "../lib/mediaUpload";
-import { fetchFamilyData, fetchFamilyName, mapContributionRow, insertPerson as dbInsertPerson, insertMarriage as dbInsertMarriage } from "./familyDb";
+import { fetchFamilyData, fetchFamilyName, fetchMyFamilies, fetchActiveFamilyId, mapContributionRow, insertPerson as dbInsertPerson, insertMarriage as dbInsertMarriage } from "./familyDb";
 import { setSession, DEMO_FAMILY_ID, CURRENT_FAMILY_ID } from "./session";
 
 export const VALUES = ["Courage", "Seva", "Education", "Simplicity", "Devotion", "Discipline", "Hospitality", "Resilience"];
@@ -54,22 +54,29 @@ function mapExperienceRow(row) {
 }
 
 async function resolveAuthAndFamily() {
-  if (!supabase) return { userId: null, familyId: DEMO_FAMILY_ID, role: null, isDemo: true, needsFamily: false };
+  if (!supabase) return { userId: null, familyId: DEMO_FAMILY_ID, role: null, isDemo: true, needsFamily: false, myFamilies: [] };
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return { userId: null, familyId: DEMO_FAMILY_ID, role: null, isDemo: true, needsFamily: false };
+  if (!session) return { userId: null, familyId: DEMO_FAMILY_ID, role: null, isDemo: true, needsFamily: false, myFamilies: [] };
 
-  const { data: membership } = await supabase
-    .from("family_members")
-    .select("family_id, role")
-    .eq("user_id", session.user.id)
-    .maybeSingle();
+  // Fetched as a list, not .maybeSingle() — an account can belong to more
+  // than one family (e.g. both a dad's and a mom's tree) since the
+  // multi-family membership migration.
+  const myFamilies = await fetchMyFamilies(session.user.id);
 
-  if (!membership) {
+  if (!myFamilies.length) {
     // A real account with no family yet — a distinct state, not silently
     // treated as an anonymous demo visitor.
-    return { userId: session.user.id, familyId: DEMO_FAMILY_ID, role: null, isDemo: true, needsFamily: true };
+    return { userId: session.user.id, familyId: DEMO_FAMILY_ID, role: null, isDemo: true, needsFamily: true, myFamilies: [] };
   }
-  return { userId: session.user.id, familyId: membership.family_id, role: membership.role, isDemo: false, needsFamily: false };
+
+  // current_family_id() is the server-verified source of truth for which
+  // one is active (stored preference, falling back to earliest
+  // membership) — reused here rather than re-deriving that fallback logic
+  // client-side, so there's exactly one place it can drift.
+  const activeFamilyId = myFamilies.length === 1 ? myFamilies[0].familyId : await fetchActiveFamilyId();
+  const active = myFamilies.find((f) => f.familyId === activeFamilyId) || myFamilies[0];
+
+  return { userId: session.user.id, familyId: active.familyId, role: active.role, isDemo: false, needsFamily: false, myFamilies };
 }
 
 // Hydrates PEOPLE/MARRIAGES/INITIAL_CONTRIBUTIONS and the auth/tenancy
@@ -122,6 +129,7 @@ export async function initDataLayer() {
     role: resolved.role,
     isDemo: resolved.isDemo,
     needsFamily: resolved.needsFamily,
+    myFamilies: resolved.myFamilies,
   });
 }
 

@@ -10,6 +10,11 @@ export let CURRENT_FAMILY_ID = DEMO_FAMILY_ID;
 export let CURRENT_FAMILY_NAME = null;
 export let CURRENT_ROLE = null; // 'head' | 'admin' | 'member' | null (null in demo mode)
 export let IS_DEMO = true;
+// Every family the logged-in account belongs to — [{familyId, familyName,
+// role}] — length 1 for the common case, more once someone's joined a
+// second family (e.g. both their dad's and mom's trees). Powers the
+// family switcher; empty in demo mode.
+export let MY_FAMILIES = [];
 // True when a real account is signed in but has no family_members row yet —
 // a distinct, real state (e.g. an invite redemption that failed partway),
 // never silently treated as either "demo" or "a member".
@@ -22,4 +27,5 @@ export function setSession(next) {
   CURRENT_ROLE = next.role ?? null;
   IS_DEMO = next.isDemo ?? true;
   ACCOUNT_NEEDS_FAMILY = next.needsFamily ?? false;
+  MY_FAMILIES = next.myFamilies ?? [];
 }

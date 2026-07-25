@@ -18,9 +18,10 @@ import FolioVoiceWizard from "./components/FolioVoiceWizard";
 import WelcomeIntro from "./components/WelcomeIntro";
 import SuperAdminView from "./components/SuperAdminView";
 import HelpView from "./components/HelpView";
+import JoinFamilyModal from "./components/JoinFamilyModal";
 import { INITIAL_CONTRIBUTIONS, addPerson, makeUniquePersonId } from "./data/people";
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
-import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID } from "./data/session";
+import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY } from "./data/session";
 import { insertContribution, updateContributionStatus, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry } from "./data/familyDb";
 import { resolveMediaUrl } from "./lib/mediaUpload";
 
@@ -45,6 +46,12 @@ const viewForPath = (p) => PATH_TO_VIEW[p] || "cover";
 // drops any query string). Reading location.search fresh inside the
 // component would see it already stripped by the time the kept render runs.
 const FORCE_INTRO = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("intro") === "1";
+// Same "read once at module load" reasoning as FORCE_INTRO above — an
+// invite link's `?code=` needs to survive to the first render. AuthPanel
+// already handles this for a logged-out visitor (or one with zero
+// families); this one is for someone who opens a second family's invite
+// link while already signed in and a member elsewhere.
+const INVITE_CODE_FROM_URL = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("code") : null;
 
 export default function App() {
   const [view, setView] = useState(() => viewForPath(window.location.pathname));
@@ -77,6 +84,7 @@ export default function App() {
   const [addFamilyRequest, setAddFamilyRequest] = useState(null);
   const [interviewRequest, setInterviewRequest] = useState(null);
   const [voiceWizardRequest, setVoiceWizardRequest] = useState(null);
+  const [joinFamilyRequest, setJoinFamilyRequest] = useState(null);
   const [playingExp, setPlayingExp] = useState(null);
   const [toast, setToast] = useState("");
   const isPoppingRef = useRef(false);
@@ -90,7 +98,7 @@ export default function App() {
   useEffect(() => {
     const initialView = viewForPath(window.location.pathname);
     window.history.replaceState(
-      { view: initialView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null, addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null },
+      { view: initialView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null, addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null },
       "",
       pathForView(initialView)
     );
@@ -106,6 +114,7 @@ export default function App() {
       setAddFamilyRequest(s.addFamilyRequest || null);
       setInterviewRequest(s.interviewRequest || null);
       setVoiceWizardRequest(s.voiceWizardRequest || null);
+      setJoinFamilyRequest(s.joinFamilyRequest || null);
       requestAnimationFrame(() => { isPoppingRef.current = false; });
     }
     window.addEventListener("popstate", onPopState);
@@ -125,6 +134,7 @@ export default function App() {
       addFamilyRequest: next.addFamilyRequest !== undefined ? next.addFamilyRequest : addFamilyRequest,
       interviewRequest: next.interviewRequest !== undefined ? next.interviewRequest : interviewRequest,
       voiceWizardRequest: next.voiceWizardRequest !== undefined ? next.voiceWizardRequest : voiceWizardRequest,
+      joinFamilyRequest: next.joinFamilyRequest !== undefined ? next.joinFamilyRequest : joinFamilyRequest,
     };
     setView(full.view);
     setSelectedPersonId(full.selectedPersonId);
@@ -134,6 +144,7 @@ export default function App() {
     setAddFamilyRequest(full.addFamilyRequest);
     setInterviewRequest(full.interviewRequest);
     setVoiceWizardRequest(full.voiceWizardRequest);
+    setJoinFamilyRequest(full.joinFamilyRequest);
     if (!isPoppingRef.current) {
       window.history.pushState(full, "", pathForView(full.view));
     }
@@ -146,7 +157,7 @@ export default function App() {
   }
 
   function goTo(nextView) {
-    commit({ view: nextView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null, addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null });
+    commit({ view: nextView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null, addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null });
     window.scrollTo({ top: 0 });
   }
 
@@ -157,6 +168,22 @@ export default function App() {
   function openContribute(opts = {}) {
     commit({ contributeRequest: opts });
   }
+
+  function openJoinFamily(opts = {}) {
+    commit({ joinFamilyRequest: opts });
+  }
+
+  // Someone who's already signed in (and already belongs to at least one
+  // family — the zero-family case is handled inline by AuthPanel's
+  // ACCOUNT_NEEDS_FAMILY branch) opens a second family's invite link:
+  // surface the redeem prompt immediately rather than silently dropping
+  // the ?code= param, which is all that happened before this existed.
+  useEffect(() => {
+    if (INVITE_CODE_FROM_URL && CURRENT_USER_ID && !ACCOUNT_NEEDS_FAMILY) {
+      openJoinFamily({ code: INVITE_CODE_FROM_URL });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Closing any modal/overlay goes back one history step rather than
   // clearing state directly, so Back and the on-screen Close button behave
@@ -442,7 +469,7 @@ export default function App() {
 
   return (
     <div id="app">
-      <TopBar view={view} onNav={goTo} pendingCount={pendingCount} />
+      <TopBar view={view} onNav={goTo} pendingCount={pendingCount} onJoinAnother={() => openJoinFamily({})} />
       <main>
         {view === "cover" && <CoverPage contributions={contributions} onNav={goTo} onContribute={openContribute} />}
         {view === "tree" && <TreeView contributions={contributions} onSelectPerson={selectPerson} />}
@@ -490,6 +517,9 @@ export default function App() {
       )}
       {contributeRequest && (
         <ContributeModal initial={contributeRequest} onCancel={closeOverlay} onSubmit={submitContribution} canModerate={canModerate} />
+      )}
+      {joinFamilyRequest && (
+        <JoinFamilyModal initialCode={joinFamilyRequest.code || ""} onClose={closeOverlay} />
       )}
       {editRequest && (
         <EditModal request={editRequest} onCancel={closeOverlay} onSubmit={submitEdit} canModerate={canModerate} />

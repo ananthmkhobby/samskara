@@ -1,6 +1,6 @@
 import { TreeIcon, TreasuryIcon, VaultIcon, MapIcon, AdminIcon } from "./NavIcons";
-import { IS_DEMO, CURRENT_ROLE } from "../data/session";
-import { supabase } from "../lib/supabaseClient";
+import { IS_DEMO } from "../data/session";
+import FamilySwitcher from "./FamilySwitcher";
 
 const TABS = [
   { key: "tree", label: "Tree", Icon: TreeIcon },
@@ -9,18 +9,7 @@ const TABS = [
   { key: "map", label: "Journey", Icon: MapIcon }
 ];
 
-const ROLE_LABELS = { head: "Family Head", admin: "Admin", member: "Member" };
-
-// Reloads on sign-out so the boot sequence (data/people.js's initDataLayer)
-// re-resolves the session fresh and falls back to the logged-out/demo view —
-// the same "reload to pick up new state" pattern the rest of the app uses
-// for anything auth- or family-affecting.
-async function handleSignOut() {
-  await supabase?.auth.signOut();
-  window.location.reload();
-}
-
-export default function TopBar({ view, onNav, pendingCount }) {
+export default function TopBar({ view, onNav, pendingCount, onJoinAnother }) {
   return (
     <header className="topbar">
       <button className="brand" onClick={() => onNav("cover")} aria-label="Return to cover">
@@ -37,10 +26,7 @@ export default function TopBar({ view, onNav, pendingCount }) {
         {IS_DEMO ? (
           <button className="btn small ghost" onClick={() => onNav("cover")}>Log in</button>
         ) : (
-          <div className="account-menu">
-            <span className="role-badge">{ROLE_LABELS[CURRENT_ROLE] || "Member"}</span>
-            <button className="btn small ghost" onClick={handleSignOut}>Sign out</button>
-          </div>
+          <FamilySwitcher onJoinAnother={onJoinAnother} />
         )}
         <button className="icon-btn" onClick={() => onNav("admin")}>
           <AdminIcon />Admin

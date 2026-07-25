@@ -81,16 +81,29 @@ function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, erro
 }
 
 function JoinForm({ email, setEmail, password, setPassword, name, setName, code, setCode, busy, setBusy, error, setError, alreadySignedIn }) {
+  // Someone opening an invite link isn't necessarily new — they might
+  // already have an account (e.g. from joining a different family
+  // earlier). Asking explicitly, rather than inferring it from a failed
+  // signup, sidesteps Supabase Auth's email-enumeration protection, which
+  // deliberately makes "does this email already exist" unreliable to
+  // detect from a signUp() error alone.
+  const [isNewAccount, setIsNewAccount] = useState(true);
+
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
     setError("");
     try {
       if (!alreadySignedIn) {
-        const { error: signUpErr } = await supabase.auth.signUp({
-          email: email.trim(), password, options: { data: { display_name: name.trim() || undefined } },
-        });
-        if (signUpErr) throw signUpErr;
+        if (isNewAccount) {
+          const { error: signUpErr } = await supabase.auth.signUp({
+            email: email.trim(), password, options: { data: { display_name: name.trim() || undefined } },
+          });
+          if (signUpErr) throw signUpErr;
+        } else {
+          const { error: signInErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+          if (signInErr) throw signInErr;
+        }
       }
       await redeemInvite(code.trim());
       window.location.reload();
@@ -104,16 +117,22 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
     <form onSubmit={submit}>
       {!alreadySignedIn && (
         <>
-          <div className="form-row">
-            <label>Your name</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Kavya Reddy" />
+          <div className="auth-tabs" style={{ marginBottom: 12 }}>
+            <button type="button" className={isNewAccount ? "active" : ""} onClick={() => setIsNewAccount(true)}>I'm new here</button>
+            <button type="button" className={!isNewAccount ? "active" : ""} onClick={() => setIsNewAccount(false)}>I already have an account</button>
           </div>
+          {isNewAccount && (
+            <div className="form-row">
+              <label>Your name</label>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Kavya Reddy" />
+            </div>
+          )}
           <div className="form-row">
             <label>Email</label>
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
           </div>
           <div className="form-row">
-            <label>Choose a password</label>
+            <label>{isNewAccount ? "Choose a password" : "Password"}</label>
             <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
         </>
@@ -123,7 +142,9 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
         <input type="text" required value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. a1b2c3d4e5" />
       </div>
       {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
-      <button type="submit" className="btn primary small" disabled={busy} style={{ marginTop: 10 }}>{busy ? "Joining…" : "Join your family →"}</button>
+      <button type="submit" className="btn primary small" disabled={busy} style={{ marginTop: 10 }}>
+        {busy ? "Joining…" : alreadySignedIn || isNewAccount ? "Join your family →" : "Log in & join →"}
+      </button>
     </form>
   );
 }

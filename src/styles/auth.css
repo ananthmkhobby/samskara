@@ -24,3 +24,24 @@
   background: var(--gold-wash, #f5e9c8); color: var(--bark-deep, #5a3d1a);
   border: 1px solid var(--gold, #c9a441);
 }
+
+.family-switcher { position: relative; }
+.family-switcher-trigger {
+  display: flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px; border-radius: 999px;
+  border: 1px solid var(--line-strong); background: var(--parchment-paper); cursor: pointer; font-family: inherit;
+}
+.family-switcher-name { font-size: 13px; font-weight: 600; color: var(--ink); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.family-switcher-menu {
+  position: absolute; top: calc(100% + 8px); right: 0; min-width: 220px; z-index: 50;
+  background: var(--parchment-paper); border: 1px solid var(--line-strong); border-radius: 12px;
+  box-shadow: var(--shadow-2); padding: 6px; display: flex; flex-direction: column; gap: 2px;
+}
+.family-switcher-item {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 9px 8px; border-radius: 8px;
+  border: 0; background: none; cursor: pointer; font-family: inherit; font-size: 13.5px; color: var(--ink);
+}
+.family-switcher-item:hover { background: var(--parchment-deep); }
+.family-switcher-item.active { font-weight: 700; color: var(--maroon-deep); }
+.family-switcher-item:disabled { opacity: .5; cursor: not-allowed; }
+.family-switcher-check { width: 14px; flex: none; color: var(--forest); font-weight: 700; }
+.family-switcher-divider { height: 1px; background: var(--line); margin: 4px 2px; }
