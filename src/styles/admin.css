@@ -7,3 +7,16 @@
 .queue-actions { display: flex; gap: 6px; }
 .type-badge { font-size: 10.5px; font-weight: 700; color: var(--ink-soft); background: var(--parchment-deep); padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
 .type-badge.edit { color: var(--maroon-ink); background: var(--maroon-wash); }
+
+@media (max-width: 640px) {
+  /* Three-column grid squeezes name/summary into a sliver next to
+     Approve/Reject on narrow screens — stack actions below instead. */
+  .queue-row {
+    grid-template-columns: auto 1fr;
+    grid-template-areas: "avatar main" "actions actions";
+    row-gap: 10px;
+  }
+  .queue-row > :first-child { grid-area: avatar; }
+  .queue-main { grid-area: main; }
+  .queue-actions { grid-area: actions; }
+}

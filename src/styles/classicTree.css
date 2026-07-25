@@ -12,6 +12,15 @@
 }
 .tree-zoom button svg { width: 16px; height: 16px; }
 
+@media (max-width: 640px) {
+  /* Fixed bottom UI (record-pill, bottombar) sits over the canvas's own
+     bottom edge on mobile — move zoom controls to their own row below
+     the top-left HUD badge instead, so neither collides at narrow widths. */
+  .tree-zoom { top: 50px; bottom: auto; right: 10px; flex-direction: row; gap: 6px; }
+  .tree-zoom button { width: 32px; height: 32px; }
+  .tree-zoom button svg { width: 14px; height: 14px; }
+}
+
 .tnode {
   position: absolute; width: 106px; display: flex; flex-direction: column; align-items: center; cursor: pointer; user-select: none; background: none; border: 0; padding: 0; color: inherit;
   opacity: 0; transform: scale(.4);
