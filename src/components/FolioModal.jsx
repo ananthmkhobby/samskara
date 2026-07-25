@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { byId, yearsLabel, trustLabel, contributionsFor, verifiedMediaFor, personHasContent, roleTag, relationshipCaption, widowedLabel, MIN_GEN, MAX_GEN } from "../data/helpers";
 import { MEDIA_ICONS, EXP_LABELS, ExpIcon, AUDIO_EXP_TYPES, EditPencilIcon } from "./Icons";
 import PersonAvatar from "./PersonAvatar";
@@ -15,6 +15,9 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
   const relationship = relationshipCaption(person);
   const widowed = widowedLabel(person);
   const photoInputRef = useRef(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [expCollapsed, setExpCollapsed] = useState(false);
+  const hasPhoto = !!person.photoUrl;
 
   async function handlePhotoFile(e) {
     const file = e.target.files[0];
@@ -35,10 +38,19 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
       <div className="modal-panel">
         <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
         <div className="folio-band">
-          <button type="button" className="avatar-edit-btn" onClick={() => photoInputRef.current?.click()} aria-label="Change profile photo">
-            <PersonAvatar person={person} size={74} minGen={MIN_GEN} maxGen={MAX_GEN} variant="band" className="avatar" />
-            <span className="avatar-edit-overlay"><EditPencilIcon /></span>
-          </button>
+          <div className="avatar-wrap">
+            <button
+              type="button"
+              className="avatar-view-btn"
+              onClick={() => (hasPhoto ? setLightboxOpen(true) : photoInputRef.current?.click())}
+              aria-label={hasPhoto ? `View ${person.name}'s photo` : "Add profile photo"}
+            >
+              <PersonAvatar person={person} size={74} minGen={MIN_GEN} maxGen={MAX_GEN} variant="band" className="avatar" />
+            </button>
+            <button type="button" className="avatar-edit-fab" onClick={() => photoInputRef.current?.click()} aria-label="Change profile photo">
+              <EditPencilIcon />
+            </button>
+          </div>
           <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoFile} />
           <h2>{person.name}</h2>
           <div className="role">{role || (spouse ? `m. ${spouse.name}` : "")} — {yearsLabel(person)}</div>
@@ -104,6 +116,28 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
               </>
             ) : <p className="form-hint" style={{ marginTop: 0 }}>No life lesson recorded yet — optional, but a nice thing to capture, along with which values it reflects.</p>}
           </div>
+          <div className="folio-section">
+            <div className="folio-section-head">
+              <h4>A day in their life</h4>
+              <button
+                className="icon-only"
+                aria-label="Propose edit to A day in their life"
+                onClick={() => onEdit({
+                  field: "dayInLife", fieldLabel: "A day in their life",
+                  dayYear: person.dayInLife?.year || "", dayItems: (person.dayInLife?.items || []).join("\n"),
+                })}
+              ><EditPencilIcon /></button>
+            </div>
+            {person.dayInLife?.items?.length ? (
+              <div className="day-in-life">
+                {person.dayInLife.year && <span className="eyebrow tnum">Year: {person.dayInLife.year}</span>}
+                <ul className="day-in-life-list">
+                  {person.dayInLife.items.map((item, i) => <li key={i}>{item}</li>)}
+                </ul>
+                <p className="day-in-life-contrast">None of this exists the same way today — that contrast is the point.</p>
+              </div>
+            ) : <p className="form-hint" style={{ marginTop: 0 }}>Not recorded yet — a few concrete details of an ordinary day (what they wore, ate, walked, owned) says more than a list of achievements.</p>}
+          </div>
           {hasContent ? (
             <>
               {person.summary && (
@@ -117,8 +151,16 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
               )}
               {person.experience && person.experience.length > 0 && (
                 <div className="folio-section">
-                  <div className="folio-section-head"><h4>Their experience</h4></div>
-                  <div className="exp-grid">
+                  <button
+                    type="button"
+                    className="folio-section-head collapsible"
+                    onClick={() => setExpCollapsed((c) => !c)}
+                    aria-expanded={!expCollapsed}
+                  >
+                    <h4>Their experience ({person.experience.length})</h4>
+                    <span className={`collapse-chevron${expCollapsed ? " collapsed" : ""}`}>▾</span>
+                  </button>
+                  {!expCollapsed && <div className="exp-grid">
                     {person.experience.map((e, i) => {
                       const key = `${person.id}:${i}`;
                       const isAudio = AUDIO_EXP_TYPES.includes(e.type) && !e.mediaUrl;
@@ -155,8 +197,8 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
                         </div>
                       );
                     })}
-                  </div>
-                  <p className="form-hint">Cards with a photo show the real upload. Audio-type cards without one play a short illustrative sample.</p>
+                  </div>}
+                  {!expCollapsed && <p className="form-hint">Cards with a photo show the real upload. Audio-type cards without one play a short illustrative sample.</p>}
                 </div>
               )}
               {person.places && (
@@ -216,6 +258,12 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
           </div>
         </div>
       </div>
+      {lightboxOpen && hasPhoto && (
+        <div className="photo-lightbox" onClick={() => setLightboxOpen(false)}>
+          <button className="modal-close" onClick={() => setLightboxOpen(false)} aria-label="Close">✕</button>
+          <img src={person.photoUrl} alt={person.name} />
+        </div>
+      )}
     </div>
   );
 }

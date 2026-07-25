@@ -33,6 +33,7 @@ export default function TopBar({ view, onNav, pendingCount }) {
         ))}
       </nav>
       <div className="topbar-actions">
+        <button className="icon-only" style={{ width: 34, height: 34 }} onClick={() => onNav("help")} aria-label="Help">?</button>
         {IS_DEMO ? (
           <button className="btn small ghost" onClick={() => onNav("cover")}>Log in</button>
         ) : (

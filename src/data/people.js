@@ -42,6 +42,7 @@ function mapPersonRow(row) {
     spouse: row.spouse, parents: row.parents || [], rashi: row.rashi, gotra: row.gotra,
     isLegacy: row.is_legacy, trust: row.trust, geoOrigin: row.geo_origin, geo: row.geo,
     summary: row.summary, places: row.places, lifeLesson: row.life_lesson,
+    dayInLife: row.day_in_life,
     chapters: row.chapters || [], timeline: row.timeline || [],
     photoPath: row.photo_path, photoUrl: null, // photoUrl resolved in initDataLayer
     experience: [],

@@ -6,9 +6,12 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
   const isHeritage = request.field === "heritage";
   const isLifeLesson = request.field === "lifeLesson";
   const isGeo = request.field === "geo";
+  const isDayInLife = request.field === "dayInLife";
   const [value, setValue] = useState(request.value || "");
   const [rashi, setRashi] = useState(request.rashi || "");
   const [gotra, setGotra] = useState(request.gotra || "");
+  const [dayYear, setDayYear] = useState(request.dayYear || "");
+  const [dayItems, setDayItems] = useState(request.dayItems || "");
   const [selectedValues, setSelectedValues] = useState(request.values || []);
   const [contributor, setContributor] = useState("");
   const [busy, setBusy] = useState(false);
@@ -41,7 +44,9 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
       ? JSON.stringify({ rashi: rashi.trim(), gotra: gotra.trim() })
       : isLifeLesson
         ? JSON.stringify({ quote: value.trim(), values: selectedValues })
-        : value.trim();
+        : isDayInLife
+          ? JSON.stringify({ year: dayYear.trim(), items: dayItems.split("\n").map((s) => s.trim()).filter(Boolean) })
+          : value.trim();
     onSubmit({ field: request.field, fieldLabel: request.fieldLabel, content, contributor: contributor.trim() || "Anonymous" });
   }
 
@@ -87,6 +92,23 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
                 <p className="form-hint">This shows them as a pin on the family's Journey map.</p>
                 {geoError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{geoError}</p>}
               </div>
+            ) : isDayInLife ? (
+              <>
+                <div className="form-row">
+                  <label>Year (optional)</label>
+                  <input type="text" placeholder="e.g. 1938" value={dayYear} onChange={(e) => setDayYear(e.target.value)} />
+                </div>
+                <div className="form-row">
+                  <label>What an ordinary day looked like — one fact per line</label>
+                  <textarea
+                    style={{ minHeight: 160 }}
+                    placeholder={"Woke up at 4:30 AM\nWalked 5 km to the village school\nOwned 2 pairs of clothes\nNever borrowed money"}
+                    value={dayItems}
+                    onChange={(e) => setDayItems(e.target.value)}
+                  />
+                  <p className="form-hint">Small, concrete details — what they wore, ate, walked, owned — say more than achievements do.</p>
+                </div>
+              </>
             ) : (
               <div className="form-row">
                 <label>Proposed {request.fieldLabel.toLowerCase()}</label>

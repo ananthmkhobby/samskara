@@ -17,6 +17,7 @@ import AIInterviewModal from "./components/AIInterviewModal";
 import FolioVoiceWizard from "./components/FolioVoiceWizard";
 import WelcomeIntro from "./components/WelcomeIntro";
 import SuperAdminView from "./components/SuperAdminView";
+import HelpView from "./components/HelpView";
 import { INITIAL_CONTRIBUTIONS, addPerson, makeUniquePersonId } from "./data/people";
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
 import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID } from "./data/session";
@@ -33,7 +34,7 @@ async function withMediaUrl(contribution) {
   return { ...contribution, mediaUrl };
 }
 
-const VIEW_PATHS = { cover: "/", tree: "/tree", treasury: "/treasury", vault: "/vault", map: "/journey", admin: "/admin", builder: "/builder", superadmin: "/superadmin" };
+const VIEW_PATHS = { cover: "/", tree: "/tree", treasury: "/treasury", vault: "/vault", map: "/journey", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
 const pathForView = (v) => VIEW_PATHS[v] || "/";
 const viewForPath = (p) => PATH_TO_VIEW[p] || "cover";
@@ -360,6 +361,12 @@ export default function App() {
           person.gotra = gotra || undefined;
           updatePersonFields(familyId, c.personId, { rashi: rashi || null, gotra: gotra || null }).catch((err) => console.error(err.message));
         } catch { /* malformed content, skip */ }
+      } else if (c.field === "dayInLife") {
+        try {
+          const dayInLife = JSON.parse(c.content);
+          person.dayInLife = dayInLife.items?.length ? dayInLife : null;
+          updatePersonFields(familyId, c.personId, { day_in_life: person.dayInLife }).catch((err) => console.error(err.message));
+        } catch { /* malformed content, skip */ }
       }
       bump();
     }
@@ -445,6 +452,7 @@ export default function App() {
         {view === "admin" && <AdminView contributions={contributions} onApprove={approveContribution} onReject={rejectContribution} canModerate={canModerate} />}
         {view === "builder" && <FamilyBuilderView onNav={goTo} />}
         {view === "superadmin" && <SuperAdminView />}
+        {view === "help" && <HelpView />}
       </main>
       <BottomBar view={view} onNav={goTo} pendingCount={pendingCount} />
 

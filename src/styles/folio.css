@@ -16,20 +16,47 @@
 
 .folio-band { background: linear-gradient(155deg, var(--maroon-deep), var(--maroon)); padding: 26px 26px 22px; border-radius: 14px 14px 0 0; position: relative; }
 .folio-band .avatar { width: 74px; height: 74px; background: rgba(255,255,255,.14); border: 2px solid rgba(255,255,255,.5); color: rgba(255,255,255,.85); }
-.avatar-edit-btn { position: relative; display: inline-flex; background: none; border: 0; padding: 0; cursor: pointer; border-radius: 50%; }
-.avatar-edit-overlay {
-  position: absolute; inset: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  background: rgba(15,10,5,.45); color: #fff; opacity: 0; transition: opacity .15s;
+.avatar-wrap { position: relative; display: inline-block; }
+.avatar-view-btn { display: inline-flex; background: none; border: 0; padding: 0; cursor: pointer; border-radius: 50%; }
+.avatar-edit-fab {
+  position: absolute; right: -2px; bottom: -2px; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--maroon-deep); border: 2px solid var(--parchment-paper); color: #fff;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: var(--shadow-1);
 }
-.avatar-edit-overlay svg { width: 20px; height: 20px; }
-.avatar-edit-btn:hover .avatar-edit-overlay, .avatar-edit-btn:focus-visible .avatar-edit-overlay { opacity: 1; }
+.avatar-edit-fab svg { width: 12px; height: 12px; }
+.photo-lightbox {
+  position: fixed; inset: 0; background: rgba(10,6,3,.85); z-index: 80;
+  display: flex; align-items: center; justify-content: center; padding: 30px; cursor: zoom-out;
+}
+.photo-lightbox img { max-width: min(90vw, 560px); max-height: 80vh; border-radius: 12px; box-shadow: var(--shadow-2); }
+.photo-lightbox .modal-close { position: fixed; top: 18px; right: 18px; }
 .folio-band h2 { font-size: 23px; color: #FBF0E8; margin-top: 14px; }
 .folio-band .role { font-size: 12.5px; color: rgba(251,240,232,.75); font-style: italic; margin-top: 3px; }
 .folio-band .relationship { font-size: 11.5px; color: rgba(251,240,232,.55); margin-top: 2px; }
 .folio-badges { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+/* .trust badges are tuned for the parchment background elsewhere on the
+   Folio — on this dark band their default dark-on-light-wash colors nearly
+   vanish, so give them a light-on-dark treatment here specifically. */
+.folio-band .trust { background: rgba(255,255,255,.16); }
+.folio-band .trust.verified { color: #B9E8A8; }
+.folio-band .trust.verified::before { background: #8FDD68; }
+.folio-band .trust.elder { color: #F5D48A; }
+.folio-band .trust.elder::before { background: #F0C24E; }
+.folio-band .trust.approx { color: #F0E4D4; }
+.folio-band .trust.approx::before { background: rgba(255,255,255,.65); }
 .folio-section { margin-top: 24px; }
 .folio-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 7px; margin-bottom: 12px; }
 .folio-section-head h4 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--maroon-deep); font-weight: 700; }
+.folio-section-head.collapsible {
+  width: 100%; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 0 0 7px;
+  cursor: pointer; font-family: inherit; text-align: left; color: inherit;
+}
+.collapse-chevron { color: var(--ink-faint); font-size: 13px; transition: transform .15s; }
+.collapse-chevron.collapsed { transform: rotate(-90deg); }
+.day-in-life-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.day-in-life-list li { font-size: 14px; color: var(--ink-soft); padding-left: 16px; position: relative; line-height: 1.5; }
+.day-in-life-list li::before { content: "—"; position: absolute; left: 0; color: var(--gold-deep); }
+.day-in-life-contrast { margin-top: 14px; font-size: 12.5px; font-style: italic; color: var(--ink-faint); border-top: 1px dashed var(--line); padding-top: 10px; }
 .folio-summary { font-size: 14.5px; line-height: 1.65; color: var(--ink-soft); }
 .folio-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 22px; }
 .lesson-quote { border-left: 3px solid var(--maroon-deep); padding-left: 14px; font-family: var(--font-display); font-style: italic; font-size: 16.5px; color: var(--maroon-deep); line-height: 1.5; }
