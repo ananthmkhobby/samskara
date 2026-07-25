@@ -6,11 +6,13 @@ import { useCallback, useRef, useState } from "react";
 export function useSpeechToText() {
   const [listening, setListening] = useState(false);
   const recRef = useRef(null);
+  const manualStopRef = useRef(false);
   const supported = typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
   const start = useCallback((lang, onResult) => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
+    manualStopRef.current = false;
     const rec = new SR();
     rec.lang = lang;
     rec.interimResults = false;
@@ -22,14 +24,27 @@ export function useSpeechToText() {
       }
       if (finalText) onResult(finalText);
     };
-    rec.onend = () => setListening(false);
-    rec.onerror = () => setListening(false);
+    // Chrome's speech engine ends the session on a brief pause even with
+    // continuous:true — from the user's side that reads as "the mic turned
+    // itself off after a second" mid-sentence. Restart transparently
+    // unless they explicitly tapped stop, so a short pause doesn't end
+    // dictation.
+    rec.onend = () => {
+      if (manualStopRef.current) { setListening(false); return; }
+      try { rec.start(); } catch { setListening(false); }
+    };
+    rec.onerror = (e) => {
+      // 'no-speech' and 'aborted' are the same transient pauses onend
+      // already recovers from — anything else is a real failure.
+      if (e.error !== "no-speech" && e.error !== "aborted") manualStopRef.current = true;
+    };
     rec.start();
     recRef.current = rec;
     setListening(true);
   }, []);
 
   const stop = useCallback(() => {
+    manualStopRef.current = true;
     recRef.current?.stop();
     setListening(false);
   }, []);

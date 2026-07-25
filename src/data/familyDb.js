@@ -367,9 +367,28 @@ export async function setReaderStatus(familyId, bookId, personId, status) {
   return mapReaderRow(data);
 }
 
-export async function redeemInvite(code) {
+export async function redeemInvite(code, displayName) {
   const db = requireClient();
-  const { data, error } = await db.rpc("redeem_invite", { p_code: code });
+  const { data, error } = await db.rpc("redeem_invite", { p_code: code, p_display_name: displayName || null });
   if (error) throw new Error(error.message);
   return data;
+}
+
+// ---- Family roster / admin promotion ----------------------------------------
+
+export async function fetchFamilyMembers(familyId) {
+  const db = requireClient();
+  const { data, error } = await db.from("family_members").select("id, user_id, role, display_name, created_at").eq("family_id", familyId);
+  if (error) throw new Error(error.message);
+  return data.map((r) => ({ id: r.id, userId: r.user_id, role: r.role, displayName: r.display_name, createdAt: r.created_at }));
+}
+
+// Only ever succeeds when the acting session is the Family Head — enforced
+// by RLS ("head can update own roster"), not just this call site.
+export async function updateMemberRole(memberRowId, role) {
+  const db = requireClient();
+  const { data, error } = await db.from("family_members").update({ role }).eq("id", memberRowId).select();
+  if (error) throw new Error(error.message);
+  if (!data.length) throw new Error("Only the Family Head can change roles.");
+  return data[0];
 }

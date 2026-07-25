@@ -105,7 +105,7 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
           if (signInErr) throw signInErr;
         }
       }
-      await redeemInvite(code.trim());
+      await redeemInvite(code.trim(), name.trim());
       window.location.reload();
     } catch (err) {
       setError(err.message);

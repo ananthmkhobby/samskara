@@ -6,7 +6,7 @@ const ROLE_ROWS = [
   },
   {
     role: "Admin",
-    who: "There's no in-app way to promote a Member to Admin yet — every invite-redeemed account becomes a Member. Admin access today has to be granted directly in the database.",
+    who: "Promoted by the Family Head — open the Admin page and scroll to \"Family roster,\" where the Head can turn any Member into an Admin (or step one back down) with one click.",
     can: "Approve or reject anything in the review queue, edit any field immediately (no review needed), generate invite links.",
   },
   {
@@ -70,6 +70,29 @@ export default function HelpView() {
           Open anyone's folio and use "Share what you know" to add a memory, photo, audio, video, document, or an
           important date. Members' contributions land in the Admin review queue as <b>Pending</b> until an Admin
           approves them; Admins and the Family Head see their own changes go live immediately.
+        </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>Parampara — your family's heritage</h4>
+        <p className="folio-summary">
+          A family-level section (its own tab, not tied to one person) for the things that survived because of your
+          family — traditions, your kula devata's story, veda lineage, family slokas, how festivals were celebrated
+          across generations, family dharma, ancestor wisdom, skills that are fading, and living memories worth
+          keeping. Anyone can add an entry; it goes through the same review queue as everything else before it's
+          visible. A daily-rotating quote from it is featured on the Cover page too.
+        </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>Family Library</h4>
+        <p className="folio-summary">
+          A shared bookshelf, also family-level. Each book has its own journey — who owned it, who it was gifted to,
+          who's read it — plus tabs for its story, who's currently reading it, lessons it taught the family, personal
+          memories tied to that copy, and an ongoing discussion thread. New books go through review like anything
+          else; marking yourself as a reader or adding a link to a book's journey is instant, no approval needed.
+          If a book's last owner has passed away, it becomes a locked "Grandfather's Shelf" — a quiet memorial nobody
+          edits or rearranges.
         </p>
       </div>
 

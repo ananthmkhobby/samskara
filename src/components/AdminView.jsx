@@ -1,13 +1,72 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MIN_GEN, MAX_GEN, byId } from "../data/helpers";
-import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID } from "../data/session";
-import { createInvite } from "../data/familyDb";
+import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, CURRENT_ROLE } from "../data/session";
+import { createInvite, fetchFamilyMembers, updateMemberRole } from "../data/familyDb";
 import { categoryFor } from "../lib/parampara";
 import { libraryCategoryFor } from "../lib/library";
 import { BOOKS } from "../data/people";
 import PersonAvatar from "./PersonAvatar";
 
 const TABS = ["Pending", "Verified", "Rejected", "All"];
+const ROLE_LABELS = { head: "Family Head", admin: "Admin", member: "Member" };
+
+function RosterCard() {
+  const [members, setMembers] = useState(null);
+  const [busyId, setBusyId] = useState(null);
+  const [error, setError] = useState("");
+  const isHead = CURRENT_ROLE === "head";
+
+  useEffect(() => {
+    fetchFamilyMembers(CURRENT_FAMILY_ID).then(setMembers).catch((err) => setError(err.message));
+  }, []);
+
+  async function changeRole(member, role) {
+    setBusyId(member.id);
+    setError("");
+    try {
+      await updateMemberRole(member.id, role);
+      setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, role } : m)));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <div className="card" style={{ marginBottom: 18, padding: 16 }}>
+      <h4 style={{ marginTop: 0 }}>Family roster</h4>
+      <p className="form-hint" style={{ marginTop: 0 }}>
+        {isHead ? "As Family Head, you can promote a Member to Admin (or step one back down) here." : "Only the Family Head can change roles — you can see who's who below."}
+      </p>
+      {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+      {members === null ? null : members.map((m) => (
+        <div className="queue-row" key={m.id} style={{ gridTemplateColumns: "auto 1fr auto", padding: "10px 0" }}>
+          <div className="avatar" style={{ width: 34, height: 34, background: "var(--ink-faint)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 13, fontWeight: 700 }}>
+            {(m.displayName || "?")[0].toUpperCase()}
+          </div>
+          <div className="queue-main">
+            <b>{m.displayName || "Unnamed member"}</b>
+            <div className="queue-meta">{ROLE_LABELS[m.role]} · joined {m.createdAt?.slice(0, 10)}</div>
+          </div>
+          {isHead && m.role !== "head" && (
+            <div className="queue-actions">
+              {m.role === "member" ? (
+                <button type="button" className="btn small" disabled={busyId === m.id} onClick={() => changeRole(m, "admin")}>
+                  {busyId === m.id ? "…" : "Make Admin"}
+                </button>
+              ) : (
+                <button type="button" className="btn small ghost" disabled={busyId === m.id} onClick={() => changeRole(m, "member")}>
+                  {busyId === m.id ? "…" : "Remove Admin"}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function InviteCard() {
   const [link, setLink] = useState("");
@@ -108,6 +167,7 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
         {!canModerate && <p className="form-hint" style={{ marginTop: 6 }}>You can see what's pending, but only Admins or the Family Head can approve or reject.</p>}
       </div>
       {!IS_DEMO && canModerate && <InviteCard />}
+      {!IS_DEMO && canModerate && <RosterCard />}
       <div className="admin-tabs">
         {TABS.map((t) => (
           <button key={t} className={`chip${tab === t ? " active" : ""}`} onClick={() => setTab(t)}>
