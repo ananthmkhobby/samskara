@@ -13,3 +13,10 @@ export const ParamparaIcon = () => (
     <path d="M3 12h18" />
   </svg>
 );
+export const LibraryIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <path d="M4 19V5a1 1 0 0 1 1-1h4v16H5a1 1 0 0 1-1-1z" />
+    <path d="M9 4h4v16H9z" />
+    <path d="M14.5 4.6l3.6-.9a1 1 0 0 1 1.2.7l3 12.4a1 1 0 0 1-.7 1.2l-3.6.9" />
+  </svg>
+);

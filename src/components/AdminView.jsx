@@ -3,6 +3,8 @@ import { MIN_GEN, MAX_GEN, byId } from "../data/helpers";
 import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID } from "../data/session";
 import { createInvite } from "../data/familyDb";
 import { categoryFor } from "../lib/parampara";
+import { libraryCategoryFor } from "../lib/library";
+import { BOOKS } from "../data/people";
 import PersonAvatar from "./PersonAvatar";
 
 const TABS = ["Pending", "Verified", "Rejected", "All"];
@@ -59,6 +61,17 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
   const rows = contributions.filter((c) => tab === "All" || c.status === tab).slice().reverse();
 
   function snippetFor(c) {
+    if (c.type === "newBook") {
+      try {
+        const { story } = JSON.parse(c.content);
+        return story ? `📚 ${story.slice(0, 90)}${story.length > 90 ? "…" : ""}` : `📚 New book — ${libraryCategoryFor(c.field).label}`;
+      } catch { return "📚 New book"; }
+    }
+    if (c.type === "library_entry") {
+      const book = BOOKS.find((b) => b.id === c.bookId);
+      const kindLabel = { wisdom: "Lesson", memory: "Memory", discussion: "Discussion" }[c.field] || c.field;
+      return `${kindLabel} on "${book?.title || "a book"}": "${c.content.slice(0, 70)}${c.content.length > 70 ? "…" : ""}"`;
+    }
     if (c.type === "parampara") {
       if (c.field === "lineage") return "🕉️ Proposed family lineage details";
       try {
@@ -105,7 +118,12 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
       <div className="card">
         {rows.length ? rows.map((c) => {
           const person = c.personId ? byId(c.personId) : null;
-          const target = person ? person.name : c.type === "newPerson" ? `New: ${c.name}` : c.type === "parampara" ? (c.title || categoryFor(c.field).label) : `New: ${c.newPersonName}`;
+          const target = person ? person.name
+            : c.type === "newPerson" ? `New: ${c.name}`
+            : c.type === "parampara" ? (c.title || categoryFor(c.field).label)
+            : c.type === "newBook" ? `New book: ${c.name}`
+            : c.type === "library_entry" ? (BOOKS.find((b) => b.id === c.bookId)?.title || "A book")
+            : `New: ${c.newPersonName}`;
           const isRealAudio = c.type === "audio" && !!c.mediaUrl;
           const isRealVideo = c.type === "video" && !!c.mediaUrl;
           return (
@@ -115,7 +133,16 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
                 : <div className="avatar" style={{ width: 40, height: 40, background: "var(--ink-faint)" }}>?</div>}
               <div className="queue-main">
                 <b>{target}</b>
-                <div className="queue-meta"><span className={`type-badge${c.type === "edit" ? " edit" : ""}`}>{c.type === "newPerson" ? "new family member" : c.type === "interview" ? "AI interview" : c.type === "parampara" ? `parampara · ${categoryFor(c.field).label}` : c.type}</span> · from {c.contributor} · {c.date}</div>
+                <div className="queue-meta">
+                  <span className={`type-badge${c.type === "edit" ? " edit" : ""}`}>
+                    {c.type === "newPerson" ? "new family member"
+                      : c.type === "interview" ? "AI interview"
+                      : c.type === "parampara" ? `parampara · ${categoryFor(c.field).label}`
+                      : c.type === "newBook" ? `library · ${libraryCategoryFor(c.field).label}`
+                      : c.type === "library_entry" ? `library · ${c.field}`
+                      : c.type}
+                  </span> · from {c.contributor} · {c.date}
+                </div>
                 {isRealAudio ? <audio src={c.mediaUrl} controls style={{ maxWidth: 260, marginTop: 6 }} />
                   : isRealVideo ? <video src={c.mediaUrl} controls style={{ maxWidth: 260, marginTop: 6, borderRadius: 6 }} />
                     : <div className="queue-snippet">{snippetFor(c)}</div>}

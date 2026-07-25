@@ -1,0 +1,41 @@
+.library-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 18px 0; }
+.library-stat { background: var(--parchment-paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; text-align: center; }
+.library-stat b { display: block; font-size: 22px; color: var(--maroon-deep); font-family: var(--font-display); }
+.library-stat span { font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .04em; }
+
+.library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+.library-book-card { padding: 0; overflow: hidden; display: flex; flex-direction: column; text-align: left; cursor: pointer; }
+.library-book-cover { position: relative; width: 100%; height: 200px; background: var(--parchment-deep); display: flex; align-items: center; justify-content: center; }
+.library-book-cover img { width: 100%; height: 100%; object-fit: cover; }
+.library-book-placeholder { font-size: 42px; }
+.library-locked-badge { position: absolute; top: 8px; right: 8px; background: rgba(15,10,5,.6); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.library-book-body { padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.library-book-body h4 { font-size: 14.5px; font-family: var(--font-display); }
+
+.library-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 18px 0 16px; overflow-x: auto; }
+.library-tabs button {
+  background: none; border: 0; padding: 9px 12px; font-family: inherit; font-size: 13px; font-weight: 600;
+  color: var(--ink-faint); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap;
+}
+.library-tabs button.active { color: var(--maroon-deep); border-bottom-color: var(--maroon-deep); }
+
+.library-locked-banner {
+  display: flex; align-items: center; gap: 10px; background: var(--parchment-deep); border: 1px solid var(--line-strong);
+  border-radius: var(--radius); padding: 12px 14px; margin-bottom: 16px; font-size: 13px; color: var(--ink-soft);
+}
+
+.ownership-chain { display: flex; flex-direction: column; align-items: flex-start; margin-top: 4px; }
+.ownership-row { display: flex; flex-direction: column; align-items: flex-start; width: 100%; }
+.ownership-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-faint); font-weight: 700; }
+.ownership-value { font-size: 15px; font-family: var(--font-display); color: var(--maroon-deep); font-weight: 600; margin-top: 2px; }
+.ownership-year { font-size: 11.5px; color: var(--ink-faint); margin-left: 6px; }
+.ownership-arrow { color: var(--ink-faint); font-size: 13px; margin: 4px 0; }
+
+.reader-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.reader-row { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.reader-row .status-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.reader-row.read .status-dot { background: var(--forest); }
+.reader-row.reading .status-dot { background: var(--gold); }
+
+.library-entry-card { background: var(--parchment-paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
+.library-entry-card .who { font-size: 11.5px; color: var(--ink-faint); margin-top: 6px; }

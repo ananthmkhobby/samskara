@@ -86,6 +86,7 @@ export async function insertContribution(familyId, c) {
     geo: c.geo ?? null,
     title: c.title ?? null,
     body_text: c.text ?? null,
+    book_id: c.bookId ?? null,
   };
   const { data, error } = await db.from("contributions").insert(row).select().single();
   if (error) throw new Error(error.message);
@@ -118,6 +119,7 @@ export function mapContributionRow(row) {
     geo: row.geo,
     title: row.title,
     text: row.body_text,
+    bookId: row.book_id,
   };
 }
 
@@ -279,6 +281,90 @@ export async function createInvite(familyId, userId) {
   const { data, error } = await db.from("invites").insert({ family_id: familyId, created_by: userId }).select().single();
   if (error) throw new Error(error.message);
   return data.code;
+}
+
+// ---- Family Library ---------------------------------------------------------
+
+function mapBookRow(row) {
+  return {
+    id: row.id, title: row.title, category: row.category, coverPath: row.cover_path, coverUrl: null,
+    story: row.story, contributor: row.contributor, status: row.status, createdAt: row.created_at,
+  };
+}
+
+function mapOwnershipRow(row) {
+  return { id: row.id, bookId: row.book_id, personId: row.person_id, personName: row.person_name, action: row.action, year: row.year, sortOrder: row.sort_order, createdAt: row.created_at };
+}
+
+function mapReaderRow(row) {
+  return { id: row.id, bookId: row.book_id, personId: row.person_id, status: row.status, createdAt: row.created_at };
+}
+
+export async function fetchLibraryData(familyId) {
+  const db = requireClient();
+  const [books, ownership, readers] = await Promise.all([
+    db.from("family_books").select("*").eq("family_id", familyId),
+    db.from("book_ownership").select("*").eq("family_id", familyId),
+    db.from("book_readers").select("*").eq("family_id", familyId),
+  ]);
+  if (books.error) throw new Error(books.error.message);
+  if (ownership.error) throw new Error(ownership.error.message);
+  if (readers.error) throw new Error(readers.error.message);
+  return {
+    books: books.data.map(mapBookRow),
+    ownership: ownership.data.map(mapOwnershipRow),
+    readers: readers.data.map(mapReaderRow),
+  };
+}
+
+// Only ever called while the acting session is a moderator (a direct add,
+// or approving someone else's "newBook" proposal) — see applyContributionEffects.
+export async function insertBook(familyId, b) {
+  const db = requireClient();
+  const row = {
+    family_id: familyId, title: b.title, category: b.category, cover_path: b.coverPath ?? null,
+    story: b.story ?? null, contributor: b.contributor ?? null, contributor_user_id: b.contributorUserId ?? null,
+    status: "Verified",
+  };
+  const { data, error } = await db.from("family_books").insert(row).select().single();
+  if (error) throw new Error(error.message);
+  return mapBookRow(data);
+}
+
+export async function updateBookFields(bookId, patch) {
+  const db = requireClient();
+  const { error } = await db.from("family_books").update(patch).eq("id", bookId);
+  if (error) throw new Error(error.message);
+}
+
+export async function insertOwnership(familyId, o) {
+  const db = requireClient();
+  const row = {
+    family_id: familyId, book_id: o.bookId, person_id: o.personId ?? null, person_name: o.personName ?? null,
+    action: o.action, year: o.year ?? null, sort_order: o.sortOrder ?? 0,
+  };
+  const { data, error } = await db.from("book_ownership").insert(row).select().single();
+  if (error) throw new Error(error.message);
+  return mapOwnershipRow(data);
+}
+
+export async function deleteOwnership(id) {
+  const db = requireClient();
+  const { error } = await db.from("book_ownership").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+// One row per (book, person) — upsert so re-marking status (reading -> read)
+// just updates the existing row instead of erroring on the unique constraint.
+export async function setReaderStatus(familyId, bookId, personId, status) {
+  const db = requireClient();
+  const { data, error } = await db
+    .from("book_readers")
+    .upsert({ family_id: familyId, book_id: bookId, person_id: personId, status }, { onConflict: "book_id,person_id" })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return mapReaderRow(data);
 }
 
 export async function redeemInvite(code) {

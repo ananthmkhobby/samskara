@@ -21,10 +21,14 @@ import HelpView from "./components/HelpView";
 import JoinFamilyModal from "./components/JoinFamilyModal";
 import ParamparaView from "./components/ParamparaView";
 import ParamparaContributeModal from "./components/ParamparaContributeModal";
-import { INITIAL_CONTRIBUTIONS, addPerson, makeUniquePersonId } from "./data/people";
+import LibraryView from "./components/LibraryView";
+import BookModal from "./components/BookModal";
+import AddBookModal from "./components/AddBookModal";
+import LibraryEntryModal from "./components/LibraryEntryModal";
+import { INITIAL_CONTRIBUTIONS, BOOKS, BOOK_OWNERSHIP, BOOK_READERS, addPerson, addBook, makeUniquePersonId } from "./data/people";
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
 import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY } from "./data/session";
-import { insertContribution, updateContributionStatus, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry } from "./data/familyDb";
+import { insertContribution, updateContributionStatus, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus } from "./data/familyDb";
 import { resolveMediaUrl } from "./lib/mediaUpload";
 
 // Audio/video/photo contributions store a Storage path in `content` — this
@@ -37,7 +41,7 @@ async function withMediaUrl(contribution) {
   return { ...contribution, mediaUrl };
 }
 
-const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", treasury: "/treasury", vault: "/vault", map: "/journey", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help" };
+const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", vault: "/vault", map: "/journey", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
 const pathForView = (v) => VIEW_PATHS[v] || "/";
 const viewForPath = (p) => PATH_TO_VIEW[p] || "cover";
@@ -88,6 +92,9 @@ export default function App() {
   const [voiceWizardRequest, setVoiceWizardRequest] = useState(null);
   const [joinFamilyRequest, setJoinFamilyRequest] = useState(null);
   const [paramparaContributeOpen, setParamparaContributeOpen] = useState(false);
+  const [openBookId, setOpenBookId] = useState(null);
+  const [addBookOpen, setAddBookOpen] = useState(false);
+  const [libraryEntryRequest, setLibraryEntryRequest] = useState(null);
   const [playingExp, setPlayingExp] = useState(null);
   const [toast, setToast] = useState("");
   const isPoppingRef = useRef(false);
@@ -101,7 +108,7 @@ export default function App() {
   useEffect(() => {
     const initialView = viewForPath(window.location.pathname);
     window.history.replaceState(
-      { view: initialView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null, addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null, paramparaContributeOpen: false },
+      { view: initialView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null, addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null, paramparaContributeOpen: false, openBookId: null, addBookOpen: false, libraryEntryRequest: null },
       "",
       pathForView(initialView)
     );
@@ -119,6 +126,9 @@ export default function App() {
       setVoiceWizardRequest(s.voiceWizardRequest || null);
       setJoinFamilyRequest(s.joinFamilyRequest || null);
       setParamparaContributeOpen(s.paramparaContributeOpen || false);
+      setOpenBookId(s.openBookId || null);
+      setAddBookOpen(s.addBookOpen || false);
+      setLibraryEntryRequest(s.libraryEntryRequest || null);
       requestAnimationFrame(() => { isPoppingRef.current = false; });
     }
     window.addEventListener("popstate", onPopState);
@@ -140,6 +150,9 @@ export default function App() {
       voiceWizardRequest: next.voiceWizardRequest !== undefined ? next.voiceWizardRequest : voiceWizardRequest,
       joinFamilyRequest: next.joinFamilyRequest !== undefined ? next.joinFamilyRequest : joinFamilyRequest,
       paramparaContributeOpen: next.paramparaContributeOpen !== undefined ? next.paramparaContributeOpen : paramparaContributeOpen,
+      openBookId: next.openBookId !== undefined ? next.openBookId : openBookId,
+      addBookOpen: next.addBookOpen !== undefined ? next.addBookOpen : addBookOpen,
+      libraryEntryRequest: next.libraryEntryRequest !== undefined ? next.libraryEntryRequest : libraryEntryRequest,
     };
     setView(full.view);
     setSelectedPersonId(full.selectedPersonId);
@@ -151,6 +164,9 @@ export default function App() {
     setVoiceWizardRequest(full.voiceWizardRequest);
     setJoinFamilyRequest(full.joinFamilyRequest);
     setParamparaContributeOpen(full.paramparaContributeOpen);
+    setOpenBookId(full.openBookId);
+    setAddBookOpen(full.addBookOpen);
+    setLibraryEntryRequest(full.libraryEntryRequest);
     if (!isPoppingRef.current) {
       window.history.pushState(full, "", pathForView(full.view));
     }
@@ -163,7 +179,11 @@ export default function App() {
   }
 
   function goTo(nextView) {
-    commit({ view: nextView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null, addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null, paramparaContributeOpen: false });
+    commit({
+      view: nextView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null,
+      addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null,
+      paramparaContributeOpen: false, openBookId: null, addBookOpen: false, libraryEntryRequest: null,
+    });
     window.scrollTo({ top: 0 });
   }
 
@@ -181,6 +201,56 @@ export default function App() {
 
   function openParamparaContribute() {
     commit({ paramparaContributeOpen: true });
+  }
+
+  function openBook(bookId) {
+    commit({ openBookId: bookId });
+  }
+
+  function openAddBook() {
+    commit({ addBookOpen: true });
+  }
+
+  function openLibraryEntry(bookId, kind) {
+    commit({ libraryEntryRequest: { bookId, kind } });
+  }
+
+  // Story edits, ownership, and reader status are all direct writes (see
+  // the Library migration's RLS) rather than routed through the
+  // contribution review queue — a book's story is moderator-only anyway,
+  // and marking yourself as a reader or adding a journey link carries
+  // none of the moderation weight a memory or wisdom entry does.
+  async function saveBookStory(bookId, story) {
+    const book = BOOKS.find((b) => b.id === bookId);
+    if (!book) return;
+    book.story = story;
+    bump();
+    try {
+      await updateBookFields(bookId, { story });
+    } catch (err) {
+      showToast(`Couldn't save that: ${err.message}`);
+    }
+  }
+
+  async function addOwnership(o) {
+    try {
+      const row = await insertOwnership(CURRENT_FAMILY_ID, o);
+      BOOK_OWNERSHIP.push(row);
+      bump();
+    } catch (err) {
+      showToast(`Couldn't add to the journey: ${err.message}`);
+    }
+  }
+
+  async function setReaderStatusFor(bookId, personId, status) {
+    try {
+      const row = await setReaderStatus(CURRENT_FAMILY_ID, bookId, personId, status);
+      const idx = BOOK_READERS.findIndex((r) => r.bookId === bookId && r.personId === personId);
+      if (idx >= 0) BOOK_READERS[idx] = row; else BOOK_READERS.push(row);
+      bump();
+    } catch (err) {
+      showToast(`Couldn't update reading status: ${err.message}`);
+    }
   }
 
   // Someone who's already signed in (and already belongs to at least one
@@ -323,6 +393,18 @@ export default function App() {
           addPerson(newPerson).catch((err) => console.error("Failed to persist new person:", err.message));
         }
       }
+    }
+    if (c.type === "newBook") {
+      // A book's id is database-generated (not a client-chosen slug like a
+      // person's), so unlike addPerson this can't optimistically push a
+      // placeholder first — the real row only exists once the insert
+      // resolves, which is fine here since nothing else needs to reference
+      // it synchronously in the same tick.
+      let parsed = {};
+      try { parsed = JSON.parse(c.content); } catch { /* malformed content, skip */ }
+      addBook({ title: c.name, category: c.field, story: parsed.story || "", coverPath: parsed.coverPath || null, contributor: c.contributor })
+        .then(() => bump())
+        .catch((err) => console.error("Failed to persist book:", err.message));
     }
     if (c.type === "interview" && c.personId) {
       const person = byId(c.personId);
@@ -484,6 +566,7 @@ export default function App() {
         {view === "cover" && <CoverPage contributions={contributions} onNav={goTo} onContribute={openContribute} />}
         {view === "tree" && <TreeView contributions={contributions} onSelectPerson={selectPerson} />}
         {view === "parampara" && <ParamparaView contributions={contributions} onContribute={openParamparaContribute} />}
+        {view === "library" && <LibraryView onOpenBook={openBook} onAddBook={openAddBook} />}
         {view === "treasury" && <TreasuryView onSelectPerson={selectPerson} />}
         {view === "vault" && <VaultView contributions={contributions} />}
         {view === "map" && <JourneyMapView onSelectPerson={selectPerson} />}
@@ -534,6 +617,24 @@ export default function App() {
       )}
       {paramparaContributeOpen && (
         <ParamparaContributeModal onCancel={closeOverlay} onSubmit={submitContribution} canModerate={canModerate} />
+      )}
+      {openBookId && BOOKS.find((b) => b.id === openBookId) && (
+        <BookModal
+          book={BOOKS.find((b) => b.id === openBookId)}
+          contributions={contributions}
+          onClose={closeOverlay}
+          canModerate={canModerate}
+          onSaveStory={saveBookStory}
+          onAddOwnership={addOwnership}
+          onSetReaderStatus={setReaderStatusFor}
+          onAddEntry={(bookId, kind) => openLibraryEntry(bookId, kind)}
+        />
+      )}
+      {addBookOpen && (
+        <AddBookModal onCancel={closeOverlay} onSubmit={submitContribution} canModerate={canModerate} />
+      )}
+      {libraryEntryRequest && (
+        <LibraryEntryModal bookId={libraryEntryRequest.bookId} kind={libraryEntryRequest.kind} onCancel={closeOverlay} onSubmit={submitContribution} canModerate={canModerate} />
       )}
       {editRequest && (
         <EditModal request={editRequest} onCancel={closeOverlay} onSubmit={submitEdit} canModerate={canModerate} />

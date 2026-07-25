@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabaseClient";
 import { batchResolveMediaUrls } from "../lib/mediaUpload";
-import { fetchFamilyData, fetchFamilyName, fetchMyFamilies, fetchActiveFamilyId, mapContributionRow, insertPerson as dbInsertPerson, insertMarriage as dbInsertMarriage } from "./familyDb";
+import { fetchFamilyData, fetchFamilyName, fetchMyFamilies, fetchActiveFamilyId, fetchLibraryData, mapContributionRow, insertPerson as dbInsertPerson, insertMarriage as dbInsertMarriage, insertBook as dbInsertBook } from "./familyDb";
 import { setSession, DEMO_FAMILY_ID, CURRENT_FAMILY_ID } from "./session";
 
 export const VALUES = ["Courage", "Seva", "Education", "Simplicity", "Devotion", "Discipline", "Hospitality", "Resilience"];
@@ -26,6 +26,9 @@ export const CHALLENGES = [
 // reference is kept throughout.
 export const PEOPLE = [];
 export const MARRIAGES = [];
+export const BOOKS = [];
+export const BOOK_OWNERSHIP = [];
+export const BOOK_READERS = [];
 export let INITIAL_CONTRIBUTIONS = [];
 export let MIN_GEN = 1;
 export let MAX_GEN = 1;
@@ -89,9 +92,10 @@ export async function initDataLayer() {
   const resolved = await resolveAuthAndFamily();
   const familyId = resolved.familyId;
 
-  const [{ people, marriages, contributions, experienceEntries }, familyName] = await Promise.all([
+  const [{ people, marriages, contributions, experienceEntries }, familyName, libraryData] = await Promise.all([
     fetchFamilyData(familyId),
     fetchFamilyName(familyId),
+    fetchLibraryData(familyId),
   ]);
 
   const mappedPeople = people.map(mapPersonRow);
@@ -106,19 +110,30 @@ export async function initDataLayer() {
     .filter((c) => ["audio", "video", "photo"].includes(c.type))
     .map((c) => c.content);
 
-  const allPaths = [...mappedPeople.map((p) => p.photoPath), ...mappedExperience.map((e) => e.mediaPath), ...contributionMediaPaths];
+  const allPaths = [
+    ...mappedPeople.map((p) => p.photoPath), ...mappedExperience.map((e) => e.mediaPath), ...contributionMediaPaths,
+    ...libraryData.books.map((b) => b.coverPath),
+  ];
   const urlMap = await batchResolveMediaUrls(allPaths);
   for (const p of mappedPeople) if (p.photoPath) p.photoUrl = urlMap[p.photoPath] || null;
   for (const e of mappedExperience) if (e.mediaPath) e.mediaUrl = urlMap[e.mediaPath] || null;
   for (const c of mappedContributions) {
     if (["audio", "video", "photo"].includes(c.type)) c.mediaUrl = urlMap[c.content] || null;
   }
+  for (const b of libraryData.books) if (b.coverPath) b.coverUrl = urlMap[b.coverPath] || null;
 
   PEOPLE.length = 0;
   PEOPLE.push(...mappedPeople);
   MARRIAGES.length = 0;
   MARRIAGES.push(...marriages.map((m) => ({ a: m.a, b: m.b, date: m.date })));
   recomputeMinMaxGen();
+
+  BOOKS.length = 0;
+  BOOKS.push(...libraryData.books);
+  BOOK_OWNERSHIP.length = 0;
+  BOOK_OWNERSHIP.push(...libraryData.ownership);
+  BOOK_READERS.length = 0;
+  BOOK_READERS.push(...libraryData.readers);
 
   INITIAL_CONTRIBUTIONS = mappedContributions;
 
@@ -161,4 +176,15 @@ export function addPerson(person, marriage) {
   const personInsert = dbInsertPerson(CURRENT_FAMILY_ID, person);
   const marriageInsert = marriage ? dbInsertMarriage(CURRENT_FAMILY_ID, marriage) : Promise.resolve();
   return Promise.all([personInsert, marriageInsert]);
+}
+
+// Unlike addPerson, this can't optimistically push a placeholder first —
+// family_books.id is a database-generated identity, not a client-chosen
+// slug, so nothing else (ownership rows, readers) can reference the book
+// until the insert actually returns. Awaited by callers instead of
+// fire-and-forget.
+export async function addBook(b) {
+  const book = await dbInsertBook(CURRENT_FAMILY_ID, b);
+  BOOKS.push(book);
+  return book;
 }

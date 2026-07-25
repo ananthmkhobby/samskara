@@ -1,9 +1,10 @@
-import { CoverIcon, TreeIcon, TreasuryIcon, VaultIcon, MapIcon, AdminIcon, ParamparaIcon } from "./NavIcons";
+import { CoverIcon, TreeIcon, TreasuryIcon, VaultIcon, MapIcon, AdminIcon, ParamparaIcon, LibraryIcon } from "./NavIcons";
 
 const TABS = [
   { key: "cover", label: "Cover", Icon: CoverIcon },
   { key: "tree", label: "Tree", Icon: TreeIcon },
   { key: "parampara", label: "Parampara", Icon: ParamparaIcon },
+  { key: "library", label: "Library", Icon: LibraryIcon },
   { key: "treasury", label: "Treasury", Icon: TreasuryIcon },
   { key: "vault", label: "Vault", Icon: VaultIcon },
   { key: "map", label: "Journey", Icon: MapIcon },
