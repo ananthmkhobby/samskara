@@ -3,7 +3,8 @@
 .parampara-cta { display: block; margin: 0 0 24px; }
 .parampara-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
 .parampara-card { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
-.parampara-photo { width: 100%; height: 150px; object-fit: cover; }
+.parampara-photo-btn { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; }
+.parampara-photo { width: 100%; height: 150px; object-fit: cover; display: block; }
 .parampara-card-body { padding: 18px; display: flex; flex-direction: column; gap: 8px; }
 .parampara-card-body h4 { font-size: 16px; font-family: var(--font-display); }
 .parampara-continued {

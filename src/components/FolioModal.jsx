@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { byId, yearsLabel, trustLabel, contributionsFor, verifiedMediaFor, personHasContent, roleTag, relationshipCaption, widowedLabel, MIN_GEN, MAX_GEN } from "../data/helpers";
 import { MEDIA_ICONS, EXP_LABELS, ExpIcon, AUDIO_EXP_TYPES, EditPencilIcon } from "./Icons";
 import PersonAvatar from "./PersonAvatar";
+import PhotoLightbox from "./PhotoLightbox";
 import { resizeImage } from "../lib/imageResize";
 import { uploadFamilyMedia, resolveMediaUrl } from "../lib/mediaUpload";
 import { CURRENT_FAMILY_ID } from "../data/session";
@@ -15,7 +16,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
   const relationship = relationshipCaption(person);
   const widowed = widowedLabel(person);
   const photoInputRef = useRef(null);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState(null);
   const [expCollapsed, setExpCollapsed] = useState(false);
   const hasPhoto = !!person.photoUrl;
 
@@ -42,7 +43,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
             <button
               type="button"
               className="avatar-view-btn"
-              onClick={() => (hasPhoto ? setLightboxOpen(true) : photoInputRef.current?.click())}
+              onClick={() => (hasPhoto ? setLightboxSrc(person.photoUrl) : photoInputRef.current?.click())}
               aria-label={hasPhoto ? `View ${person.name}'s photo` : "Add profile photo"}
             >
               <PersonAvatar person={person} size={74} minGen={MIN_GEN} maxGen={MAX_GEN} variant="band" className="avatar" />
@@ -176,7 +177,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
                           <button
                             type="button"
                             className="exp-card-inner"
-                            onClick={() => isAudio && onToggleExpPlay(key)}
+                            onClick={() => (e.mediaUrl ? setLightboxSrc(e.mediaUrl) : isAudio && onToggleExpPlay(key))}
                           >
                             {e.mediaUrl ? (
                               <img className="exp-photo" src={e.mediaUrl} alt={e.caption || EXP_LABELS[e.type]} />
@@ -215,7 +216,11 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
                 <div className="gallery">
                   {media.map((m, i) => {
                     if (m.type === "photo" && m.mediaUrl) {
-                      return <div className="gallery-item has-photo" key={i}><img src={m.mediaUrl} alt="" /></div>;
+                      return (
+                        <button type="button" className="gallery-item has-photo" key={i} onClick={() => setLightboxSrc(m.mediaUrl)} aria-label="View photo full screen">
+                          <img src={m.mediaUrl} alt="" />
+                        </button>
+                      );
                     }
                     const Icon = MEDIA_ICONS[m.type] || MEDIA_ICONS.document;
                     return <div className="gallery-item" key={i}><Icon /><span>{m.type}</span></div>;
@@ -258,12 +263,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
           </div>
         </div>
       </div>
-      {lightboxOpen && hasPhoto && (
-        <div className="photo-lightbox" onClick={() => setLightboxOpen(false)}>
-          <button className="modal-close" onClick={() => setLightboxOpen(false)} aria-label="Close">✕</button>
-          <img src={person.photoUrl} alt={person.name} />
-        </div>
-      )}
+      <PhotoLightbox src={lightboxSrc} alt={person.name} onClose={() => setLightboxSrc(null)} />
     </div>
   );
 }

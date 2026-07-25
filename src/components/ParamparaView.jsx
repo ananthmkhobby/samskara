@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { PARAMPARA_CATEGORIES, categoryFor, parseParamparaContent, continuedForYears } from "../lib/parampara";
 import { batchResolveMediaUrls } from "../lib/mediaUpload";
+import PhotoLightbox from "./PhotoLightbox";
 
 function LineageCard({ entry }) {
   const chain = parseParamparaContent(entry.content);
@@ -26,13 +27,17 @@ function LineageCard({ entry }) {
   );
 }
 
-function ParamparaCard({ entry, mediaUrl }) {
+function ParamparaCard({ entry, mediaUrl, onOpenPhoto }) {
   const { description, sinceYear } = parseParamparaContent(entry.content);
   const cat = categoryFor(entry.field);
   const years = continuedForYears(sinceYear);
   return (
     <div className="card parampara-card">
-      {mediaUrl && <img src={mediaUrl} alt={entry.title} className="parampara-photo" />}
+      {mediaUrl && (
+        <button type="button" className="parampara-photo-btn" onClick={() => onOpenPhoto(mediaUrl)} aria-label="View photo full screen">
+          <img src={mediaUrl} alt={entry.title} className="parampara-photo" />
+        </button>
+      )}
       <div className="parampara-card-body">
         <span className="eyebrow">{cat.icon} {cat.label}</span>
         <h4>{entry.title}</h4>
@@ -46,6 +51,7 @@ function ParamparaCard({ entry, mediaUrl }) {
 
 export default function ParamparaView({ contributions, onContribute }) {
   const [urlMap, setUrlMap] = useState({});
+  const [lightboxSrc, setLightboxSrc] = useState(null);
   const verified = contributions.filter((c) => c.type === "parampara" && c.status === "Verified");
   const lineageEntry = [...verified].reverse().find((c) => c.field === "lineage");
   const entries = verified.filter((c) => c.field !== "lineage");
@@ -84,7 +90,7 @@ export default function ParamparaView({ contributions, onContribute }) {
       {filtered.length ? (
         <div className="parampara-grid">
           {filtered.map((e) => (
-            <ParamparaCard key={e.id} entry={e} mediaUrl={urlMap[parseParamparaContent(e.content).mediaPath]} />
+            <ParamparaCard key={e.id} entry={e} mediaUrl={urlMap[parseParamparaContent(e.content).mediaPath]} onOpenPhoto={setLightboxSrc} />
           ))}
         </div>
       ) : (
@@ -92,6 +98,7 @@ export default function ParamparaView({ contributions, onContribute }) {
           {filter ? `Nothing under "${categoryFor(filter).label}" yet — be the first to add one.` : "Nothing recorded yet — be the first to share what's survived in your family."}
         </div>
       )}
+      <PhotoLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
     </section>
   );
 }
