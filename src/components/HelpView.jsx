@@ -35,6 +35,23 @@ export default function HelpView() {
       </div>
 
       <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>Belonging to more than one family</h4>
+        <p className="folio-summary">
+          Since every person is really part of two family lines — their mother's and their father's — one login can
+          belong to more than one tree at once (say, both a mom's-side and a dad's-side family). The two admins don't
+          need to coordinate at all: each one just generates their own invite link as usual, from their own family's
+          Admin page.
+        </p>
+        <p className="folio-summary" style={{ marginTop: 10 }}>
+          If you're already signed in and open a second family's invite link, it's added straight away — no second
+          account, no re-typing a password. From there, the family name next to your role badge in the top bar is a
+          switcher: click it to see every family you belong to and jump between them, or to join another one with a
+          code. Each family's data stays completely separate — switching never mixes them together, it just changes
+          which tree you're looking at.
+        </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
         <h4 style={{ fontSize: 15, marginBottom: 14 }}>Roles &amp; privileges</h4>
         {ROLE_ROWS.map((r) => (
           <div key={r.role} style={{ marginBottom: 16 }}>
