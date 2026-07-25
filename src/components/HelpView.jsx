@@ -1,3 +1,5 @@
+import InstallAppCard from "./InstallAppCard";
+
 const ROLE_ROWS = [
   {
     role: "Family Head",
@@ -32,6 +34,10 @@ export default function HelpView() {
           and shares it with relatives. Anyone who opens that link creates an account and joins as a Member. There's
           no way to "start your own tree" from a blank login — every family begins with that first invite.
         </p>
+      </div>
+
+      <div style={{ marginBottom: 18 }}>
+        <InstallAppCard />
       </div>
 
       <div className="card" style={{ marginBottom: 18, padding: 20 }}>
