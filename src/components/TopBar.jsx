@@ -26,7 +26,14 @@ export default function TopBar({ view, onNav, pendingCount, onJoinAnother }) {
       <div className="topbar-actions">
         <button className="icon-only" style={{ width: 34, height: 34 }} onClick={() => onNav("help")} aria-label="Help">?</button>
         {IS_DEMO ? (
-          <button className="btn small ghost" onClick={() => onNav("cover")}>Log in</button>
+          <button className="btn small ghost" onClick={() => {
+            onNav("cover");
+            // Log in lives inline on the Cover page, further down — jump
+            // straight to it instead of leaving the visitor to scroll and find it.
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+              document.querySelector(".auth-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }));
+          }}>Log in</button>
         ) : (
           <FamilySwitcher onJoinAnother={onJoinAnother} />
         )}

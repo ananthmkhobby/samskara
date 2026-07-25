@@ -101,6 +101,19 @@ export default function App() {
 
   const pendingCount = contributions.filter((c) => c.status === "Pending").length;
 
+  // Without this, the page behind any open modal stays scrollable — wheel/touch
+  // drag on the backdrop scrolls the body instead of (or in addition to) the
+  // modal's own content, which is disorienting and especially janky on mobile.
+  useEffect(() => {
+    const anyModalOpen = !!(
+      selectedPersonId || biographyPersonId || contributeRequest || editRequest ||
+      addFamilyRequest || interviewRequest || voiceWizardRequest || joinFamilyRequest ||
+      paramparaContributeOpen || openBookId || addBookOpen || libraryEntryRequest || showIntro
+    );
+    document.body.style.overflow = anyModalOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [selectedPersonId, biographyPersonId, contributeRequest, editRequest, addFamilyRequest, interviewRequest, voiceWizardRequest, joinFamilyRequest, paramparaContributeOpen, openBookId, addBookOpen, libraryEntryRequest, showIntro]);
+
   // Seed a baseline history entry on load, then let the browser/device Back
   // button step backward through views and close modals one layer at a time
   // (instead of leaving the app), by restoring whatever full state was
