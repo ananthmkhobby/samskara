@@ -1,19 +1,47 @@
 .welcome-intro {
   position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
-  background: var(--parchment);
-  background-image: radial-gradient(circle at 1px 1px, var(--line) 1px, transparent 0);
-  background-size: 26px 26px;
+  overflow: hidden;
+  background:
+    radial-gradient(55% 46% at 50% 44%, var(--gold-wash) 0%, rgba(169,121,28,0) 72%),
+    radial-gradient(circle at 1px 1px, var(--line) 1px, transparent 0);
+  background-size: auto, 26px 26px;
+  background-color: var(--parchment);
   animation: welcomeIn .5s ease-out;
 }
 .welcome-intro.welcome-exit { animation: welcomeOut .4s ease-in forwards; pointer-events: none; }
 @keyframes welcomeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes welcomeOut { to { opacity: 0; transform: scale(1.03); } }
 
+.welcome-ambient { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.welcome-mote {
+  position: absolute; bottom: -10px; width: 4px; height: 4px; border-radius: 50%; background: var(--gold);
+  opacity: 0; animation: welcomeMoteRise 6.5s ease-in-out infinite; animation-delay: var(--md, 0s);
+}
+@keyframes welcomeMoteRise {
+  0% { opacity: 0; transform: translateY(0) scale(.6); }
+  12% { opacity: .75; }
+  85% { opacity: .15; }
+  100% { opacity: 0; transform: translateY(-72vh) scale(1); }
+}
+
 .welcome-skip {
-  position: absolute; top: 18px; right: 18px; z-index: 2; background: none; border: 0; cursor: pointer;
+  position: absolute; top: 18px; right: 18px; z-index: 3; background: none; border: 0; cursor: pointer;
   color: var(--ink-faint); font-weight: 600; font-size: 12.5px; padding: 8px 10px;
 }
 .welcome-skip:hover { color: var(--ink-soft); }
+
+.welcome-toran {
+  position: absolute; top: 0; left: 50%; transform: translate(-50%, -16px); width: min(90vw, 460px); height: 58px;
+  overflow: visible; opacity: 0; animation: toranDrop .7s cubic-bezier(.34,1.56,.64,1) forwards; animation-delay: .05s;
+}
+@keyframes toranDrop { to { opacity: 1; transform: translate(-50%, 0); } }
+.toran-item { transform-origin: 0 0; animation: toranSway 3.6s ease-in-out infinite; animation-delay: var(--sway-delay, 0s); }
+@keyframes toranSway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+
+.welcome-diyas { position: absolute; top: 18%; left: 50%; transform: translateX(-50%); width: min(78vw, 420px); pointer-events: none; }
+.welcome-diya { position: absolute; top: 0; opacity: 0; animation: welcomeFadeUp .6s ease-out forwards; }
+.welcome-diya.left { left: 4%; animation-delay: .3s; }
+.welcome-diya.right { right: 4%; animation-delay: .5s; transform: scaleX(-1); }
 
 .welcome-rangoli {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -58%);
@@ -32,12 +60,16 @@
 @keyframes rangoliBloom { to { opacity: .55; transform: scale(1); } }
 
 .welcome-content { position: relative; z-index: 1; text-align: center; max-width: 560px; padding: 0 24px; }
+.welcome-swagatam {
+  display: block; font-family: var(--font-devanagari); font-size: clamp(19px, 4vw, 26px); font-weight: 700;
+  color: var(--gold-deep); letter-spacing: .05em; margin-bottom: 8px; opacity: 0;
+}
 .welcome-content .eyebrow { opacity: 0; }
-.welcome-title { margin-top: 12px; }
+.welcome-title { margin-top: 6px; }
 .welcome-devanagari {
-  display: inline-block; font-family: var(--font-devanagari); font-size: clamp(38px, 8vw, 62px);
-  color: var(--maroon-deep); line-height: 1.15;
-  clip-path: inset(0 100% 0 0); animation: welcomeWipe 1.1s cubic-bezier(.65,0,.35,1) forwards; animation-delay: 1.05s;
+  display: inline-block; font-family: var(--font-devanagari); font-size: clamp(42px, 9vw, 70px);
+  color: var(--maroon-deep); line-height: 1.15; text-shadow: 0 6px 44px rgba(224,172,82,.4);
+  clip-path: inset(0 100% 0 0); animation: welcomeWipe 1.15s cubic-bezier(.65,0,.35,1) forwards; animation-delay: 1.35s;
 }
 @keyframes welcomeWipe { to { clip-path: inset(0 0% 0 0); } }
 .welcome-translit {
@@ -45,15 +77,23 @@
   color: var(--ink-soft); font-weight: 700; opacity: 0;
 }
 .welcome-tagline { margin-top: 18px; color: var(--ink-soft); font-size: 15.5px; line-height: 1.5; opacity: 0; }
-.welcome-enter-btn { margin-top: 30px; opacity: 0; }
+.welcome-enter-btn { position: relative; margin-top: 32px; opacity: 0; font-size: 15.5px; padding: 14px 26px; }
+.welcome-enter-btn::after {
+  content: ""; position: absolute; inset: -7px; border-radius: 999px; border: 1px solid var(--gold);
+  opacity: 0; animation: welcomeCtaRing 2.6s ease-out infinite; animation-delay: 3.3s; pointer-events: none;
+}
+@keyframes welcomeCtaRing { 0% { opacity: .55; transform: scale(1); } 100% { opacity: 0; transform: scale(1.28); } }
 
 .welcome-fade { animation: welcomeFadeUp .6s ease-out forwards; animation-delay: var(--d, 0s); }
 @keyframes welcomeFadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
 @media (prefers-reduced-motion: reduce) {
   .welcome-intro { animation: none; }
+  .welcome-mote, .toran-item, .welcome-enter-btn::after { animation: none; opacity: 0; }
+  .welcome-toran { animation: none; opacity: 1; transform: translate(-50%, 0); }
+  .welcome-diya { animation: none; opacity: 1; }
   .rangoli-ring { animation: none; opacity: .4; stroke-dashoffset: 0; }
   .rangoli-dot { animation: none; opacity: .55; transform: scale(1); }
   .welcome-devanagari { animation: none; clip-path: none; }
-  .welcome-translit, .welcome-tagline, .welcome-enter-btn, .welcome-content .eyebrow { animation: none; opacity: 1; }
+  .welcome-swagatam, .welcome-translit, .welcome-tagline, .welcome-enter-btn, .welcome-content .eyebrow { animation: none; opacity: 1; }
 }
