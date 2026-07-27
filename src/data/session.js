@@ -19,6 +19,10 @@ export let MY_FAMILIES = [];
 // a distinct, real state (e.g. an invite redemption that failed partway),
 // never silently treated as either "demo" or "a member".
 export let ACCOUNT_NEEDS_FAMILY = false;
+// True for a first-time, fully anonymous visitor (no session, and the demo
+// wasn't explicitly requested via ?demo=1) — shown the login page instead of
+// jumping straight into the public demo family's data.
+export let NEEDS_LOGIN = false;
 
 export function setSession(next) {
   CURRENT_USER_ID = next.userId ?? null;
@@ -27,5 +31,6 @@ export function setSession(next) {
   CURRENT_ROLE = next.role ?? null;
   IS_DEMO = next.isDemo ?? true;
   ACCOUNT_NEEDS_FAMILY = next.needsFamily ?? false;
+  NEEDS_LOGIN = next.needsLogin ?? false;
   MY_FAMILIES = next.myFamilies ?? [];
 }

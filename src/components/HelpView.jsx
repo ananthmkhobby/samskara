@@ -27,6 +27,17 @@ export default function HelpView() {
       </div>
 
       <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>Curious first?</h4>
+        <p className="folio-summary" style={{ marginBottom: 12 }}>
+          See a full example family — five generations, verified stories, a shared family library — before you set
+          up your own.
+        </p>
+        <button type="button" className="btn primary small" onClick={() => { window.location.href = "/?demo=1"; }}>
+          Try a live demo →
+        </button>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
         <h4 style={{ fontSize: 15, marginBottom: 10 }}>How a tree starts</h4>
         <p className="folio-summary">
           A family tree isn't self-serve — it's set up once, for one family, by whoever's provisioning the archive

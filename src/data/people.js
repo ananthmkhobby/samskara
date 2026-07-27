@@ -56,10 +56,22 @@ function mapExperienceRow(row) {
   return { id: row.id, personId: row.person_id, type: row.type, caption: row.caption, mediaPath: row.media_path, mediaUrl: null };
 }
 
+// Read once, at module load — before React mounts and before the app's own
+// history.replaceState() rebuilds the URL as just the view path, dropping
+// any query string (same reasoning as FORCE_INTRO/INVITE_CODE_FROM_URL in
+// App.jsx). Lets Help's "Try a live demo" link (?demo=1, full reload) opt an
+// anonymous visitor into the public demo instead of the login page.
+const DEMO_REQUESTED = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "1";
+
 async function resolveAuthAndFamily() {
   if (!supabase) return { userId: null, familyId: DEMO_FAMILY_ID, role: null, isDemo: true, needsFamily: false, myFamilies: [] };
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return { userId: null, familyId: DEMO_FAMILY_ID, role: null, isDemo: true, needsFamily: false, myFamilies: [] };
+  if (!session) {
+    if (DEMO_REQUESTED) return { userId: null, familyId: DEMO_FAMILY_ID, role: null, isDemo: true, needsFamily: false, myFamilies: [] };
+    // Fully anonymous, demo not explicitly requested — the login page,
+    // not the public demo family, is what a first-time visitor should see.
+    return { userId: null, familyId: null, role: null, isDemo: false, needsFamily: false, needsLogin: true, myFamilies: [] };
+  }
 
   // Fetched as a list, not .maybeSingle() — an account can belong to more
   // than one family (e.g. both a dad's and a mom's tree) since the
@@ -90,6 +102,13 @@ async function resolveAuthAndFamily() {
 // screen with nothing to trigger a re-render.
 export async function initDataLayer() {
   const resolved = await resolveAuthAndFamily();
+
+  // No family to fetch — the login page renders with none of this data.
+  if (resolved.needsLogin) {
+    setSession({ userId: null, familyName: null, role: null, isDemo: false, needsFamily: false, needsLogin: true, myFamilies: [] });
+    return;
+  }
+
   const familyId = resolved.familyId;
 
   const [{ people, marriages, contributions, experienceEntries }, familyName, libraryData] = await Promise.all([

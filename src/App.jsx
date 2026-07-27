@@ -25,9 +25,11 @@ import LibraryView from "./components/LibraryView";
 import BookModal from "./components/BookModal";
 import AddBookModal from "./components/AddBookModal";
 import LibraryEntryModal from "./components/LibraryEntryModal";
+import LoginPage from "./components/LoginPage";
+import HelpStandalone from "./components/HelpStandalone";
 import { PEOPLE, INITIAL_CONTRIBUTIONS, BOOKS, BOOK_OWNERSHIP, BOOK_READERS, addPerson, addBook, makeUniquePersonId } from "./data/people";
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
-import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY } from "./data/session";
+import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, NEEDS_LOGIN } from "./data/session";
 import { insertContribution, updateContributionStatus, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus } from "./data/familyDb";
 import { resolveMediaUrl } from "./lib/mediaUpload";
 
@@ -591,6 +593,17 @@ export default function App() {
   const biographyPerson = rawBiographyPerson
     ? { ...rawBiographyPerson, chapters: getBiographyChapters(rawBiographyPerson), timeline: getBiographyTimeline(rawBiographyPerson) }
     : null;
+
+  // A first-time, fully anonymous visitor (no session, demo not explicitly
+  // requested via ?demo=1) sees the login page instead of the public demo
+  // family — same welcome overlay first, though, so the ceremonial intro
+  // isn't lost just because there's no data behind it yet.
+  if (NEEDS_LOGIN) {
+    if (showIntro) return <WelcomeIntro onDismiss={dismissIntro} />;
+    return view === "help"
+      ? <HelpStandalone onBack={() => goTo("cover")} />
+      : <LoginPage onShowHelp={() => goTo("help")} />;
+  }
 
   return (
     <div id="app">
