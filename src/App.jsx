@@ -620,7 +620,7 @@ export default function App() {
       <TopBar view={view} onNav={goTo} pendingCount={pendingCount} onJoinAnother={() => openJoinFamily({})} />
       <main>
         {view === "cover" && <CoverPage contributions={contributions} onNav={goTo} onContribute={openContribute} />}
-        {view === "tree" && <TreeView contributions={contributions} onSelectPerson={selectPerson} />}
+        {view === "tree" && <TreeView contributions={contributions} onSelectPerson={selectPerson} onNav={goTo} />}
         {view === "parampara" && <ParamparaView contributions={contributions} onContribute={openParamparaContribute} />}
         {view === "library" && <LibraryView onOpenBook={openBook} onAddBook={openAddBook} />}
         {view === "treasury" && <TreasuryView onSelectPerson={selectPerson} />}
