@@ -38,6 +38,18 @@ export default function ClassicTree({ people, contributions, valueFilter, onSele
                   />
                 )}
                 {u.children.map((c, j) => {
+                  // A unit's members can have DIFFERENT recorded parents (the
+                  // normal case for any married-in spouse), so the line must
+                  // terminate at the one member who actually lists this unit
+                  // as a parent — not at the couple's shared center x, or two
+                  // unrelated parents both appear to feed into the same point.
+                  const parentIds = u.members.map((m) => m.id);
+                  const childMatches = c.members.filter((m) => m.parents?.some((pid) => parentIds.includes(pid)));
+                  const referencedParentIds = new Set();
+                  childMatches.forEach((m) => m.parents.forEach((pid) => { if (parentIds.includes(pid)) referencedParentIds.add(pid); }));
+                  const parentMatches = u.members.filter((m) => referencedParentIds.has(m.id));
+                  const startX = (u.members.length === 2 && parentMatches.length === 1) ? parentMatches[0].tx : u.x;
+                  const endX = (c.members.length === 2 && childMatches.length === 1) ? childMatches[0].tx : c.x;
                   const startY = u.y + NODE_R + LABEL_CLEARANCE;
                   const endY = c.y - NODE_R;
                   const midY = (startY + endY) / 2;
@@ -45,7 +57,7 @@ export default function ClassicTree({ people, contributions, valueFilter, onSele
                     <path
                       key={j}
                       className="tree-link"
-                      d={`M ${u.x + SIDE_PAD},${startY} C ${u.x + SIDE_PAD},${midY} ${c.x + SIDE_PAD},${midY} ${c.x + SIDE_PAD},${endY}`}
+                      d={`M ${startX + SIDE_PAD},${startY} C ${startX + SIDE_PAD},${midY} ${endX + SIDE_PAD},${midY} ${endX + SIDE_PAD},${endY}`}
                       pathLength="1" strokeDasharray="1"
                       style={{ "--grow-delay": `${unitDelay}s` }}
                       fill="none" stroke="var(--maroon-deep)" strokeWidth="2" opacity="0.55"
