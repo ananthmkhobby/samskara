@@ -5,7 +5,14 @@
      this the wrap never becomes its own stacking context, so that z-index
      escapes upward and floats above app modals (which sit at z-index:60)
      instead of being contained beneath them. */
-  position: relative; z-index: 1; height: min(66vh, 600px); overflow: hidden; border-radius: var(--radius); border: 1px solid var(--line);
+  /* min-height guards against short viewports (a laptop with a squat browser
+     window, or a short in-app preview frame): without it, 66vh can shrink
+     enough that fitBounds is forced to a much lower zoom than the data
+     needs (the family's cluster shrinks to a speck in a mostly-empty map),
+     and the fixed "Record a memory" pill — pinned to the viewport bottom,
+     not the map — ends up rendering over the map's own bottom edge instead
+     of in the page's reserved padding below it. */
+  position: relative; z-index: 1; height: min(66vh, 600px); min-height: 360px; overflow: hidden; border-radius: var(--radius); border: 1px solid var(--line);
   box-shadow: var(--shadow-1);
 }
 .map-canvas-wrap .leaflet-container { font-family: var(--font-body); background: #dfe6e0; }

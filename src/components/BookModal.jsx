@@ -96,6 +96,52 @@ function ReadersTab({ book, onSetReaderStatus }) {
   );
 }
 
+const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25MB — generous for a scanned PDF, conservative enough to fail fast rather than hang on a bad upload
+
+function SoftCopySection({ book, canModerate, locked, onUploadFile }) {
+  const [replacing, setReplacing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setError("");
+    if (file.size > MAX_FILE_BYTES) { setError("That file is larger than 25MB — try a smaller copy."); return; }
+    setUploading(true);
+    try {
+      await onUploadFile(book.id, file);
+      setReplacing(false);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div>
+      <div className="folio-section-head" style={{ marginTop: 18 }}><h4>Soft copy</h4></div>
+      {book.fileUrl && !replacing ? (
+        <div>
+          <a className="btn small" href={book.fileUrl} download={book.fileName || true} target="_blank" rel="noreferrer">⬇ Download {book.fileName || "file"}</a>
+          {canModerate && !locked && (
+            <button type="button" className="btn ghost small" style={{ marginLeft: 8 }} onClick={() => setReplacing(true)}>Replace</button>
+          )}
+        </div>
+      ) : canModerate && !locked ? (
+        <div className="form-row">
+          <input type="file" accept=".pdf,.epub,.doc,.docx,.txt" onChange={handleFile} disabled={uploading} />
+          <p className="form-hint">Upload a PDF or ebook copy — any family member will be able to download it. Up to 25MB.</p>
+          {uploading && <p className="form-hint">Uploading…</p>}
+          {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+          {replacing && <button type="button" className="btn ghost small" onClick={() => setReplacing(false)}>Cancel</button>}
+        </div>
+      ) : (
+        <p className="form-hint" style={{ marginTop: 0 }}>No soft copy uploaded yet.</p>
+      )}
+    </div>
+  );
+}
+
 function EntryTab({ entries, kind, onAdd, locked }) {
   const prompts = {
     wisdom: "What's the one lesson this book taught you?",
@@ -116,7 +162,7 @@ function EntryTab({ entries, kind, onAdd, locked }) {
   );
 }
 
-export default function BookModal({ book, contributions, onClose, canModerate, onSaveStory, onAddOwnership, onSetReaderStatus, onAddEntry }) {
+export default function BookModal({ book, contributions, onClose, canModerate, onSaveStory, onAddOwnership, onSetReaderStatus, onAddEntry, onUploadFile }) {
   const [tab, setTab] = useState("Story");
   const [addingOwnership, setAddingOwnership] = useState(false);
   const [editingStory, setEditingStory] = useState(false);
@@ -174,6 +220,7 @@ export default function BookModal({ book, contributions, onClose, canModerate, o
                   </div>
                 </div>
               ) : book.story ? <p className="folio-summary">{book.story}</p> : <p className="form-hint" style={{ marginTop: 0 }}>Why this book matters, who introduced it, why future generations should read it — not recorded yet.</p>}
+              <SoftCopySection book={book} canModerate={canModerate} locked={locked} onUploadFile={onUploadFile} />
               <div className="folio-section-head" style={{ marginTop: 18 }}><h4>The book's journey</h4></div>
               <OwnershipChain bookId={book.id} />
               {!locked && (addingOwnership ? (

@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
-import { batchResolveMediaUrls } from "../lib/mediaUpload";
+import { batchResolveMediaUrls, resolveMediaUrl } from "../lib/mediaUpload";
 import { fetchFamilyData, fetchFamilyName, fetchMyFamilies, fetchActiveFamilyId, fetchLibraryData, mapContributionRow, insertPerson as dbInsertPerson, insertMarriage as dbInsertMarriage, insertBook as dbInsertBook, bumpFamilyFlame } from "./familyDb";
 import { setSession, DEMO_FAMILY_ID, CURRENT_FAMILY_ID } from "./session";
 
@@ -134,7 +134,7 @@ export async function initDataLayer() {
 
   const allPaths = [
     ...mappedPeople.map((p) => p.photoPath), ...mappedExperience.map((e) => e.mediaPath), ...contributionMediaPaths,
-    ...libraryData.books.map((b) => b.coverPath),
+    ...libraryData.books.map((b) => b.coverPath), ...libraryData.books.map((b) => b.filePath),
   ];
   const urlMap = await batchResolveMediaUrls(allPaths);
   for (const p of mappedPeople) if (p.photoPath) p.photoUrl = urlMap[p.photoPath] || null;
@@ -142,7 +142,10 @@ export async function initDataLayer() {
   for (const c of mappedContributions) {
     if (["audio", "video", "photo"].includes(c.type)) c.mediaUrl = urlMap[c.content] || null;
   }
-  for (const b of libraryData.books) if (b.coverPath) b.coverUrl = urlMap[b.coverPath] || null;
+  for (const b of libraryData.books) {
+    if (b.coverPath) b.coverUrl = urlMap[b.coverPath] || null;
+    if (b.filePath) b.fileUrl = urlMap[b.filePath] || null;
+  }
 
   PEOPLE.length = 0;
   PEOPLE.push(...mappedPeople);
@@ -208,6 +211,13 @@ export function addPerson(person, marriage) {
 // fire-and-forget.
 export async function addBook(b) {
   const book = await dbInsertBook(CURRENT_FAMILY_ID, b);
+  // mapBookRow always comes back with coverUrl/fileUrl null — boot hydration
+  // batch-resolves those from cover_path/file_path, but a book added live
+  // mid-session never goes through that batch, so without this it would
+  // sit on the shelf with a blank cover / no working download link until
+  // the next full reload.
+  if (book.coverPath) book.coverUrl = await resolveMediaUrl(book.coverPath);
+  if (book.filePath) book.fileUrl = await resolveMediaUrl(book.filePath);
   BOOKS.push(book);
   return book;
 }

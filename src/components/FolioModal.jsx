@@ -7,7 +7,7 @@ import { resizeImage } from "../lib/imageResize";
 import { uploadFamilyMedia, resolveMediaUrl } from "../lib/mediaUpload";
 import { CURRENT_FAMILY_ID } from "../data/session";
 
-export default function FolioModal({ person, contributions, onClose, onEdit, onShare, onOpenBiography, onChangePhoto, onAddFamily, onOpenInterview, onOpenVoiceWizard, playingExp, onToggleExpPlay, canModerate, onRemoveExperience }) {
+export default function FolioModal({ person, contributions, onClose, onEdit, onShare, onOpenBiography, onChangePhoto, onAddFamily, onOpenInterview, onOpenVoiceWizard, playingExp, onToggleExpPlay, canModerate, onRemoveExperience, onSelectPerson }) {
   const contribs = contributionsFor(contributions, person.id);
   const media = verifiedMediaFor(contributions, person.id);
   const hasContent = personHasContent(contributions, person);
@@ -96,6 +96,29 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
           </div>
           <div className="folio-section">
             <div className="folio-section-head"><h4>Family</h4></div>
+            {/* Shows who's already linked before offering to add more — without
+                this, there was no way to tell from a person's own Folio which
+                recorded parent belongs to which side of the family (the app
+                deliberately doesn't track gender, so "Father"/"Mother" labels
+                aren't guessed — the name itself is what disambiguates). */}
+            {(person.parents?.length > 0 || person.spouse) && (
+              <div className="tag-row" style={{ marginBottom: 10 }}>
+                {person.parents?.map((pid) => {
+                  const parent = byId(pid);
+                  if (!parent) return null;
+                  return (
+                    <button key={pid} type="button" className="tag" style={{ font: "inherit", cursor: "pointer" }} onClick={() => onSelectPerson?.(pid)}>
+                      Parent: {parent.name}
+                    </button>
+                  );
+                })}
+                {person.spouse && byId(person.spouse) && (
+                  <button type="button" className="tag" style={{ font: "inherit", cursor: "pointer" }} onClick={() => onSelectPerson?.(person.spouse)}>
+                    Spouse: {byId(person.spouse).name}
+                  </button>
+                )}
+              </div>
+            )}
             <div className="tag-row">
               <button type="button" className="btn small ghost" onClick={() => onAddFamily("child")}>+ Add son or daughter</button>
               {!person.spouse && <button type="button" className="btn small ghost" onClick={() => onAddFamily("spouse")}>+ Add spouse</button>}

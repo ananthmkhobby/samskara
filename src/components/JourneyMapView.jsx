@@ -14,6 +14,14 @@ function FitBounds({ points }) {
   const map = useMap();
   useEffect(() => {
     if (!points.length) return;
+    // Leaflet measures the container's pixel size the moment this runs —
+    // on first mount that can be a stale/undersized read from before the
+    // CSS height (min(66vh, 600px)) has actually settled, which makes
+    // fitBounds compute a far lower zoom than the data warrants (the whole
+    // map looks zoomed out to cover half of India instead of a tight crop
+    // around the actual points). invalidateSize() forces a fresh
+    // measurement immediately before the fit.
+    map.invalidateSize();
     map.fitBounds(points, { padding: [36, 36] });
   }, [points, map]);
   return null;

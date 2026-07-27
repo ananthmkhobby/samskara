@@ -31,7 +31,7 @@ import { PEOPLE, INITIAL_CONTRIBUTIONS, BOOKS, BOOK_OWNERSHIP, BOOK_READERS, add
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
 import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, NEEDS_LOGIN } from "./data/session";
 import { insertContribution, updateContributionStatus, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus } from "./data/familyDb";
-import { resolveMediaUrl } from "./lib/mediaUpload";
+import { resolveMediaUrl, uploadFamilyMedia } from "./lib/mediaUpload";
 
 // Audio/video/photo contributions store a Storage path in `content` — this
 // resolves it to a directly-playable signed URL right after submission, so
@@ -247,6 +247,25 @@ export default function App() {
     }
   }
 
+  // Uploading a soft copy is a direct write, same as saveBookStory above —
+  // both are moderator-only actions gated by the Story tab's own UI, not
+  // routed through the contribution review queue.
+  async function uploadBookFile(bookId, file) {
+    const book = BOOKS.find((b) => b.id === bookId);
+    if (!book) return;
+    try {
+      const filePath = await uploadFamilyMedia(CURRENT_FAMILY_ID, "library", file, file.name.split(".").pop() || "pdf");
+      const fileUrl = await resolveMediaUrl(filePath);
+      book.filePath = filePath;
+      book.fileName = file.name;
+      book.fileUrl = fileUrl;
+      bump();
+      await updateBookFields(bookId, { file_path: filePath, file_name: file.name });
+    } catch (err) {
+      showToast(`Couldn't upload that file: ${err.message}`);
+    }
+  }
+
   async function addOwnership(o) {
     try {
       const row = await insertOwnership(CURRENT_FAMILY_ID, o);
@@ -437,7 +456,7 @@ export default function App() {
       // it synchronously in the same tick.
       let parsed = {};
       try { parsed = JSON.parse(c.content); } catch { /* malformed content, skip */ }
-      addBook({ title: c.name, category: c.field, story: parsed.story || "", coverPath: parsed.coverPath || null, contributor: c.contributor })
+      addBook({ title: c.name, category: c.field, story: parsed.story || "", coverPath: parsed.coverPath || null, filePath: parsed.filePath || null, fileName: parsed.fileName || null, contributor: c.contributor })
         .then(() => bump())
         .catch((err) => console.error("Failed to persist book:", err.message));
     }
@@ -647,6 +666,7 @@ export default function App() {
           onOpenBiography={() => commit({ biographyPersonId: selectedPerson.id })}
           onChangePhoto={changePhoto}
           onAddFamily={(relation) => commit({ addFamilyRequest: { personId: selectedPerson.id, anchorName: selectedPerson.name, relation } })}
+          onSelectPerson={selectPerson}
           onOpenInterview={() => commit({ interviewRequest: { personId: selectedPerson.id, name: selectedPerson.name, context: [selectedPerson.summary, selectedPerson.lifeLesson?.quote].filter(Boolean).join(" ") } })}
           onOpenVoiceWizard={() => commit({ voiceWizardRequest: { personId: selectedPerson.id, name: selectedPerson.name, person: selectedPerson } })}
           playingExp={playingExp}
@@ -684,6 +704,7 @@ export default function App() {
           onAddOwnership={addOwnership}
           onSetReaderStatus={setReaderStatusFor}
           onAddEntry={(bookId, kind) => openLibraryEntry(bookId, kind)}
+          onUploadFile={uploadBookFile}
         />
       )}
       {addBookOpen && (

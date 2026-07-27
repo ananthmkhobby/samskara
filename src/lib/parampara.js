@@ -12,6 +12,8 @@ export const PARAMPARA_CATEGORIES = [
   { key: "wisdom", label: "Ancestor Wisdom", icon: "💬", prompt: "What's a piece of advice an ancestor was known for?" },
   { key: "lost_skill", label: "Lost Skill", icon: "🧵", prompt: "What skill did someone in the family have that's since disappeared?" },
   { key: "memory", label: "Living Memory", icon: "🎥", prompt: "What should this family never forget?" },
+  { key: "recipe", label: "Family Recipe", icon: "🍲", prompt: "What dish has been made in your family for generations — who makes it best, and what's the secret in it?" },
+  { key: "rangoli_art", label: "Rangoli / Kolam Art", icon: "🎨", prompt: "What pattern, rangoli, or handmade art has been passed down — who taught it, and when is it drawn or made?" },
 ];
 
 export const LINEAGE_CATEGORY = { key: "lineage", label: "Veda Lineage", icon: "🕉️" };

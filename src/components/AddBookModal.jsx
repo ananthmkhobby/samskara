@@ -11,6 +11,8 @@ export default function AddBookModal({ onCancel, onSubmit, canModerate }) {
   const [coverDataUrl, setCoverDataUrl] = useState("");
   const [coverBlob, setCoverBlob] = useState(null);
   const [coverError, setCoverError] = useState("");
+  const [file, setFile] = useState(null);
+  const [fileError, setFileError] = useState("");
   const [contributor, setContributor] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -28,6 +30,14 @@ export default function AddBookModal({ onCancel, onSubmit, canModerate }) {
     }
   }
 
+  function handleFileInput(e) {
+    const f = e.target.files[0];
+    if (!f) return;
+    setFileError("");
+    if (f.size > 25 * 1024 * 1024) { setFileError("That file is larger than 25MB — try a smaller copy."); return; }
+    setFile(f);
+  }
+
   async function submit(e) {
     e.preventDefault();
     if (submitting) return;
@@ -35,10 +45,15 @@ export default function AddBookModal({ onCancel, onSubmit, canModerate }) {
     if (!title.trim()) { setError("This book needs a title."); return; }
 
     let coverPath = null;
+    let filePath = null;
     try {
       if (coverBlob) {
         setSubmitting(true);
         coverPath = await uploadFamilyMedia(CURRENT_FAMILY_ID, "library", coverBlob, "jpg");
+      }
+      if (file) {
+        setSubmitting(true);
+        filePath = await uploadFamilyMedia(CURRENT_FAMILY_ID, "library", file, file.name.split(".").pop() || "pdf");
       }
     } catch (err) {
       setError(err.message);
@@ -49,7 +64,7 @@ export default function AddBookModal({ onCancel, onSubmit, canModerate }) {
     const categoryDef = LIBRARY_CATEGORIES.find((c) => c.key === category);
     await onSubmit({
       type: "newBook", name: title.trim(), field: category, fieldLabel: categoryDef.label,
-      content: JSON.stringify({ story: story.trim(), coverPath }), contributor: contributor.trim() || "Anonymous",
+      content: JSON.stringify({ story: story.trim(), coverPath, filePath, fileName: file?.name || null }), contributor: contributor.trim() || "Anonymous",
     });
     setSubmitting(false);
   }
@@ -81,6 +96,13 @@ export default function AddBookModal({ onCancel, onSubmit, canModerate }) {
               <input type="file" accept="image/*" onChange={handleCoverFile} />
               {coverDataUrl && <img src={coverDataUrl} alt="" style={{ width: 90, height: 118, objectFit: "cover", borderRadius: 8, marginTop: 10, border: "1px solid var(--line-strong)" }} />}
               {coverError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{coverError}</p>}
+            </div>
+            <div className="form-row">
+              <label>Soft copy (optional)</label>
+              <input type="file" accept=".pdf,.epub,.doc,.docx,.txt" onChange={handleFileInput} />
+              {file && <p className="form-hint">{file.name}</p>}
+              {fileError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{fileError}</p>}
+              <p className="form-hint">Any family member will be able to download it from the shelf. Up to 25MB.</p>
             </div>
             <div className="form-row">
               <label>Your name</label>

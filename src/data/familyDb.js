@@ -288,6 +288,7 @@ export async function createInvite(familyId, userId) {
 function mapBookRow(row) {
   return {
     id: row.id, title: row.title, category: row.category, coverPath: row.cover_path, coverUrl: null,
+    filePath: row.file_path, fileName: row.file_name, fileUrl: null,
     story: row.story, contributor: row.contributor, status: row.status, createdAt: row.created_at,
   };
 }
@@ -323,6 +324,7 @@ export async function insertBook(familyId, b) {
   const db = requireClient();
   const row = {
     family_id: familyId, title: b.title, category: b.category, cover_path: b.coverPath ?? null,
+    file_path: b.filePath ?? null, file_name: b.fileName ?? null,
     story: b.story ?? null, contributor: b.contributor ?? null, contributor_user_id: b.contributorUserId ?? null,
     status: "Verified",
   };
