@@ -99,6 +99,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
             <div className="tag-row">
               <button type="button" className="btn small ghost" onClick={() => onAddFamily("child")}>+ Add son or daughter</button>
               {!person.spouse && <button type="button" className="btn small ghost" onClick={() => onAddFamily("spouse")}>+ Add spouse</button>}
+              {!person.parents?.length && <button type="button" className="btn small ghost" onClick={() => onAddFamily("parent")}>+ Add parent</button>}
             </div>
           </div>
           <div className="folio-section">

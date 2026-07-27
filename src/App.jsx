@@ -25,7 +25,7 @@ import LibraryView from "./components/LibraryView";
 import BookModal from "./components/BookModal";
 import AddBookModal from "./components/AddBookModal";
 import LibraryEntryModal from "./components/LibraryEntryModal";
-import { INITIAL_CONTRIBUTIONS, BOOKS, BOOK_OWNERSHIP, BOOK_READERS, addPerson, addBook, makeUniquePersonId } from "./data/people";
+import { PEOPLE, INITIAL_CONTRIBUTIONS, BOOKS, BOOK_OWNERSHIP, BOOK_READERS, addPerson, addBook, makeUniquePersonId } from "./data/people";
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
 import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY } from "./data/session";
 import { insertContribution, updateContributionStatus, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus } from "./data/familyDb";
@@ -394,12 +394,32 @@ export default function App() {
           // marriage record here would show up as a bogus date in the Vault.
           // Only add one once we actually have a date to record.
           anchor.spouse = id;
+          // If the anchor already has children on record, this spouse is
+          // their other parent too — credit them retroactively, so adding
+          // a grandmother after a grandfather doesn't leave her out of
+          // "Child of X & Y" captions for kids who already existed.
+          const anchorChildren = PEOPLE.filter((p) => p.parents?.includes(anchor.id) && !p.parents.includes(id));
+          anchorChildren.forEach((child) => { child.parents = [...child.parents, id]; });
           // The anchor's spouse column can only point at this new person
           // once the person row actually exists — awaiting the insert first
           // avoids a foreign-key violation from the two writes racing.
           addPerson(newPerson)
             .then(() => updatePersonSpouse(familyId, anchor.id, id))
+            .then(() => Promise.all(anchorChildren.map((child) => updatePersonFields(familyId, child.id, { parents: child.parents }))))
             .catch((err) => console.error("Failed to persist spouse link:", err.message));
+        } else if (c.relation === "parent") {
+          // Growing the tree upward: this person becomes a new root above
+          // the anchor, rather than the anchor gaining a child below it.
+          // The layout (classicTreeLayout.js) positions every generation
+          // relative to MIN_GEN, so a lower gen number here just becomes
+          // the new top row — no other tree code needs to change.
+          newPerson.gen = anchor.gen - 1;
+          newPerson.parents = [];
+          addPerson(newPerson).catch((err) => console.error("Failed to persist new parent:", err.message));
+          if (!anchor.parents.includes(id)) {
+            anchor.parents = [...anchor.parents, id];
+            updatePersonFields(familyId, anchor.id, { parents: anchor.parents }).catch((err) => console.error("Failed to link parent:", err.message));
+          }
         } else {
           newPerson.gen = anchor.gen + 1;
           newPerson.parents = anchor.spouse ? [anchor.id, anchor.spouse] : [anchor.id];

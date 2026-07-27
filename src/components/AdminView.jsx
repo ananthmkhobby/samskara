@@ -144,6 +144,8 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
       const anchorName = anchor ? anchor.name : "someone in the tree";
       return c.relation === "spouse"
         ? `👪 Add ${c.name} as spouse of ${anchorName}`
+        : c.relation === "parent"
+        ? `👪 Add ${c.name} as a parent of ${anchorName}`
         : `👪 Add ${c.name} as son/daughter of ${anchorName}`;
     }
     if (c.field === "heritage") {
