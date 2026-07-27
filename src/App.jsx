@@ -600,9 +600,19 @@ export default function App() {
   // isn't lost just because there's no data behind it yet.
   if (NEEDS_LOGIN) {
     if (showIntro) return <WelcomeIntro onDismiss={dismissIntro} />;
-    return view === "help"
-      ? <HelpStandalone onBack={() => goTo("cover")} />
-      : <LoginPage onShowHelp={() => goTo("help")} />;
+    if (view === "help") return <HelpStandalone onBack={() => goTo("cover")} />;
+    // /superadmin needs no family data either (it talks to its own API
+    // route, not the Supabase family fetch) — it must bypass the login
+    // gate the same way Help does, or the provisioning page becomes
+    // unreachable for a signed-out visitor, which defeats its purpose.
+    if (view === "superadmin") {
+      return (
+        <div className="login-page login-page-scroll">
+          <div className="login-help-wrap"><SuperAdminView /></div>
+        </div>
+      );
+    }
+    return <LoginPage onShowHelp={() => goTo("help")} />;
   }
 
   return (
