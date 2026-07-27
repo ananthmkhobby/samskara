@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { PARAMPARA_CATEGORIES, categoryFor, parseParamparaContent, continuedForYears } from "../lib/parampara";
 import { batchResolveMediaUrls } from "../lib/mediaUpload";
 import PhotoLightbox from "./PhotoLightbox";
+import HeritageIntro, { DiyaIcon } from "./HeritageIntro";
 
 function LineageCard({ entry }) {
   const chain = parseParamparaContent(entry.content);
@@ -67,7 +68,8 @@ export default function ParamparaView({ contributions, onContribute }) {
 
   return (
     <section className="wrap">
-      <div className="section-head">
+      <HeritageIntro icon={<DiyaIcon />} />
+      <div className="section-head heritage-wipe">
         <span className="eyebrow parampara-eyebrow">✨ Parampara</span>
         <h2>Your family's living heritage</h2>
         <p>
@@ -76,21 +78,27 @@ export default function ParamparaView({ contributions, onContribute }) {
         </p>
       </div>
 
-      {lineageEntry && <LineageCard entry={lineageEntry} />}
+      {lineageEntry && (
+        <div className="heritage-fade-up" style={{ "--enter-delay": "0.75s" }}>
+          <LineageCard entry={lineageEntry} />
+        </div>
+      )}
 
-      <div className="tag-row parampara-filters" style={{ marginTop: lineageEntry ? 18 : 0 }}>
+      <div className="tag-row parampara-filters heritage-fade-up" style={{ marginTop: lineageEntry ? 18 : 0, "--enter-delay": "0.85s" }}>
         <button className={`chip${filter === null ? " active" : ""}`} onClick={() => setFilter(null)}>All</button>
         {PARAMPARA_CATEGORIES.map((c) => (
           <button key={c.key} className={`chip${filter === c.key ? " active" : ""}`} onClick={() => setFilter(c.key)}>{c.icon} {c.label}</button>
         ))}
       </div>
 
-      <button type="button" className="btn primary parampara-cta" onClick={onContribute}>+ Share your family's Parampara</button>
+      <button type="button" className="btn primary parampara-cta heritage-fade-up" style={{ "--enter-delay": "0.92s" }} onClick={onContribute}>+ Share your family's Parampara</button>
 
       {filtered.length ? (
         <div className="parampara-grid">
-          {filtered.map((e) => (
-            <ParamparaCard key={e.id} entry={e} mediaUrl={urlMap[parseParamparaContent(e.content).mediaPath]} onOpenPhoto={setLightboxSrc} />
+          {filtered.map((e, i) => (
+            <div key={e.id} className="heritage-fade-up" style={{ "--enter-delay": `${1 + Math.min(i, 6) * 0.08}s` }}>
+              <ParamparaCard entry={e} mediaUrl={urlMap[parseParamparaContent(e.content).mediaPath]} onOpenPhoto={setLightboxSrc} />
+            </div>
           ))}
         </div>
       ) : (

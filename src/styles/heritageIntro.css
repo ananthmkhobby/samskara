@@ -1,0 +1,69 @@
+/* A small animated "arrival" moment for Parampara and Library — a lit diya
+   or an opening book, warm light drifting up from it, then the heading
+   wiping in like a scroll unrolling. Plays every time the section is
+   entered (the components remount), not just once ever. */
+
+.heritage-intro {
+  position: relative; height: 96px; display: flex; align-items: center; justify-content: center;
+  margin-bottom: 6px; overflow: visible;
+}
+.heritage-glow {
+  position: absolute; width: 160px; height: 160px; border-radius: 50%;
+  background: radial-gradient(circle, var(--gold-wash) 0%, rgba(169,121,28,0) 70%);
+  animation: heritageGlowPulse 3.2s ease-in-out infinite;
+}
+@keyframes heritageGlowPulse {
+  0%, 100% { opacity: .6; transform: scale(.92); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+.heritage-icon { position: relative; width: 92px; height: 66px; overflow: visible; }
+
+/* diya */
+.diya-flame { transform-origin: 60px 42px; animation: diyaFlicker 2.6s ease-in-out infinite; }
+@keyframes diyaFlicker {
+  0%, 100% { transform: scaleY(1) scaleX(1) skewX(0deg); }
+  22% { transform: scaleY(1.09) scaleX(.94) skewX(-2.5deg); }
+  48% { transform: scaleY(.93) scaleX(1.06) skewX(2deg); }
+  74% { transform: scaleY(1.06) scaleX(.96) skewX(-1.5deg); }
+}
+
+/* book */
+.book-page { transform-origin: 60px 40px; animation: bookOpen 1s cubic-bezier(.22,1,.36,1) both; }
+.book-page.left { animation-delay: .05s; }
+.book-page.right { animation-delay: .18s; }
+@keyframes bookOpen { from { transform: scaleX(.08); opacity: .3; } to { transform: scaleX(1); opacity: 1; } }
+
+/* rising memory-motes */
+.heritage-motes { position: absolute; inset: 0; pointer-events: none; }
+.heritage-mote {
+  position: absolute; bottom: 30px; left: var(--mote-x, 50%); width: 5px; height: 5px; border-radius: 50%;
+  background: var(--gold); opacity: 0; animation: heritageFloat 3.6s ease-in-out infinite;
+  animation-delay: var(--mote-delay, 0s);
+}
+@keyframes heritageFloat {
+  0% { opacity: 0; transform: translateY(0) scale(.6); }
+  18% { opacity: .85; }
+  75% { opacity: .25; }
+  100% { opacity: 0; transform: translateY(-52px) scale(1); }
+}
+
+/* heading wipe + staggered fade-up, reused for the cards/stats below */
+.heritage-wipe h2 {
+  display: inline-block; clip-path: inset(0 100% 0 0);
+  animation: heritageWipe .9s cubic-bezier(.65,0,.35,1) forwards; animation-delay: .32s;
+}
+@keyframes heritageWipe { to { clip-path: inset(0 0% 0 0); } }
+.heritage-wipe .eyebrow, .heritage-wipe p { opacity: 0; animation: heritageFadeUp .6s ease-out forwards; }
+.heritage-wipe .eyebrow { animation-delay: .12s; }
+.heritage-wipe p { animation-delay: .62s; }
+
+.heritage-fade-up { opacity: 0; transform: translateY(14px); animation: heritageFadeUp .55s ease-out forwards; animation-delay: var(--enter-delay, 0s); }
+@keyframes heritageFadeUp { to { opacity: 1; transform: translateY(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .heritage-glow, .diya-flame, .book-page, .heritage-mote { animation: none; }
+  .heritage-glow { opacity: .8; }
+  .heritage-mote { opacity: 0; }
+  .heritage-wipe h2 { animation: none; clip-path: none; }
+  .heritage-wipe .eyebrow, .heritage-wipe p, .heritage-fade-up { animation: none; opacity: 1; transform: none; }
+}

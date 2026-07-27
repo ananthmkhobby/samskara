@@ -18,6 +18,7 @@ import './styles/welcomeIntro.css'
 import './styles/auth.css'
 import './styles/parampara.css'
 import './styles/library.css'
+import './styles/heritageIntro.css'
 import App from './App.jsx'
 import { initDataLayer } from './data/people.js'
 

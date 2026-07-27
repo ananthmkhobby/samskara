@@ -2,6 +2,7 @@ import { useState } from "react";
 import { BOOKS, BOOK_OWNERSHIP, BOOK_READERS } from "../data/people";
 import { byId } from "../data/helpers";
 import { LIBRARY_CATEGORIES, libraryCategoryFor } from "../lib/library";
+import HeritageIntro, { OpenBookIcon } from "./HeritageIntro";
 
 function isMonth(dateStr, now) {
   if (!dateStr) return false;
@@ -49,7 +50,8 @@ export default function LibraryView({ onOpenBook, onAddBook }) {
 
   return (
     <section className="wrap">
-      <div className="section-head">
+      <HeritageIntro icon={<OpenBookIcon />} />
+      <div className="section-head heritage-wipe">
         <span className="eyebrow parampara-eyebrow">📚 Family Library</span>
         <h2>Walk into the family's bookshelf</h2>
         <p>
@@ -58,25 +60,29 @@ export default function LibraryView({ onOpenBook, onAddBook }) {
         </p>
       </div>
 
-      <div className="library-stats">
+      <div className="library-stats heritage-fade-up" style={{ "--enter-delay": "0.7s" }}>
         <div className="library-stat"><b className="tnum">{readingNow}</b><span>reading right now</span></div>
         <div className="library-stat"><b className="tnum">{completedThisMonth}</b><span>completed this month</span></div>
         <div className="library-stat"><b className="tnum">{giftedThisMonth}</b><span>gifted this month</span></div>
         <div className="library-stat"><b className="tnum">{verifiedBooks.length}</b><span>books on the shelf</span></div>
       </div>
 
-      <div className="tag-row parampara-filters">
+      <div className="tag-row parampara-filters heritage-fade-up" style={{ "--enter-delay": "0.82s" }}>
         <button className={`chip${filter === null ? " active" : ""}`} onClick={() => setFilter(null)}>All</button>
         {LIBRARY_CATEGORIES.map((c) => (
           <button key={c.key} className={`chip${filter === c.key ? " active" : ""}`} onClick={() => setFilter(c.key)}>{c.icon} {c.label}</button>
         ))}
       </div>
 
-      <button type="button" className="btn primary parampara-cta" onClick={onAddBook}>+ Add a book to the shelf</button>
+      <button type="button" className="btn primary parampara-cta heritage-fade-up" style={{ "--enter-delay": "0.9s" }} onClick={onAddBook}>+ Add a book to the shelf</button>
 
       {filtered.length ? (
         <div className="library-grid">
-          {filtered.map((b) => <BookCard key={b.id} book={b} onOpen={onOpenBook} />)}
+          {filtered.map((b, i) => (
+            <div key={b.id} className="heritage-fade-up" style={{ "--enter-delay": `${1 + Math.min(i, 6) * 0.07}s` }}>
+              <BookCard book={b} onOpen={onOpenBook} />
+            </div>
+          ))}
         </div>
       ) : (
         <div className="empty-state">
