@@ -55,6 +55,24 @@ export function OpenBookIcon() {
   );
 }
 
+export function FamilyBondIcon() {
+  return (
+    <svg className="heritage-icon" viewBox="0 0 120 80" aria-hidden="true">
+      <defs>
+        <radialGradient id="bondNodeGrad" cx="35%" cy="35%" r="70%">
+          <stop offset="0%" stopColor="#FFE9B0" />
+          <stop offset="60%" stopColor="var(--gold)" />
+          <stop offset="100%" stopColor="var(--maroon)" />
+        </radialGradient>
+      </defs>
+      <path className="bond-line" d="M30,26 L60,54 L90,26" fill="none" stroke="var(--gold-deep)" strokeWidth="2" pathLength="1" strokeDasharray="1" />
+      <circle className="bond-node n1" cx="30" cy="26" r="10" fill="url(#bondNodeGrad)" />
+      <circle className="bond-node n2" cx="90" cy="26" r="10" fill="url(#bondNodeGrad)" />
+      <circle className="bond-node n3" cx="60" cy="54" r="11" fill="url(#bondNodeGrad)" />
+    </svg>
+  );
+}
+
 export default function HeritageIntro({ icon }) {
   return (
     <div className="heritage-intro">

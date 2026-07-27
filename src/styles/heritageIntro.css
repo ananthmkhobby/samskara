@@ -27,6 +27,19 @@
   74% { transform: scaleY(1.06) scaleX(.96) skewX(-1.5deg); }
 }
 
+/* family bond (Cover page) */
+.bond-line { stroke-dashoffset: 1; animation: bondLineDraw .8s ease-out forwards; animation-delay: .1s; }
+@keyframes bondLineDraw { to { stroke-dashoffset: 0; } }
+.bond-node {
+  opacity: 0; transform-origin: center; transform-box: fill-box; transform: scale(.3);
+  animation: bondBloom .5s cubic-bezier(.34,1.56,.64,1) forwards, bondPulse 2.8s ease-in-out infinite 1.1s;
+}
+.bond-node.n1 { animation-delay: .15s, 1.1s; }
+.bond-node.n2 { animation-delay: .4s, 1.3s; }
+.bond-node.n3 { animation-delay: .65s, 1.5s; }
+@keyframes bondBloom { to { opacity: 1; transform: scale(1); } }
+@keyframes bondPulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.18); } }
+
 /* book */
 .book-page { transform-origin: 60px 40px; animation: bookOpen 1s cubic-bezier(.22,1,.36,1) both; }
 .book-page.left { animation-delay: .05s; }
@@ -61,9 +74,11 @@
 @keyframes heritageFadeUp { to { opacity: 1; transform: translateY(0); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .heritage-glow, .diya-flame, .book-page, .heritage-mote { animation: none; }
+  .heritage-glow, .diya-flame, .book-page, .heritage-mote, .bond-line, .bond-node { animation: none; }
   .heritage-glow { opacity: .8; }
   .heritage-mote { opacity: 0; }
+  .bond-line { stroke-dashoffset: 0; }
+  .bond-node { opacity: 1; transform: scale(1); }
   .heritage-wipe h2 { animation: none; clip-path: none; }
   .heritage-wipe .eyebrow, .heritage-wipe p, .heritage-fade-up { animation: none; opacity: 1; transform: none; }
 }

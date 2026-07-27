@@ -4,6 +4,7 @@ import { useCountUp } from "../hooks/useCountUp";
 import { parseParamparaContent } from "../lib/parampara";
 import AuthPanel from "./AuthPanel";
 import InstallAppCard from "./InstallAppCard";
+import HeritageIntro, { FamilyBondIcon } from "./HeritageIntro";
 
 function Counter({ value, label, delay }) {
   const shown = useCountUp(value);
@@ -37,6 +38,7 @@ export default function CoverPage({ contributions, onNav, onContribute }) {
 
   return (
     <section className="wrap" style={{ paddingTop: 0 }}>
+      <HeritageIntro icon={<FamilyBondIcon />} />
       <div className="cover-hero cover-enter" style={{ "--enter-delay": "0s" }}>
         <span className="eyebrow">{IS_DEMO ? "Public demo · try it out" : "Your family's archive"} · {gens.size} generation{gens.size === 1 ? "" : "s"}</span>
         <h1>संस्कार वंश वृक्ष<span className="translit">Samskara Vamsha Vruksha</span></h1>
