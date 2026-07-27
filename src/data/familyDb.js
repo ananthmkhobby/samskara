@@ -392,3 +392,13 @@ export async function updateMemberRole(memberRowId, role) {
   if (!data.length) throw new Error("Only the Family Head can change roles.");
   return data[0];
 }
+
+// A shared, family-wide streak (not per-user) — whoever's the first to open
+// the app on a given day keeps the whole family's flame lit. The row lock in
+// the function body means simultaneous callers can't double-increment.
+export async function bumpFamilyFlame(familyId) {
+  const db = requireClient();
+  const { data, error } = await db.rpc("bump_family_flame", { p_family_id: familyId });
+  if (error) throw new Error(error.message);
+  return data?.[0]?.streak ?? 0;
+}

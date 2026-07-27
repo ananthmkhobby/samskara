@@ -23,6 +23,9 @@ export let ACCOUNT_NEEDS_FAMILY = false;
 // wasn't explicitly requested via ?demo=1) — shown the login page instead of
 // jumping straight into the public demo family's data.
 export let NEEDS_LOGIN = false;
+// Shared, family-wide streak — see bumpFamilyFlame in familyDb.js. 0 until
+// resolved (or if the bump silently failed), which just hides the widget.
+export let FAMILY_FLAME_STREAK = 0;
 
 export function setSession(next) {
   CURRENT_USER_ID = next.userId ?? null;
@@ -33,4 +36,5 @@ export function setSession(next) {
   ACCOUNT_NEEDS_FAMILY = next.needsFamily ?? false;
   NEEDS_LOGIN = next.needsLogin ?? false;
   MY_FAMILIES = next.myFamilies ?? [];
+  FAMILY_FLAME_STREAK = next.flameStreak ?? 0;
 }

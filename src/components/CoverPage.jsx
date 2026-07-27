@@ -1,10 +1,11 @@
 import { PEOPLE, CHALLENGES } from "../data/people";
-import { IS_DEMO, CURRENT_FAMILY_NAME } from "../data/session";
+import { IS_DEMO, CURRENT_FAMILY_NAME, FAMILY_FLAME_STREAK } from "../data/session";
 import { useCountUp } from "../hooks/useCountUp";
 import { parseParamparaContent } from "../lib/parampara";
 import AuthPanel from "./AuthPanel";
 import InstallAppCard from "./InstallAppCard";
 import HeritageIntro, { FamilyBondIcon } from "./HeritageIntro";
+import FamilyFlame from "./FamilyFlame";
 
 function Counter({ value, label, delay }) {
   const shown = useCountUp(value);
@@ -44,6 +45,8 @@ export default function CoverPage({ contributions, onNav, onContribute }) {
         <h1>संस्कार वंश वृक्ष<span className="translit">Samskara Vamsha Vruksha</span></h1>
         <p className="lede">{familyLabel}'s living record — every birth, marriage, memory, and hard-won lesson, kept in one place and added to by everyone who belongs to it.</p>
       </div>
+
+      <FamilyFlame streak={FAMILY_FLAME_STREAK} />
 
       <div className="cover-enter" style={{ "--enter-delay": "0.06s" }}>
         <InstallAppCard dismissible />

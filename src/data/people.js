@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabaseClient";
 import { batchResolveMediaUrls } from "../lib/mediaUpload";
-import { fetchFamilyData, fetchFamilyName, fetchMyFamilies, fetchActiveFamilyId, fetchLibraryData, mapContributionRow, insertPerson as dbInsertPerson, insertMarriage as dbInsertMarriage, insertBook as dbInsertBook } from "./familyDb";
+import { fetchFamilyData, fetchFamilyName, fetchMyFamilies, fetchActiveFamilyId, fetchLibraryData, mapContributionRow, insertPerson as dbInsertPerson, insertMarriage as dbInsertMarriage, insertBook as dbInsertBook, bumpFamilyFlame } from "./familyDb";
 import { setSession, DEMO_FAMILY_ID, CURRENT_FAMILY_ID } from "./session";
 
 export const VALUES = ["Courage", "Seva", "Education", "Simplicity", "Devotion", "Discipline", "Hospitality", "Resilience"];
@@ -111,10 +111,13 @@ export async function initDataLayer() {
 
   const familyId = resolved.familyId;
 
-  const [{ people, marriages, contributions, experienceEntries }, familyName, libraryData] = await Promise.all([
+  const [{ people, marriages, contributions, experienceEntries }, familyName, libraryData, flameStreak] = await Promise.all([
     fetchFamilyData(familyId),
     fetchFamilyName(familyId),
     fetchLibraryData(familyId),
+    // Non-critical — a failed flame bump should never block the whole app
+    // from loading, it just leaves the streak widget hidden this visit.
+    bumpFamilyFlame(familyId).catch(() => 0),
   ]);
 
   const mappedPeople = people.map(mapPersonRow);
@@ -164,6 +167,7 @@ export async function initDataLayer() {
     isDemo: resolved.isDemo,
     needsFamily: resolved.needsFamily,
     myFamilies: resolved.myFamilies,
+    flameStreak,
   });
 }
 
