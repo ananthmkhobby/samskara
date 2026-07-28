@@ -18,3 +18,10 @@
   background: linear-gradient(155deg, var(--gold-deep), var(--gold)); border-color: var(--gold-deep); color: #2A1C05;
 }
 .interview-cta.wizard-cta .interview-cta-sub { color: rgba(42,28,5,.75); }
+
+/* A dusk/indigo tone, distinct from the maroon "record" and gold "voice
+   wizard" cards — evokes entering a room rather than recording something. */
+.interview-cta.room-cta {
+  background: linear-gradient(155deg, #2E2A4A, #4A4472); border-color: #2E2A4A; color: #F0ECFA;
+}
+.interview-cta.room-cta .interview-cta-sub { color: rgba(240,236,250,.78); }

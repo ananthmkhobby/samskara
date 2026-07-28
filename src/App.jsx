@@ -25,10 +25,13 @@ import LibraryView from "./components/LibraryView";
 import BookModal from "./components/BookModal";
 import AddBookModal from "./components/AddBookModal";
 import LibraryEntryModal from "./components/LibraryEntryModal";
+import ChitrashaleRoom from "./components/ChitrashaleRoom";
+import ChitrashaleAddModal from "./components/ChitrashaleAddModal";
 import LoginPage from "./components/LoginPage";
 import HelpStandalone from "./components/HelpStandalone";
 import { PEOPLE, INITIAL_CONTRIBUTIONS, BOOKS, BOOK_OWNERSHIP, BOOK_READERS, addPerson, addBook, makeUniquePersonId } from "./data/people";
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
+import { verifiedObjectsBySpot, hasAnyRoomObjects } from "./lib/chitrashale";
 import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, NEEDS_LOGIN } from "./data/session";
 import { insertContribution, updateContributionStatus, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus } from "./data/familyDb";
 import { resolveMediaUrl, uploadFamilyMedia } from "./lib/mediaUpload";
@@ -97,6 +100,8 @@ export default function App() {
   const [openBookId, setOpenBookId] = useState(null);
   const [addBookOpen, setAddBookOpen] = useState(false);
   const [libraryEntryRequest, setLibraryEntryRequest] = useState(null);
+  const [roomPersonId, setRoomPersonId] = useState(null);
+  const [chitrashaleAddSpot, setChitrashaleAddSpot] = useState(null);
   const [playingExp, setPlayingExp] = useState(null);
   const [toast, setToast] = useState("");
   const isPoppingRef = useRef(false);
@@ -110,11 +115,12 @@ export default function App() {
     const anyModalOpen = !!(
       selectedPersonId || biographyPersonId || contributeRequest || editRequest ||
       addFamilyRequest || interviewRequest || voiceWizardRequest || joinFamilyRequest ||
-      paramparaContributeOpen || openBookId || addBookOpen || libraryEntryRequest || showIntro
+      paramparaContributeOpen || openBookId || addBookOpen || libraryEntryRequest ||
+      roomPersonId || chitrashaleAddSpot || showIntro
     );
     document.body.style.overflow = anyModalOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
-  }, [selectedPersonId, biographyPersonId, contributeRequest, editRequest, addFamilyRequest, interviewRequest, voiceWizardRequest, joinFamilyRequest, paramparaContributeOpen, openBookId, addBookOpen, libraryEntryRequest, showIntro]);
+  }, [selectedPersonId, biographyPersonId, contributeRequest, editRequest, addFamilyRequest, interviewRequest, voiceWizardRequest, joinFamilyRequest, paramparaContributeOpen, openBookId, addBookOpen, libraryEntryRequest, roomPersonId, chitrashaleAddSpot, showIntro]);
 
   // Seed a baseline history entry on load, then let the browser/device Back
   // button step backward through views and close modals one layer at a time
@@ -123,7 +129,7 @@ export default function App() {
   useEffect(() => {
     const initialView = viewForPath(window.location.pathname);
     window.history.replaceState(
-      { view: initialView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null, addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null, paramparaContributeOpen: false, openBookId: null, addBookOpen: false, libraryEntryRequest: null },
+      { view: initialView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null, addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null, paramparaContributeOpen: false, openBookId: null, addBookOpen: false, libraryEntryRequest: null, roomPersonId: null, chitrashaleAddSpot: null },
       "",
       pathForView(initialView)
     );
@@ -144,6 +150,8 @@ export default function App() {
       setOpenBookId(s.openBookId || null);
       setAddBookOpen(s.addBookOpen || false);
       setLibraryEntryRequest(s.libraryEntryRequest || null);
+      setRoomPersonId(s.roomPersonId || null);
+      setChitrashaleAddSpot(s.chitrashaleAddSpot || null);
       requestAnimationFrame(() => { isPoppingRef.current = false; });
     }
     window.addEventListener("popstate", onPopState);
@@ -168,6 +176,8 @@ export default function App() {
       openBookId: next.openBookId !== undefined ? next.openBookId : openBookId,
       addBookOpen: next.addBookOpen !== undefined ? next.addBookOpen : addBookOpen,
       libraryEntryRequest: next.libraryEntryRequest !== undefined ? next.libraryEntryRequest : libraryEntryRequest,
+      roomPersonId: next.roomPersonId !== undefined ? next.roomPersonId : roomPersonId,
+      chitrashaleAddSpot: next.chitrashaleAddSpot !== undefined ? next.chitrashaleAddSpot : chitrashaleAddSpot,
     };
     setView(full.view);
     setSelectedPersonId(full.selectedPersonId);
@@ -182,6 +192,8 @@ export default function App() {
     setOpenBookId(full.openBookId);
     setAddBookOpen(full.addBookOpen);
     setLibraryEntryRequest(full.libraryEntryRequest);
+    setRoomPersonId(full.roomPersonId);
+    setChitrashaleAddSpot(full.chitrashaleAddSpot);
     if (!isPoppingRef.current) {
       window.history.pushState(full, "", pathForView(full.view));
     }
@@ -198,12 +210,17 @@ export default function App() {
       view: nextView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null,
       addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null,
       paramparaContributeOpen: false, openBookId: null, addBookOpen: false, libraryEntryRequest: null,
+      roomPersonId: null, chitrashaleAddSpot: null,
     });
     window.scrollTo({ top: 0 });
   }
 
   function selectPerson(id) {
     commit({ selectedPersonId: id });
+  }
+
+  function openRoom(personId) {
+    commit({ roomPersonId: personId });
   }
 
   function openContribute(opts = {}) {
@@ -669,6 +686,8 @@ export default function App() {
           onSelectPerson={selectPerson}
           onOpenInterview={() => commit({ interviewRequest: { personId: selectedPerson.id, name: selectedPerson.name, context: [selectedPerson.summary, selectedPerson.lifeLesson?.quote].filter(Boolean).join(" ") } })}
           onOpenVoiceWizard={() => commit({ voiceWizardRequest: { personId: selectedPerson.id, name: selectedPerson.name, person: selectedPerson } })}
+          onOpenRoom={() => openRoom(selectedPerson.id)}
+          hasRoomObjects={hasAnyRoomObjects(contributions, selectedPerson.id)}
           playingExp={playingExp}
           onToggleExpPlay={toggleExpPlay}
           canModerate={canModerate}
@@ -712,6 +731,25 @@ export default function App() {
       )}
       {libraryEntryRequest && (
         <LibraryEntryModal bookId={libraryEntryRequest.bookId} kind={libraryEntryRequest.kind} onCancel={closeOverlay} onSubmit={submitContribution} canModerate={canModerate} />
+      )}
+      {roomPersonId && byId(roomPersonId) && (
+        <ChitrashaleRoom
+          person={byId(roomPersonId)}
+          contributions={contributions}
+          onClose={closeOverlay}
+          onSubmit={submitContribution}
+          onOpenAdd={(spot) => commit({ chitrashaleAddSpot: spot })}
+        />
+      )}
+      {chitrashaleAddSpot && roomPersonId && byId(roomPersonId) && (
+        <ChitrashaleAddModal
+          person={byId(roomPersonId)}
+          occupiedSpots={verifiedObjectsBySpot(contributions, roomPersonId)}
+          initialSpot={typeof chitrashaleAddSpot === "string" ? chitrashaleAddSpot : null}
+          canModerate={canModerate}
+          onCancel={closeOverlay}
+          onSubmit={submitContribution}
+        />
       )}
       {editRequest && (
         <EditModal request={editRequest} onCancel={closeOverlay} onSubmit={submitEdit} canModerate={canModerate} />

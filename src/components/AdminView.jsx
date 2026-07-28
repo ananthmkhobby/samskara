@@ -4,6 +4,7 @@ import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, CURRENT_ROLE } from "../da
 import { createInvite, fetchFamilyMembers, updateMemberRole } from "../data/familyDb";
 import { categoryFor } from "../lib/parampara";
 import { libraryCategoryFor } from "../lib/library";
+import { spotFor } from "../lib/chitrashale";
 import { BOOKS } from "../data/people";
 import PersonAvatar from "./PersonAvatar";
 
@@ -138,6 +139,11 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
         return `${categoryFor(c.field).icon} ${description.slice(0, 90)}${description.length > 90 ? "…" : ""}`;
       } catch { return "New Parampara entry"; }
     }
+    if (c.type === "chitrashalaObject") {
+      const spot = spotFor(c.field);
+      return `🪔 "${c.title}"${spot ? ` — ${spot.label.toLowerCase()}` : ""}`;
+    }
+    if (c.type === "chitrashalaReflection") return `🪔 "${c.content.slice(0, 90)}${c.content.length > 90 ? "…" : ""}"`;
     if (c.type === "interview") return `🎙️ AI-drafted chapter "${c.title}": "${c.text.slice(0, 80)}${c.text.length > 80 ? "…" : ""}"`;
     if (c.type === "newPerson") {
       const anchor = c.anchorPersonId ? byId(c.anchorPersonId) : null;
@@ -185,6 +191,7 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
             : c.type === "parampara" ? (c.title || categoryFor(c.field).label)
             : c.type === "newBook" ? `New book: ${c.name}`
             : c.type === "library_entry" ? (BOOKS.find((b) => b.id === c.bookId)?.title || "A book")
+            : c.type === "chitrashalaObject" || c.type === "chitrashalaReflection" ? "Someone's room"
             : `New: ${c.newPersonName}`;
           const isRealAudio = c.type === "audio" && !!c.mediaUrl;
           const isRealVideo = c.type === "video" && !!c.mediaUrl;
@@ -202,6 +209,8 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
                       : c.type === "parampara" ? `parampara · ${categoryFor(c.field).label}`
                       : c.type === "newBook" ? `library · ${libraryCategoryFor(c.field).label}`
                       : c.type === "library_entry" ? `library · ${c.field}`
+                      : c.type === "chitrashalaObject" ? "chitrashale · object"
+                      : c.type === "chitrashalaReflection" ? "chitrashale · reflection"
                       : c.type}
                   </span> · from {c.contributor} · {c.date}
                 </div>

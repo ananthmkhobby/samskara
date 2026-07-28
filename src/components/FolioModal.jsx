@@ -7,7 +7,7 @@ import { resizeImage } from "../lib/imageResize";
 import { uploadFamilyMedia, resolveMediaUrl } from "../lib/mediaUpload";
 import { CURRENT_FAMILY_ID } from "../data/session";
 
-export default function FolioModal({ person, contributions, onClose, onEdit, onShare, onOpenBiography, onChangePhoto, onAddFamily, onOpenInterview, onOpenVoiceWizard, playingExp, onToggleExpPlay, canModerate, onRemoveExperience, onSelectPerson }) {
+export default function FolioModal({ person, contributions, onClose, onEdit, onShare, onOpenBiography, onChangePhoto, onAddFamily, onOpenInterview, onOpenVoiceWizard, onOpenRoom, hasRoomObjects, playingExp, onToggleExpPlay, canModerate, onRemoveExperience, onSelectPerson }) {
   const contribs = contributionsFor(contributions, person.id);
   const media = verifiedMediaFor(contributions, person.id);
   const hasContent = personHasContent(contributions, person);
@@ -73,6 +73,13 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
             <span>
               <b>Record {person.name.split(" ")[0]}'s story, AI-guided</b>
               <span className="interview-cta-sub">A few spoken questions — the AI drafts a biography chapter from the conversation</span>
+            </span>
+          </button>
+          <button type="button" className="interview-cta room-cta" onClick={onOpenRoom}>
+            <span className="interview-cta-icon">🪔</span>
+            <span>
+              <b>{hasRoomObjects ? `Step into ${person.name.split(" ")[0]}'s room` : `Enter ${person.name.split(" ")[0]}'s room`}</b>
+              <span className="interview-cta-sub">{hasRoomObjects ? "A small room furnished with objects that carry a memory." : "Be the first to begin their room."}</span>
             </span>
           </button>
           <div className="folio-section">
