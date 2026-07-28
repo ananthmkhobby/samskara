@@ -2,6 +2,8 @@ import { PEOPLE, CHALLENGES } from "../data/people";
 import { IS_DEMO, CURRENT_FAMILY_NAME, FAMILY_FLAME_STREAK } from "../data/session";
 import { useCountUp } from "../hooks/useCountUp";
 import { parseParamparaContent } from "../lib/parampara";
+import { personIdsWithRooms } from "../lib/chitrashale";
+import { byId } from "../data/helpers";
 import AuthPanel from "./AuthPanel";
 import InstallAppCard from "./InstallAppCard";
 import HeritageIntro, { FamilyBondIcon } from "./HeritageIntro";
@@ -25,7 +27,7 @@ function pickOfTheDay(list) {
   return list[dayOfYear % list.length];
 }
 
-export default function CoverPage({ contributions, onNav, onContribute }) {
+export default function CoverPage({ contributions, onNav, onContribute, onOpenRoom }) {
   const gens = new Set(PEOPLE.map((p) => p.gen));
   const verifiedStories = contributions.filter((c) => c.status === "Verified" && c.type !== "edit" && c.type !== "parampara").length;
   const lessons = PEOPLE.filter((p) => p.lifeLesson).length;
@@ -36,6 +38,12 @@ export default function CoverPage({ contributions, onNav, onContribute }) {
   const wisdomEntries = paramparaEntries.filter((c) => c.field === "wisdom");
   const featuredParampara = pickOfTheDay(wisdomEntries.length ? wisdomEntries : paramparaEntries);
   const featuredText = featuredParampara ? parseParamparaContent(featuredParampara.content) : null;
+
+  // Only ever picks among people whose room already has content — same
+  // reasoning as the Parampara card above, never an invitation to fill an
+  // empty one.
+  const roomPersonId = pickOfTheDay(personIdsWithRooms(contributions));
+  const featuredRoomPerson = roomPersonId ? byId(roomPersonId) : null;
 
   return (
     <section className="wrap" style={{ paddingTop: 0 }}>
@@ -71,6 +79,17 @@ export default function CoverPage({ contributions, onNav, onContribute }) {
           <span className="eyebrow">✨ Parampara — {wisdomEntries.length ? "Ancestor wisdom, today" : "From your family's heritage"}</span>
           <p className="quote">{featuredText.description}</p>
           <p className="who">— {featuredParampara.title} · tap to explore your family's Parampara</p>
+        </button>
+      )}
+
+      {featuredRoomPerson && (
+        <button
+          type="button" className="parampara-highlight-card chitrashale-highlight-card cover-enter"
+          style={{ "--enter-delay": "0.48s", width: "100%" }} onClick={() => onOpenRoom(featuredRoomPerson.id)}
+        >
+          <span className="eyebrow">🪔 Anubhava Chitrashale</span>
+          <p className="quote">Visit {featuredRoomPerson.name.split(" ")[0]}'s room today</p>
+          <p className="who">Objects the family has placed there, waiting to be touched</p>
         </button>
       )}
 

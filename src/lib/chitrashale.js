@@ -80,3 +80,10 @@ export function verifiedObjectsBySpot(contributions, personId) {
 export function hasAnyRoomObjects(contributions, personId) {
   return contributions.some((c) => c.type === "chitrashalaObject" && c.personId === personId && c.status === "Verified");
 }
+
+// Distinct people who already have at least one Verified room object — used
+// to feature a room on Cover the same way Parampara features an existing
+// entry, never an invitation to fill an empty one (no thin-room nudging).
+export function personIdsWithRooms(contributions) {
+  return [...new Set(contributions.filter((c) => c.type === "chitrashalaObject" && c.status === "Verified").map((c) => c.personId))];
+}

@@ -2,11 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ROOM_SPOTS, parseChitrashaleContent, verifiedObjectsBySpot } from "../lib/chitrashale";
 import { ChitrashaleIcon } from "./ChitrashaleIcons";
 import { batchResolveMediaUrls } from "../lib/mediaUpload";
+import { createAmbientPlayer } from "../lib/ambientSound";
 
 const SILENCE_DELAY_MS = 5000;
 const MOOD_SETTLE_MS = 900;
+const MUTE_KEY = "vamsha.chitrashaleMuted";
 
-function ObjectSpot({ spot, entry, urlMap, onOpenObject }) {
+function ObjectSpot({ spot, entry, urlMap, onOpenObject, onMoodChange }) {
   const [revealed, setRevealed] = useState(false);
   const [revealing, setRevealing] = useState(false);
   const [moodActive, setMoodActive] = useState(false);
@@ -46,6 +48,7 @@ function ObjectSpot({ spot, entry, urlMap, onOpenObject }) {
       setMoodActive(true);
       timerRef.current = setTimeout(() => {
         setRevealed(true);
+        onMoodChange?.(c.moodKey || "rain");
         if (audioUrl && audioRef.current) audioRef.current.play().catch(() => {});
       }, MOOD_SETTLE_MS);
       return;
@@ -73,8 +76,8 @@ function ObjectSpot({ spot, entry, urlMap, onOpenObject }) {
         onClick={handleTap}
         aria-label={entry.title}
       >
-        <span className="chitra-spot-icon">
-          {photoUrl ? <img src={photoUrl} alt={entry.title} /> : <ChitrashaleIcon iconKey={c.iconKey} />}
+        <span className={`chitra-spot-icon${photoUrl ? " chitra-photo-frame" : ""}`}>
+          {photoUrl ? <img className="chitra-photo-treated" src={photoUrl} alt={entry.title} /> : <ChitrashaleIcon iconKey={c.iconKey} />}
         </span>
         <span className="chitra-spot-label">{entry.title}</span>
       </button>
@@ -99,9 +102,34 @@ export default function ChitrashaleRoom({ person, contributions, onClose, onOpen
   const [urlMap, setUrlMap] = useState({});
   const [reflectionText, setReflectionText] = useState("");
   const [reflectionSubmitting, setReflectionSubmitting] = useState(false);
+  const [muted, setMuted] = useState(() => {
+    try { return localStorage.getItem(MUTE_KEY) === "1"; } catch { return false; }
+  });
+  const playerRef = useRef(null);
 
   const objectsBySpot = useMemo(() => verifiedObjectsBySpot(contributions, person.id), [contributions, person.id]);
   const hasAnyObjects = Object.keys(objectsBySpot).length > 0;
+
+  // A soft, sparse "birds" bed on open — quiet enough to never compete with a
+  // tap-revealed voice or memory. setMuted must run before the first setBed()
+  // so the initial bed starts at the right volume instead of starting loud
+  // and then ramping down. Torn down on unmount so nothing keeps playing
+  // after the room closes.
+  useEffect(() => {
+    const player = createAmbientPlayer();
+    playerRef.current = player;
+    player.setMuted(muted);
+    player.setBed("birds");
+    return () => player.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function toggleMuted() {
+    const next = !muted;
+    setMuted(next);
+    playerRef.current?.setMuted(next);
+    try { localStorage.setItem(MUTE_KEY, next ? "1" : "0"); } catch { /* storage unavailable */ }
+  }
 
   useEffect(() => {
     const paths = [];
@@ -134,6 +162,14 @@ export default function ChitrashaleRoom({ person, contributions, onClose, onOpen
     <div className="modal-backdrop chitra-room-backdrop" onClick={(e) => { if (e.target === e.currentTarget) requestClose(); }}>
       <div className="chitra-room-panel">
         <button className="modal-close on-paper" onClick={requestClose} aria-label="Close">✕</button>
+        {phase === "room" && (
+          <button
+            type="button" className="chitra-mute-toggle on-paper"
+            onClick={toggleMuted} aria-label={muted ? "Unmute room sound" : "Mute room sound"}
+          >
+            {muted ? "🔇" : "🔊"}
+          </button>
+        )}
 
         {phase === "room" && (
           <>
@@ -142,7 +178,10 @@ export default function ChitrashaleRoom({ person, contributions, onClose, onOpen
                 {[18, 38, 50, 64, 82].map((x, i) => <span key={i} className="chitra-mote" style={{ "--mote-x": `${x}%`, "--mote-delay": `${i * 0.6}s` }} />)}
               </div>
               {ROOM_SPOTS.map((spot) => (
-                <ObjectSpot key={spot.key} spot={spot} entry={objectsBySpot[spot.key]} urlMap={urlMap} onOpenObject={onOpenAdd} />
+                <ObjectSpot
+                  key={spot.key} spot={spot} entry={objectsBySpot[spot.key]} urlMap={urlMap} onOpenObject={onOpenAdd}
+                  onMoodChange={(kind) => playerRef.current?.setBed(kind)}
+                />
               ))}
             </div>
             <div className="chitra-room-footer">

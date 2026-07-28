@@ -655,7 +655,7 @@ export default function App() {
     <div id="app">
       <TopBar view={view} onNav={goTo} pendingCount={pendingCount} onJoinAnother={() => openJoinFamily({})} />
       <main>
-        {view === "cover" && <CoverPage contributions={contributions} onNav={goTo} onContribute={openContribute} />}
+        {view === "cover" && <CoverPage contributions={contributions} onNav={goTo} onContribute={openContribute} onOpenRoom={openRoom} />}
         {view === "tree" && <TreeView contributions={contributions} onSelectPerson={selectPerson} onNav={goTo} />}
         {view === "parampara" && <ParamparaView contributions={contributions} onContribute={openParamparaContribute} />}
         {view === "library" && <LibraryView onOpenBook={openBook} onAddBook={openAddBook} />}

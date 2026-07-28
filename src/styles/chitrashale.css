@@ -38,6 +38,40 @@
   transition: box-shadow .3s ease, transform .3s ease; overflow: hidden;
 }
 .chitra-spot-icon img { width: 100%; height: 100%; object-fit: cover; }
+
+/* A warm color-grade + soft vignette on any real uploaded object photo, so a
+   slightly dim phone snapshot still reads as "belongs in this room" rather
+   than a raw, disconnected image. Applied identically in the authoring
+   modal's own preview, so there's no surprise mismatch between what a
+   contributor sees while choosing and what actually appears in the room.
+   The filter goes on the <img> itself, but the vignette is a ::after on its
+   *wrapper* — many browsers don't reliably render generated content on
+   replaced elements like <img>, so the pseudo-element needs a real
+   (non-replaced) box to sit on. */
+.chitra-photo-treated { filter: sepia(.16) saturate(1.15) contrast(1.04) brightness(.97); width: 100%; height: 100%; object-fit: cover; }
+.chitra-photo-frame { position: relative; display: inline-block; }
+.chitra-photo-frame::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  box-shadow: inset 0 0 14px 4px rgba(40,24,8,.35);
+}
+
+/* Reuses .parampara-highlight-card's layout wholesale (padding, border-radius,
+   cursor) — this just overrides the color to the room's own dusk/indigo tone
+   (matching .interview-cta.room-cta) and drops the curly quote marks
+   .parampara-highlight-card adds around .quote, since this isn't a quoted
+   saying, it's an invitation. */
+.chitrashale-highlight-card {
+  background: linear-gradient(155deg, #4A4472, var(--parchment-paper)); border-color: #2E2A4A;
+}
+.chitrashale-highlight-card .eyebrow { color: #2E2A4A; }
+.chitrashale-highlight-card .quote { font-style: normal; }
+.chitrashale-highlight-card .quote::before, .chitrashale-highlight-card .quote::after { content: none; }
+
+.chitra-mute-toggle {
+  position: absolute; top: 14px; right: 54px; width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--line-strong); background: var(--parchment-deep); color: var(--ink);
+  cursor: pointer; font-size: 13px; z-index: 3; display: flex; align-items: center; justify-content: center;
+}
 .chitra-spot-icon svg { width: 30px; height: 22px; }
 .chitra-spot.revealed .chitra-spot-icon, .chitra-spot.revealing .chitra-spot-icon {
   box-shadow: 0 0 0 5px var(--gold-wash), var(--shadow-1); transform: scale(1.06);

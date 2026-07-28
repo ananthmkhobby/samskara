@@ -153,7 +153,11 @@ export default function ChitrashaleAddModal({ person, occupiedSpots, initialSpot
             <div className="form-row">
               <label>Photo of the real object (optional)</label>
               <input type="file" accept="image/*" onChange={handlePhotoFile} />
-              {photoDataUrl && <img src={photoDataUrl} alt="" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 8, marginTop: 10, border: "1px solid var(--line-strong)" }} />}
+              {photoDataUrl && (
+                <span className="chitra-photo-frame" style={{ width: 90, height: 90, borderRadius: 8, marginTop: 10, border: "1px solid var(--line-strong)", display: "inline-block" }}>
+                  <img className="chitra-photo-treated" src={photoDataUrl} alt="" style={{ borderRadius: 8 }} />
+                </span>
+              )}
               {photoError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{photoError}</p>}
               {!photoDataUrl && (
                 <div className="type-grid" style={{ marginTop: 10 }}>
