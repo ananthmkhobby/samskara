@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { MIN_GEN, MAX_GEN, byId } from "../data/helpers";
+import { MIN_GEN, MAX_GEN, byId, yearsLabel } from "../data/helpers";
 import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, CURRENT_ROLE } from "../data/session";
-import { createInvite, fetchFamilyMembers, updateMemberRole } from "../data/familyDb";
+import { createInvite, fetchFamilyMembers, updateMemberRole, setMemberPersonLink } from "../data/familyDb";
 import { categoryFor } from "../lib/parampara";
 import { libraryCategoryFor } from "../lib/library";
 import { spotFor } from "../lib/chitrashale";
-import { BOOKS } from "../data/people";
+import { BOOKS, PEOPLE } from "../data/people";
 import PersonAvatar from "./PersonAvatar";
 
 const TABS = ["Pending", "Verified", "Rejected", "All"];
@@ -16,6 +16,7 @@ function RosterCard() {
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
   const isHead = CURRENT_ROLE === "head";
+  const isModerator = CURRENT_ROLE === "head" || CURRENT_ROLE === "admin";
 
   useEffect(() => {
     fetchFamilyMembers(CURRENT_FAMILY_ID).then(setMembers).catch((err) => setError(err.message));
@@ -27,6 +28,19 @@ function RosterCard() {
     try {
       await updateMemberRole(member.id, role);
       setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, role } : m)));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function changePersonLink(member, personId) {
+    setBusyId(member.id);
+    setError("");
+    try {
+      await setMemberPersonLink(member.id, personId || null);
+      setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, personId: personId || null } : m)));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -49,6 +63,23 @@ function RosterCard() {
           <div className="queue-main">
             <b>{m.displayName || "Unnamed member"}</b>
             <div className="queue-meta">{ROLE_LABELS[m.role]} · joined {m.createdAt?.slice(0, 10)}</div>
+            {(m.userId === CURRENT_USER_ID || isModerator) && (
+              <div style={{ marginTop: 6 }}>
+                <label style={{ fontSize: 11, color: "var(--ink-faint)", display: "block", marginBottom: 3 }}>
+                  Which one is {m.userId === CURRENT_USER_ID ? "you" : "this"} in the tree?
+                </label>
+                <select
+                  value={m.personId || ""} disabled={busyId === m.id}
+                  onChange={(e) => changePersonLink(m, e.target.value)}
+                  style={{ fontSize: 13, padding: "4px 6px" }}
+                >
+                  <option value="">— not linked —</option>
+                  {[...PEOPLE].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}{yearsLabel(p) ? ` (${yearsLabel(p)})` : ""}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           {isHead && m.role !== "head" && (
             <div className="queue-actions">

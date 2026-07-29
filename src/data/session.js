@@ -26,6 +26,10 @@ export let NEEDS_LOGIN = false;
 // Shared, family-wide streak — see bumpFamilyFlame in familyDb.js. 0 until
 // resolved (or if the bump silently failed), which just hides the widget.
 export let FAMILY_FLAME_STREAK = 0;
+// Which person in the tree (if any) the logged-in user has linked
+// themselves to — null in demo mode, or for a real account that hasn't
+// picked one yet via Admin → Roster. Lets the Tree view highlight "you".
+export let MY_PERSON_ID = null;
 
 export function setSession(next) {
   CURRENT_USER_ID = next.userId ?? null;
@@ -37,4 +41,5 @@ export function setSession(next) {
   NEEDS_LOGIN = next.needsLogin ?? false;
   MY_FAMILIES = next.myFamilies ?? [];
   FAMILY_FLAME_STREAK = next.flameStreak ?? 0;
+  MY_PERSON_ID = next.myPersonId ?? null;
 }

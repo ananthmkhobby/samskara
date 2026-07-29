@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabaseClient";
 import { batchResolveMediaUrls, resolveMediaUrl } from "../lib/mediaUpload";
-import { fetchFamilyData, fetchFamilyName, fetchMyFamilies, fetchActiveFamilyId, fetchLibraryData, mapContributionRow, insertPerson as dbInsertPerson, insertMarriage as dbInsertMarriage, insertBook as dbInsertBook, bumpFamilyFlame } from "./familyDb";
+import { fetchFamilyData, fetchFamilyName, fetchMyFamilies, fetchActiveFamilyId, fetchLibraryData, mapContributionRow, insertPerson as dbInsertPerson, insertMarriage as dbInsertMarriage, insertBook as dbInsertBook, bumpFamilyFlame, fetchMyPersonLink } from "./familyDb";
 import { setSession, DEMO_FAMILY_ID, CURRENT_FAMILY_ID } from "./session";
 
 export const VALUES = ["Courage", "Seva", "Education", "Simplicity", "Devotion", "Discipline", "Hospitality", "Resilience"];
@@ -111,13 +111,16 @@ export async function initDataLayer() {
 
   const familyId = resolved.familyId;
 
-  const [{ people, marriages, contributions, experienceEntries }, familyName, libraryData, flameStreak] = await Promise.all([
+  const [{ people, marriages, contributions, experienceEntries }, familyName, libraryData, flameStreak, myPersonId] = await Promise.all([
     fetchFamilyData(familyId),
     fetchFamilyName(familyId),
     fetchLibraryData(familyId),
     // Non-critical — a failed flame bump should never block the whole app
     // from loading, it just leaves the streak widget hidden this visit.
     bumpFamilyFlame(familyId).catch(() => 0),
+    // Demo visitors have no real user_id to look up, and a failed lookup
+    // should never block boot — it just leaves nobody highlighted in Tree.
+    resolved.userId ? fetchMyPersonLink(familyId, resolved.userId).catch(() => null) : Promise.resolve(null),
   ]);
 
   const mappedPeople = people.map(mapPersonRow);
@@ -171,6 +174,7 @@ export async function initDataLayer() {
     needsFamily: resolved.needsFamily,
     myFamilies: resolved.myFamilies,
     flameStreak,
+    myPersonId,
   });
 }
 
@@ -195,11 +199,15 @@ export function makeUniquePersonId(name) {
 // person's id, which the database can only accept once this row actually
 // exists — can await it first instead of racing it.
 export function addPerson(person, marriage) {
+  // Captured before the push, so it's this new person's own index — new
+  // relatives always land at the end of the sibling order they were added
+  // in, matching how a family actually remembers and enters people.
+  const sortIndex = PEOPLE.length;
   PEOPLE.push({ ...person, parents: person.parents || [], chapters: person.chapters || [], timeline: person.timeline || [], experience: person.experience || [] });
   if (marriage) MARRIAGES.push(marriage);
   recomputeMinMaxGen();
 
-  const personInsert = dbInsertPerson(CURRENT_FAMILY_ID, person);
+  const personInsert = dbInsertPerson(CURRENT_FAMILY_ID, person, sortIndex);
   const marriageInsert = marriage ? dbInsertMarriage(CURRENT_FAMILY_ID, marriage) : Promise.resolve();
   return Promise.all([personInsert, marriageInsert]);
 }

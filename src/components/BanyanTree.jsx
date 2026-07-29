@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { computeBanyanLayout } from "../lib/banyanLayout";
 import { personHasContent } from "../data/helpers";
 import { usePanZoom } from "../hooks/usePanZoom";
+import { MY_PERSON_ID } from "../data/session";
 import PersonAvatar from "./PersonAvatar";
 
 export default function BanyanTree({ people, contributions, valueFilter, onSelectPerson }) {
@@ -32,6 +33,7 @@ export default function BanyanTree({ people, contributions, valueFilter, onSelec
           const has = personHasContent(contributions, p);
           const classes = ["banyan-marker"];
           classes.push(hasExp ? "glow-strong" : has ? "glow-soft" : "");
+          if (p.id === MY_PERSON_ID) classes.push("me");
           if (valueFilter) {
             const matches = p.lifeLesson && p.lifeLesson.values.includes(valueFilter);
             classes.push(matches ? "highlighted" : "dimmed");

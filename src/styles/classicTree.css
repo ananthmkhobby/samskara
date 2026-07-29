@@ -37,6 +37,16 @@
 .tnode.dimmed { opacity: .28 !important; }
 .tnode.highlighted .avatar { box-shadow: 0 0 0 4px var(--forest-wash); }
 
+/* The logged-in user's own node — a gold ring plus an explicit "You" tag,
+   since a ring alone can read as "just another legacy member" at a glance
+   in a 20+-person tree. */
+.tnode.me .avatar { border: 3px solid var(--gold); box-shadow: 0 0 0 4px var(--gold-wash), 0 0 12px 2px var(--gold-wash); }
+.me-badge {
+  position: absolute; top: -9px; left: 50%; transform: translateX(-50%); z-index: 1;
+  background: var(--gold-deep); color: #FBEFD8; font-size: 9px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; padding: 2px 7px; border-radius: 999px; box-shadow: var(--shadow-1); white-space: nowrap;
+}
+
 .tree-link {
   stroke-dashoffset: 1;
   animation: treeLinkDraw .45s ease-out forwards; animation-delay: var(--grow-delay, 0s);

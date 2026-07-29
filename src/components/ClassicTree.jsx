@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { computeClassicLayout, NODE_R, SIDE_PAD, LABEL_CLEARANCE, LABEL_W } from "../lib/classicTreeLayout";
 import { yearsLabel, roleTag } from "../data/helpers";
 import { usePanZoom } from "../hooks/usePanZoom";
+import { MY_PERSON_ID } from "../data/session";
 import PersonAvatar from "./PersonAvatar";
 
 // Matches the Banyan tree's own bloom-in stagger (0.32s per generation, 0.06s
@@ -74,6 +75,7 @@ export default function ClassicTree({ people, contributions, valueFilter, onSele
           const classes = ["tnode"];
           if (p.isLegacy) classes.push("legacy");
           if (isUnwritten) classes.push("unwritten");
+          if (p.id === MY_PERSON_ID) classes.push("me");
           if (valueFilter) {
             const matches = p.lifeLesson && p.lifeLesson.values.includes(valueFilter);
             classes.push(matches ? "highlighted" : "dimmed");
@@ -87,6 +89,7 @@ export default function ClassicTree({ people, contributions, valueFilter, onSele
               aria-label={`Open ${p.name}'s folio`}
               onClick={() => onSelectPerson(p.id)}
             >
+              {p.id === MY_PERSON_ID && <span className="me-badge">You</span>}
               <PersonAvatar person={p} size={64} minGen={minGen} maxGen={maxGen} className="avatar" />
               <div className="label">
                 <div className="p-name">{p.name}</div>

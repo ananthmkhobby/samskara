@@ -10,7 +10,7 @@ function requireClient() {
 export async function fetchFamilyData(familyId) {
   const db = requireClient();
   const [people, marriages, contributions, experienceEntries] = await Promise.all([
-    db.from("people").select("*").eq("family_id", familyId),
+    db.from("people").select("*").eq("family_id", familyId).order("sort_index", { ascending: true, nullsFirst: false }),
     db.from("marriages").select("*").eq("family_id", familyId),
     db.from("contributions").select("*").eq("family_id", familyId),
     db.from("experience_entries").select("*").eq("family_id", familyId),
@@ -125,7 +125,7 @@ export function mapContributionRow(row) {
 
 // ---- People ----------------------------------------------------------------
 
-export async function insertPerson(familyId, p) {
+export async function insertPerson(familyId, p, sortIndex) {
   const db = requireClient();
   const row = {
     family_id: familyId,
@@ -141,6 +141,7 @@ export async function insertPerson(familyId, p) {
     trust: p.trust ?? "approx",
     geo: p.geo ?? null,
     geo_origin: p.geoOrigin ?? null,
+    sort_index: sortIndex ?? null,
   };
   const { error } = await db.from("people").insert(row);
   if (error) throw new Error(error.message);
@@ -247,7 +248,10 @@ export async function deleteExperienceEntry(entryId) {
 // spouses before the transaction commits.
 export async function bulkInsertFamily(familyId, people, marriages) {
   const db = requireClient();
-  const peopleRows = people.map((p) => ({
+  // sort_index = the row's position in the uploaded sheet — this path is
+  // only ever used to seed a still-empty tree (FamilyBuilderView's
+  // alreadyHasPeople gate), so starting the sequence at 0 is safe.
+  const peopleRows = people.map((p, i) => ({
     family_id: familyId,
     id: p.id,
     name: p.name,
@@ -263,6 +267,7 @@ export async function bulkInsertFamily(familyId, people, marriages) {
     summary: p.summary ?? null,
     places: p.places ?? null,
     life_lesson: p.lifeLesson ?? null,
+    sort_index: i,
   }));
   const { error: peopleError } = await db.from("people").insert(peopleRows);
   if (peopleError) throw new Error(peopleError.message);
@@ -380,9 +385,9 @@ export async function redeemInvite(code, displayName) {
 
 export async function fetchFamilyMembers(familyId) {
   const db = requireClient();
-  const { data, error } = await db.from("family_members").select("id, user_id, role, display_name, created_at").eq("family_id", familyId);
+  const { data, error } = await db.from("family_members").select("id, user_id, role, display_name, person_id, created_at").eq("family_id", familyId);
   if (error) throw new Error(error.message);
-  return data.map((r) => ({ id: r.id, userId: r.user_id, role: r.role, displayName: r.display_name, createdAt: r.created_at }));
+  return data.map((r) => ({ id: r.id, userId: r.user_id, role: r.role, displayName: r.display_name, personId: r.person_id, createdAt: r.created_at }));
 }
 
 // Only ever succeeds when the acting session is the Family Head — enforced
@@ -393,6 +398,29 @@ export async function updateMemberRole(memberRowId, role) {
   if (error) throw new Error(error.message);
   if (!data.length) throw new Error("Only the Family Head can change roles.");
   return data[0];
+}
+
+// family_members has no direct-write RLS for this column on purpose (see
+// the "no direct write policy, only validated security-definer RPCs"
+// posture already used by redeem_invite()/set_active_family()) — a raw RLS
+// policy scoped to "your own row" would also let a member touch their own
+// `role` column, which is a real privilege-escalation gap. The RPC only
+// ever touches person_id, validates the target row belongs to the caller's
+// own family, and lets a member set their own link or a head/admin set
+// anyone's.
+export async function setMemberPersonLink(memberRowId, personId) {
+  const db = requireClient();
+  const { error } = await db.rpc("set_member_person_link", { p_member_id: memberRowId, p_person_id: personId });
+  if (error) throw new Error(error.message);
+}
+
+// The caller's own membership row for the active family — used at boot to
+// know which tree node (if any) is "me", so the Tree view can highlight it.
+export async function fetchMyPersonLink(familyId, userId) {
+  const db = requireClient();
+  const { data, error } = await db.from("family_members").select("person_id").eq("family_id", familyId).eq("user_id", userId).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.person_id ?? null;
 }
 
 // A shared, family-wide streak (not per-user) — whoever's the first to open
