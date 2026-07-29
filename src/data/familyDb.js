@@ -142,6 +142,8 @@ export async function insertPerson(familyId, p, sortIndex) {
     geo: p.geo ?? null,
     geo_origin: p.geoOrigin ?? null,
     sort_index: sortIndex ?? null,
+    born_year_only: p.bornYearOnly ?? false,
+    died_year_only: p.diedYearOnly ?? false,
   };
   const { error } = await db.from("people").insert(row);
   if (error) throw new Error(error.message);
@@ -268,6 +270,8 @@ export async function bulkInsertFamily(familyId, people, marriages) {
     places: p.places ?? null,
     life_lesson: p.lifeLesson ?? null,
     sort_index: i,
+    born_year_only: p.bornYearOnly ?? false,
+    died_year_only: p.diedYearOnly ?? false,
   }));
   const { error: peopleError } = await db.from("people").insert(peopleRows);
   if (peopleError) throw new Error(peopleError.message);
@@ -281,9 +285,9 @@ export async function bulkInsertFamily(familyId, people, marriages) {
 
 // ---- Invites ---------------------------------------------------------------
 
-export async function createInvite(familyId, userId) {
+export async function createInvite(familyId, userId, personId) {
   const db = requireClient();
-  const { data, error } = await db.from("invites").insert({ family_id: familyId, created_by: userId }).select().single();
+  const { data, error } = await db.from("invites").insert({ family_id: familyId, created_by: userId, person_id: personId || null }).select().single();
   if (error) throw new Error(error.message);
   return data.code;
 }

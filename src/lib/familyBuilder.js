@@ -35,13 +35,15 @@ export function flattenFamily(root) {
     const spouseId = hasSpouse ? uniqueId(node.spouseName.trim()) : undefined;
 
     const person = { id, name: node.name.trim(), gen, parents: parentIds, trust: "approx" };
-    if (node.birthYear?.trim()) person.born = `${node.birthYear.trim()}-01-01`;
+    // Only a year is ever collected here, never a real day/month — flag it
+    // so the Vault doesn't list this as a real January 1st event.
+    if (node.birthYear?.trim()) { person.born = `${node.birthYear.trim()}-01-01`; person.bornYearOnly = true; }
     if (spouseId) person.spouse = spouseId;
     people.push(person);
 
     if (spouseId) {
       const spouse = { id: spouseId, name: node.spouseName.trim(), gen, parents: [], spouse: id, trust: "approx" };
-      if (node.spouseBirthYear?.trim()) spouse.born = `${node.spouseBirthYear.trim()}-01-01`;
+      if (node.spouseBirthYear?.trim()) { spouse.born = `${node.spouseBirthYear.trim()}-01-01`; spouse.bornYearOnly = true; }
       people.push(spouse);
       marriages.push({ a: id, b: spouseId, date: null });
     }

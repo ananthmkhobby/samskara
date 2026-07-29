@@ -105,13 +105,14 @@ function InviteCard() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [personId, setPersonId] = useState("");
 
   async function generate() {
     setBusy(true);
     setError("");
     setCopied(false);
     try {
-      const code = await createInvite(CURRENT_FAMILY_ID, CURRENT_USER_ID);
+      const code = await createInvite(CURRENT_FAMILY_ID, CURRENT_USER_ID, personId || null);
       setLink(`${window.location.origin}/?code=${code}`);
     } catch (err) {
       setError(err.message);
@@ -132,6 +133,17 @@ function InviteCard() {
     <div className="card" style={{ marginBottom: 18, padding: 16 }}>
       <h4 style={{ marginTop: 0 }}>Invite a new member</h4>
       <p className="form-hint" style={{ marginTop: 0 }}>Generates a one-time link — anyone who opens it can create an account and join this family as a member.</p>
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ fontSize: 11, color: "var(--ink-faint)", display: "block", marginBottom: 3 }}>
+          Who is this invite for? (optional — saves them a step in Roster later)
+        </label>
+        <select value={personId} onChange={(e) => setPersonId(e.target.value)} style={{ fontSize: 13, padding: "4px 6px" }}>
+          <option value="">— not sure yet, they'll pick themselves —</option>
+          {[...PEOPLE].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
+            <option key={p.id} value={p.id}>{p.name}{yearsLabel(p) ? ` (${yearsLabel(p)})` : ""}</option>
+          ))}
+        </select>
+      </div>
       {link ? (
         <div className="tag-row" style={{ alignItems: "center" }}>
           <input type="text" readOnly value={link} style={{ flex: 1, minWidth: 240 }} onFocus={(e) => e.target.select()} />

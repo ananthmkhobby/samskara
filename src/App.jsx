@@ -421,7 +421,9 @@ export default function App() {
       if (anchor) {
         const id = makeUniquePersonId(c.name);
         const newPerson = { id, name: c.name, trust: "approx" };
-        if (c.birthYear) newPerson.born = `${c.birthYear}-01-01`;
+        // Only a year is ever collected here, never a real day/month — flag
+        // it so the Vault doesn't list this as a real January 1st event.
+        if (c.birthYear) { newPerson.born = `${c.birthYear}-01-01`; newPerson.bornYearOnly = true; }
         if (c.geo) newPerson.geo = c.geo;
         if (c.relation === "spouse") {
           newPerson.gen = anchor.gen;

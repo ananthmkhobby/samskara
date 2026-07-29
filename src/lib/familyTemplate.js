@@ -79,12 +79,14 @@ function slugifyId(raw) {
 }
 
 function parseDate(raw) {
-  if (raw instanceof Date && !isNaN(raw)) return { value: raw.toISOString().slice(0, 10), warning: null };
+  if (raw instanceof Date && !isNaN(raw)) return { value: raw.toISOString().slice(0, 10), yearOnly: false, warning: null };
   const s = String(raw ?? "").trim();
-  if (!s) return { value: null, warning: null };
-  if (/^\d{4}$/.test(s)) return { value: `${s}-01-01`, warning: null };
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return { value: s, warning: null };
-  return { value: null, warning: `couldn't understand the date "${s}" — left blank` };
+  if (!s) return { value: null, yearOnly: false, warning: null };
+  // A bare year has no real day/month — flagged so the Vault doesn't treat
+  // the January 1st placeholder below as an actual date.
+  if (/^\d{4}$/.test(s)) return { value: `${s}-01-01`, yearOnly: true, warning: null };
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return { value: s, yearOnly: false, warning: null };
+  return { value: null, yearOnly: false, warning: `couldn't understand the date "${s}" — left blank` };
 }
 
 // Parses an uploaded, filled-in template. Returns { people, marriages,
@@ -199,6 +201,8 @@ export async function parseTemplateWorkbook(arrayBuffer) {
     const died = parseDate(row.died);
     row._born = born.value;
     row._died = died.value;
+    row._bornYearOnly = born.yearOnly;
+    row._diedYearOnly = died.yearOnly;
     if (born.warning) warnings.push(`Row ${row._rowNum} ("${row._id}"): ${born.warning} for Born.`);
     if (died.warning) warnings.push(`Row ${row._rowNum} ("${row._id}"): ${died.warning} for Died.`);
   });
@@ -237,6 +241,8 @@ export async function parseTemplateWorkbook(arrayBuffer) {
     gen: row._gen,
     born: row._born,
     died: row._died,
+    bornYearOnly: row._bornYearOnly,
+    diedYearOnly: row._diedYearOnly,
     parents: [row._parent1, row._parent2].filter(Boolean),
     spouse: row._spouse || undefined,
     rashi: String(row.rashi ?? "").trim() || undefined,
