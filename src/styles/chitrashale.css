@@ -9,12 +9,128 @@
 }
 @media (min-width: 701px) { .chitra-room-panel { border-radius: 14px; max-height: 86vh; } }
 
+/* A genuine one-point-perspective room, not a flat gradient rectangle: a
+   back wall (plain rect) plus left/right side walls, a ceiling sliver and a
+   floor, each a clip-path trapezoid converging on the same vanishing line,
+   so the room actually recedes instead of being one flat plane with icons
+   floating on it. */
 .chitra-room-scene {
   position: relative; height: min(58vh, 460px); flex: none; overflow: hidden;
-  background:
-    radial-gradient(ellipse 60% 45% at 22% 8%, rgba(255,236,180,.55) 0%, rgba(255,236,180,0) 70%),
-    linear-gradient(180deg, #F3E7C8 0%, #E9D6A8 55%, #D8BE87 100%);
+  perspective: 1400px; background: var(--bark-deep);
 }
+.chitra-wall-back {
+  position: absolute; left: 14%; right: 14%; top: 6%; bottom: 45%;
+  background:
+    radial-gradient(ellipse 70% 90% at 26% 18%, rgba(255,244,214,.55) 0%, transparent 58%),
+    linear-gradient(115deg, var(--parchment-deep) 0%, var(--parchment-deep) 55%, var(--bark) 100%);
+}
+.chitra-wall-left {
+  position: absolute; inset: 0; clip-path: polygon(0% 0%, 14% 6%, 14% 55%, 0% 100%);
+  background: linear-gradient(100deg, var(--parchment-deep) 0%, var(--bark) 100%);
+}
+.chitra-wall-right {
+  position: absolute; inset: 0; clip-path: polygon(100% 0%, 100% 100%, 86% 55%, 86% 6%);
+  background: linear-gradient(260deg, var(--bark) 0%, var(--bark-deep) 100%);
+}
+.chitra-ceiling {
+  position: absolute; inset: 0; clip-path: polygon(0% 0%, 100% 0%, 86% 6%, 14% 6%);
+  background: linear-gradient(180deg, var(--bark-deep), var(--bark)); opacity: .85;
+}
+.chitra-floor {
+  position: absolute; inset: 0; clip-path: polygon(0% 100%, 100% 100%, 86% 55%, 14% 55%);
+  background: linear-gradient(180deg, var(--parchment-deep) 0%, var(--bark) 45%, var(--bark-deep) 100%);
+}
+/* Floor plank lines that genuinely converge on the back wall's vanishing
+   line — a handful of straight SVG lines rather than a parallel
+   repeating-gradient texture, which is what made the floor read as flat. */
+.chitra-floor-lines { position: absolute; inset: 0; clip-path: polygon(0% 100%, 100% 100%, 86% 55%, 14% 55%); pointer-events: none; opacity: .55; }
+.chitra-floor-lines line { stroke: rgba(20,10,0,.3); stroke-width: .35; }
+.chitra-baseboard {
+  position: absolute; left: 14%; right: 14%; top: 55%; height: 8px; transform: translateY(-100%);
+  background: linear-gradient(180deg, var(--gold-deep), var(--bark-deep)); opacity: .6;
+}
+/* A soft directional wash keyed to the window as the room's one light
+   source, screened over the whole scene so every plane and object shares
+   the same lighting logic instead of being lit independently. */
+.chitra-keylight {
+  position: absolute; inset: 0; pointer-events: none; z-index: 1; mix-blend-mode: screen;
+  background: radial-gradient(ellipse 55% 45% at 26% 20%, rgba(255,238,190,.35), transparent 65%);
+}
+.chitra-rug {
+  position: absolute; left: 50%; bottom: 6%; width: 40%; height: 13%; transform: translateX(-50%);
+  clip-path: polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%);
+  background: repeating-linear-gradient(180deg, var(--maroon-deep) 0 5px, var(--gold-deep) 5px 8px, var(--maroon-deep) 8px 13px);
+  opacity: .85; box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+.chitra-vignette { position: absolute; inset: 0; pointer-events: none; z-index: 4; box-shadow: inset 0 0 70px 12px rgba(10,5,0,.45); }
+
+/* Window on the back wall, with a light shaft. */
+.chitra-window { position: absolute; left: 17%; top: 9%; width: 24%; height: 30%; }
+.chitra-window-frame {
+  position: absolute; inset: 0; border-radius: 50% 50% 6px 6px / 38% 38% 6px 6px;
+  background: linear-gradient(155deg, var(--gold), var(--gold-deep));
+  box-shadow: inset 0 0 0 4px var(--bark-deep); padding: 6px;
+}
+.chitra-window-glass {
+  position: absolute; inset: 6px; border-radius: 50% 50% 4px 4px / 34% 34% 4px 4px;
+  background: linear-gradient(200deg, #FFF6E2 0%, #FCE6AE 55%, #E8C077 100%);
+  box-shadow: inset 0 0 20px rgba(255,255,255,.6);
+}
+.chitra-window-mullion-v { position: absolute; left: 50%; top: 6px; bottom: 6px; width: 3px; background: var(--bark-deep); opacity: .5; }
+.chitra-window-mullion-h { position: absolute; top: 46%; left: 6px; right: 6px; height: 3px; background: var(--bark-deep); opacity: .5; }
+.chitra-light-shaft {
+  position: absolute; left: 8%; top: 10%; width: 46%; height: 90%;
+  background: linear-gradient(200deg, rgba(255,244,214,.55), rgba(255,244,214,0) 75%);
+  clip-path: polygon(20% 0%, 55% 0%, 100% 100%, 0% 100%);
+  pointer-events: none; mix-blend-mode: screen;
+}
+
+/* Puja corner — a small lit wall niche, positioned with real clearance from
+   the window on one side and the shelf on the other (they used to overlap
+   by 1%, which read as two colliding shapes). Toned down from an opaque
+   pane to a translucent glow so it reads as a niche, not a second window. */
+.chitra-alcove { position: absolute; left: 45%; top: 8%; width: 16%; height: 24%; }
+.chitra-alcove-shape {
+  position: absolute; inset: 0; border-radius: 50% 50% 0 0 / 62% 62% 0 0;
+  background: radial-gradient(ellipse at 50% 35%, rgba(255,210,130,.5), var(--gold-wash) 60%, transparent 82%);
+  box-shadow: inset 0 0 0 3px var(--gold-deep);
+}
+.chitra-alcove-glow { position: absolute; inset: 10%; border-radius: 50%; background: radial-gradient(circle, rgba(255,235,180,.9), transparent 70%); animation: chitraAlcoveGlow 3.4s ease-in-out infinite; }
+@keyframes chitraAlcoveGlow { 0%,100% { opacity: .55; } 50% { opacity: .95; } }
+
+/* Door — sits on the right SIDE wall (the narrow, shadowed perspective
+   strip past 86%), so it reads as a doorway receding into the room. Its
+   own object spot lives on the floor near its base instead of on the
+   niche itself — the strip is too narrow at this scale for a tap target. */
+.chitra-door-niche { position: absolute; right: 3%; top: 28%; width: 11%; height: 18%; }
+.chitra-door-niche-frame {
+  position: absolute; inset: 0; border-radius: 40% 40% 4px 4px / 26% 26% 4px 4px;
+  background: linear-gradient(160deg, var(--bark), var(--bark-deep)); box-shadow: inset 0 0 0 2px var(--gold-deep), var(--shadow-1);
+}
+.chitra-door-niche-panel { position: absolute; inset: 6px; border-radius: 34% 34% 3px 3px / 22% 22% 3px 3px; background: repeating-linear-gradient(90deg, rgba(0,0,0,.14) 0 2px, transparent 2px 12px); }
+.chitra-door-niche-handle { position: absolute; right: 14%; top: 55%; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); box-shadow: var(--shadow-1); }
+
+/* Low table — a real three-plane object: a tapered top surface, a front
+   apron panel, and two tapered legs, instead of a flat rectangle. */
+.chitra-table { position: absolute; left: 50%; bottom: 18%; width: 34%; height: 14%; transform: translateX(-50%); }
+.chitra-table-top {
+  position: absolute; left: 0; right: 0; top: 0; height: 46%;
+  clip-path: polygon(12% 0%, 88% 0%, 100% 100%, 0% 100%);
+  background: linear-gradient(160deg, var(--gold-deep), var(--bark)); box-shadow: var(--shadow-1);
+}
+.chitra-table-front { position: absolute; left: 6%; right: 6%; top: 42%; height: 28%; background: var(--bark-deep); }
+.chitra-table-leg {
+  position: absolute; bottom: 0; width: 10%; height: 34%; background: var(--bark-deep);
+  clip-path: polygon(22% 0%, 78% 0%, 100% 100%, 0% 100%);
+}
+.chitra-table-leg.l { left: 9%; } .chitra-table-leg.r { right: 9%; }
+
+/* Wall shelf on the back wall's right side, clear of the alcove and the
+   door niche on the side wall. */
+.chitra-shelf { position: absolute; right: 16%; top: 10%; width: 20%; height: 6px; }
+.chitra-shelf-plank { position: absolute; inset: 0; background: linear-gradient(180deg, var(--gold-deep), var(--bark-deep)); border-radius: 2px; box-shadow: 0 3px 6px rgba(0,0,0,.25); }
+.chitra-shelf-bracket { position: absolute; bottom: -8px; width: 3px; height: 8px; background: var(--bark-deep); }
+.chitra-shelf-bracket.l { left: 14%; } .chitra-shelf-bracket.r { right: 14%; }
 .chitra-room-motes { position: absolute; inset: 0; pointer-events: none; }
 .chitra-mote {
   position: absolute; bottom: 20%; left: var(--mote-x, 50%); width: 4px; height: 4px; border-radius: 50%;
@@ -29,9 +145,13 @@
 }
 
 .chitra-spot {
-  position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center;
-  gap: 4px; background: none; border: 0; cursor: pointer; padding: 4px; width: 84px; z-index: 2;
+  /* Bottom-anchored (not centered) so a spot's icon appears to sit ON the
+     piece of architecture its x/y coordinate marks — a shelf, a windowsill,
+     a tabletop — matching how ROOM_SPOTS' coordinates were placed. */
+  position: absolute; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center;
+  gap: 4px; background: none; border: 0; cursor: pointer; padding: 4px; width: 84px; z-index: 2; outline: none;
 }
+.chitra-spot:focus-visible .chitra-spot-icon, .chitra-spot:focus-visible .chitra-spot-plus { outline: 2px solid var(--gold); outline-offset: 3px; }
 .chitra-spot-icon {
   width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
   background: var(--parchment-paper); border: 2px solid var(--gold-deep); box-shadow: var(--shadow-1);
@@ -77,7 +197,11 @@
   box-shadow: 0 0 0 5px var(--gold-wash), var(--shadow-1); transform: scale(1.06);
 }
 .chitra-spot-label {
-  font-size: 11px; font-weight: 600; color: var(--ink); background: rgba(248,240,218,.85); padding: 2px 8px;
+  /* This pill is a deliberately fixed warm-parchment chip regardless of
+     theme (a printed label sitting in the scene) — var(--ink) flips to
+     near-white in dark mode and goes invisible against this always-light
+     background, so the text color is pinned to match. */
+  font-size: 11px; font-weight: 600; color: #2E2013; background: rgba(248,240,218,.85); padding: 2px 8px;
   border-radius: 999px; white-space: nowrap; max-width: 96px; overflow: hidden; text-overflow: ellipsis;
 }
 .chitra-spot-empty { opacity: .55; }
@@ -89,12 +213,23 @@
 
 .chitra-reveal {
   position: absolute; transform: translate(-50%, 6px); margin-top: 42px; width: 176px; text-align: center;
-  background: rgba(248,240,218,.96); border: 1px solid var(--gold-deep); border-radius: 10px; padding: 10px 12px;
+  background: rgba(248,240,218,.96); border: 1px solid var(--gold-deep); border-radius: 10px; padding: 14px 12px 10px;
   box-shadow: var(--shadow-1); z-index: 3; animation: chitraRevealIn .4s ease-out both;
 }
 @keyframes chitraRevealIn { from { opacity: 0; transform: translate(-50%, -4px); } to { opacity: 1; transform: translate(-50%, 6px); } }
-.chitra-reveal-text { font-size: 13px; color: var(--ink); margin: 0; font-style: italic; }
-.chitra-reveal-credit { font-size: 11px; color: var(--ink-faint); margin: 6px 0 0; }
+/* Same fixed-background reasoning as .chitra-spot-label — this card stays
+   warm-parchment in both themes, so its text stays fixed dark too. */
+.chitra-reveal-text { font-size: 13px; color: #2E2013; margin: 0; font-style: italic; }
+.chitra-reveal-credit { font-size: 11px; color: #8A7860; margin: 6px 0 0; }
+/* An explicit close affordance — relying only on tapping the same spot
+   again to dismiss reads as broken once you've moved on to look at
+   something else in the room. */
+.chitra-reveal-close {
+  position: absolute; top: 3px; right: 5px; width: 18px; height: 18px; border-radius: 50%; border: 0;
+  background: transparent; color: #8A7860; font-size: 11px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.chitra-reveal-close:hover { color: #2E2013; }
 .chitra-reveal-hush {
   display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--gold-deep);
   animation: chitraHushPulse 1.6s ease-in-out infinite;
@@ -133,6 +268,47 @@
 }
 @keyframes chitraMoodDropFall { from { transform: translateY(0); opacity: .8; } to { transform: translateY(650%); opacity: .2; } }
 
+/* ---- The wooden double doors — the room's entrance animation ---- */
+.chitra-doors { position: absolute; inset: 0; z-index: 30; display: flex; transform-style: preserve-3d; cursor: pointer; }
+.chitra-door-panel {
+  position: relative; width: 50%; height: 100%;
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,.10) 0 3px, transparent 3px 26px),
+    linear-gradient(100deg, var(--bark) 0%, var(--bark-deep) 55%, var(--bark) 100%);
+  box-shadow: inset 0 0 40px rgba(0,0,0,.35);
+  transition: transform 1.15s cubic-bezier(.5,0,.25,1);
+}
+.chitra-door-panel.left { transform-origin: left center; border-right: 1px solid rgba(0,0,0,.4); }
+.chitra-door-panel.right { transform-origin: right center; border-left: 1px solid rgba(0,0,0,.4); }
+.chitra-door-panel::before { content: ""; position: absolute; inset: 14px; border: 2px solid rgba(0,0,0,.22); border-radius: 3px; }
+.chitra-door-ring {
+  position: absolute; top: 50%; width: 20px; height: 20px; border-radius: 50%; transform: translateY(-50%);
+  background: radial-gradient(circle at 35% 30%, #F3D690, var(--gold-deep) 70%); box-shadow: 0 2px 4px rgba(0,0,0,.4), inset 0 0 3px rgba(0,0,0,.3);
+}
+.chitra-door-panel.left .chitra-door-ring { right: 16px; }
+.chitra-door-panel.right .chitra-door-ring { left: 16px; }
+.chitra-door-glow {
+  position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, rgba(255,224,150,.9), transparent 62%);
+  opacity: 0; transition: opacity .6s ease .5s; pointer-events: none; z-index: 31; mix-blend-mode: screen;
+}
+.chitra-doors.opening .chitra-door-panel.left { transform: rotateY(-108deg); }
+.chitra-doors.opening .chitra-door-panel.right { transform: rotateY(108deg); }
+.chitra-doors.opening .chitra-door-glow { opacity: .8; transition: opacity .5s ease, opacity 1s ease 1s; }
+.chitra-doors.opening.settled .chitra-door-glow { opacity: 0; }
+/* The doors container itself is flat (only its child panels rotate), so
+   without this its full inset:0 box keeps capturing every click for the
+   ~2s it takes the panels to swing open — the room underneath would
+   silently eat every tap during that window. Turning off pointer-events
+   the instant "opening" is set (not waiting for React to unmount it a beat
+   later) closes that gap immediately. */
+.chitra-doors.opening { pointer-events: none; }
+.chitra-knock-hint {
+  position: absolute; bottom: 40%; left: 50%; transform: translate(-50%, 0); z-index: 32; text-align: center;
+  color: #F3E6C8; font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; opacity: .85;
+  animation: chitraHintPulse 1.8s ease-in-out infinite;
+}
+@keyframes chitraHintPulse { 0%,100% { opacity: .55; } 50% { opacity: .95; } }
+
 .chitra-room-footer { padding: 16px 20px 20px; border-top: 1px solid var(--line); flex: none; }
 .chitra-room-title { font-family: var(--font-display); font-size: 16px; color: var(--maroon-deep); margin: 0 0 4px; }
 
@@ -145,7 +321,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .chitra-mote, .chitra-icon-flowers .flower-head, .chitra-icon-beads .beads-string,
-  .chitra-icon-rain .rain-drop, .chitra-mood-overlay, .chitra-mood-drop, .chitra-reveal-hush, .chitra-reveal {
+  .chitra-icon-rain .rain-drop, .chitra-mood-overlay, .chitra-mood-drop, .chitra-reveal-hush, .chitra-reveal,
+  .chitra-alcove-glow, .chitra-knock-hint {
     animation: none;
   }
   .chitra-mote { opacity: 0; }
@@ -153,4 +330,5 @@
   .chitra-mood-overlay { opacity: 1; }
   .chitra-mood-drop { opacity: 0; }
   .chitra-reveal { opacity: 1; transform: translate(-50%, 6px); }
+  .chitra-door-panel, .chitra-door-glow { transition: none !important; }
 }

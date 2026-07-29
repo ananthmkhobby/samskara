@@ -137,6 +137,64 @@ export function ChairIcon() {
   );
 }
 
+export function BellIcon() {
+  return (
+    <svg className="heritage-icon chitra-icon-bell" viewBox="0 0 120 80" aria-hidden="true">
+      <defs>
+        <radialGradient id="bellGrad" cx="35%" cy="30%" r="75%">
+          <stop offset="0%" stopColor="#FFE9B0" />
+          <stop offset="60%" stopColor="var(--gold)" />
+          <stop offset="100%" stopColor="var(--gold-deep)" />
+        </radialGradient>
+      </defs>
+      <path
+        d="M60,10 Q56,10 56,16 Q40,20 40,38 L40,52 L32,64 L88,64 L80,52 L80,38 Q80,20 64,16 Q64,10 60,10 Z"
+        fill="url(#bellGrad)" stroke="var(--gold-deep)" strokeWidth="1.5"
+      />
+      <circle cx="60" cy="70" r="5" fill="var(--gold-deep)" />
+    </svg>
+  );
+}
+
+export function PocketWatchIcon() {
+  return (
+    <svg className="heritage-icon chitra-icon-watch" viewBox="0 0 120 80" aria-hidden="true">
+      <defs>
+        <radialGradient id="watchGrad" cx="35%" cy="30%" r="75%">
+          <stop offset="0%" stopColor="var(--parchment-paper)" />
+          <stop offset="100%" stopColor="var(--gold-wash)" />
+        </radialGradient>
+      </defs>
+      <rect x="54" y="6" width="12" height="8" rx="2" fill="var(--gold-deep)" />
+      <circle cx="60" cy="42" r="28" fill="url(#watchGrad)" stroke="var(--gold-deep)" strokeWidth="3.5" />
+      <circle cx="60" cy="42" r="20" fill="none" stroke="var(--gold)" strokeWidth="1.4" />
+      <line x1="60" y1="42" x2="60" y2="26" stroke="var(--bark-deep)" strokeWidth="2.4" strokeLinecap="round" />
+      <line x1="60" y1="42" x2="72" y2="42" stroke="var(--bark-deep)" strokeWidth="2.4" strokeLinecap="round" />
+      <circle cx="60" cy="42" r="2.6" fill="var(--bark-deep)" />
+    </svg>
+  );
+}
+
+export function ClockIcon() {
+  return (
+    <svg className="heritage-icon chitra-icon-clock" viewBox="0 0 120 80" aria-hidden="true">
+      <defs>
+        <radialGradient id="clockGrad" cx="35%" cy="30%" r="75%">
+          <stop offset="0%" stopColor="var(--parchment-paper)" />
+          <stop offset="100%" stopColor="var(--gold-wash)" />
+        </radialGradient>
+      </defs>
+      <path d="M40,68 L80,68 L80,72 L40,72 Z" fill="var(--bark-deep)" />
+      <circle cx="60" cy="12" r="4" fill="var(--gold)" />
+      <rect x="58.5" y="6" width="3" height="7" fill="var(--gold-deep)" />
+      <circle cx="60" cy="40" r="26" fill="url(#clockGrad)" stroke="var(--gold-deep)" strokeWidth="3.5" />
+      <line x1="60" y1="40" x2="60" y2="24" stroke="var(--bark-deep)" strokeWidth="2.4" strokeLinecap="round" />
+      <line x1="60" y1="40" x2="70" y2="46" stroke="var(--bark-deep)" strokeWidth="2.4" strokeLinecap="round" />
+      <circle cx="60" cy="40" r="2.6" fill="var(--bark-deep)" />
+    </svg>
+  );
+}
+
 export const ICON_COMPONENTS = {
   lamp: DiyaIcon,
   book: OpenBookIcon,
@@ -147,6 +205,9 @@ export const ICON_COMPONENTS = {
   pot: PotIcon,
   rain: RainIcon,
   chair: ChairIcon,
+  bell: BellIcon,
+  watch: PocketWatchIcon,
+  clock: ClockIcon,
 };
 
 export function ChitrashaleIcon({ iconKey }) {

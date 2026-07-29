@@ -28,14 +28,18 @@ export function interactionTypeFor(key) {
 
 // Fixed, not freeform — the room stays visually composed no matter which
 // relative adds what, in what order. Position is a % coordinate within the
-// room scene, used for absolute placement of each spot's hotspot.
+// room scene, placed to sit on the matching piece of architecture drawn in
+// chitrashale.css (a one-point-perspective back wall + side walls + floor):
+// window and pujaCorner sit on the back wall's left/center, shelf sits on
+// the back wall's right, door sits on the floor near the door niche on the
+// side wall, lowTable and floor sit on the floor plane itself.
 export const ROOM_SPOTS = [
-  { key: "window", label: "By the window", x: 18, y: 30 },
-  { key: "door", label: "Near the door", x: 82, y: 34 },
-  { key: "lowTable", label: "On the low table", x: 50, y: 62 },
-  { key: "pujaCorner", label: "The puja corner", x: 20, y: 68 },
-  { key: "shelf", label: "On the shelf", x: 80, y: 66 },
-  { key: "floor", label: "On the floor", x: 50, y: 86 },
+  { key: "window", label: "By the window", x: 24, y: 36 },
+  { key: "pujaCorner", label: "The puja corner", x: 53, y: 26 },
+  { key: "shelf", label: "On the shelf", x: 70, y: 15 },
+  { key: "lowTable", label: "On the low table", x: 50, y: 66 },
+  { key: "door", label: "Near the door", x: 80, y: 60 },
+  { key: "floor", label: "On the floor", x: 14, y: 92 },
 ];
 
 export function spotFor(key) {
@@ -47,7 +51,7 @@ export function spotFor(key) {
 // already built for Parampara/Library (see ChitrashaleIcons.jsx). "lamp"
 // and "book" reuse DiyaIcon/OpenBookIcon directly rather than rebuilding
 // them.
-export const ICON_KEYS = ["lamp", "tumbler", "flowers", "beads", "slippers", "pot", "book", "rain", "chair"];
+export const ICON_KEYS = ["lamp", "tumbler", "flowers", "beads", "slippers", "pot", "book", "rain", "chair", "bell", "watch", "clock"];
 
 // Only relevant to the "ambientShift" interaction type — a small, fixed set
 // so the room's mood-shift CSS only ever has to handle known values.
