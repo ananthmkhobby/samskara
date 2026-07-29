@@ -84,6 +84,19 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
           </button>
           <div className="folio-section">
             <div className="folio-section-head">
+              <h4>Date of birth</h4>
+              <button className="icon-only" aria-label="Edit date of birth" onClick={() => onEdit({ field: "born", fieldLabel: "Date of birth", value: person.born || "" })}><EditPencilIcon /></button>
+            </div>
+            {person.born ? (
+              <p className="folio-summary">
+                {person.bornYearOnly
+                  ? `Known only as ${person.born.slice(0, 4)}`
+                  : new Date(`${person.born}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+              </p>
+            ) : <p className="form-hint" style={{ marginTop: 0 }}>Not on record yet — add it if you know it, even just the year.</p>}
+          </div>
+          <div className="folio-section">
+            <div className="folio-section-head">
               <h4>Heritage details</h4>
               <button className="icon-only" aria-label="Edit heritage details" onClick={() => onEdit({ field: "heritage", fieldLabel: "Rashi & gotra", rashi: person.rashi || "", gotra: person.gotra || "" })}><EditPencilIcon /></button>
             </div>

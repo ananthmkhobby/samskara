@@ -7,7 +7,9 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
   const isLifeLesson = request.field === "lifeLesson";
   const isGeo = request.field === "geo";
   const isDayInLife = request.field === "dayInLife";
+  const isBorn = request.field === "born";
   const [value, setValue] = useState(request.value || "");
+  const [bornError, setBornError] = useState("");
   const [rashi, setRashi] = useState(request.rashi || "");
   const [gotra, setGotra] = useState(request.gotra || "");
   const [dayYear, setDayYear] = useState(request.dayYear || "");
@@ -21,9 +23,27 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
     setSelectedValues((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]));
   }
 
+  // Accepts a full YYYY-MM-DD, or just a YYYY when the exact day isn't
+  // known — mirrors the same convention used for xlsx import and the quick
+  // +Add flow, so the Vault can tell a real date from a year-only one.
+  function parseBornInput(raw) {
+    const s = raw.trim();
+    if (!s) return { born: null, bornYearOnly: false };
+    if (/^\d{4}$/.test(s)) return { born: `${s}-01-01`, bornYearOnly: true };
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return { born: s, bornYearOnly: false };
+    return null;
+  }
+
   async function submit(e) {
     e.preventDefault();
     if (busy) return;
+    if (isBorn) {
+      const parsed = parseBornInput(value);
+      if (!parsed) { setBornError('Use YYYY-MM-DD, or just YYYY if the exact day isn\'t known.'); return; }
+      setBornError("");
+      onSubmit({ field: request.field, fieldLabel: request.fieldLabel, content: JSON.stringify(parsed), contributor: contributor.trim() || "Anonymous" });
+      return;
+    }
     if (isGeo) {
       if (!value.trim()) return;
       setBusy(true);
@@ -59,7 +79,14 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
           <h2 style={{ fontSize: 20, marginTop: 6 }}>Edit: {request.fieldLabel}</h2>
           <p className="form-hint" style={{ marginTop: 6 }}>{canModerate ? "As an Admin/Family Head, this applies immediately — no review needed." : "Your change goes to an admin for verification. It won't appear on the folio until approved."}</p>
           <form onSubmit={submit}>
-            {isHeritage ? (
+            {isBorn ? (
+              <div className="form-row">
+                <label>Date of birth</label>
+                <input type="text" placeholder="e.g. 1963-10-11, or just 1963" value={value} onChange={(e) => setValue(e.target.value)} />
+                <p className="form-hint">Only know the year? Just enter that — it'll show as a year, not a made-up day.</p>
+                {bornError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{bornError}</p>}
+              </div>
+            ) : isHeritage ? (
               <>
                 <div className="form-row">
                   <label>Rashi (optional)</label>

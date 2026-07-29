@@ -515,7 +515,14 @@ export default function App() {
     if (c.type === "edit" && c.personId) {
       const person = byId(c.personId);
       if (!person) return;
-      if (c.field === "summary") {
+      if (c.field === "born") {
+        try {
+          const { born, bornYearOnly } = JSON.parse(c.content);
+          person.born = born;
+          person.bornYearOnly = bornYearOnly;
+          updatePersonFields(familyId, c.personId, { born, born_year_only: bornYearOnly }).catch((err) => console.error(err.message));
+        } catch { /* malformed content, skip */ }
+      } else if (c.field === "summary") {
         person.summary = c.content;
         updatePersonFields(familyId, c.personId, { summary: c.content }).catch((err) => console.error(err.message));
       } else if (c.field === "lifeLesson") {
