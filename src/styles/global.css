@@ -63,7 +63,13 @@ a { color: inherit; }
 .record-pill .dot { width: 9px; height: 9px; border-radius: 50%; background: #E9A79C; flex: none; }
 
 .bottombar { display: none; }
-@media (max-width: 860px) {
+/* Brand + all 6 nav tabs + topbar-actions (role badge, family-name pill,
+   Admin button) need ~1127px to sit on one line without wrapping — a real
+   overflow on iPad-landscape-class tablets (1024px) sat right in the gap
+   between this and the old 860px cutoff. Raised with enough margin that
+   the family-name pill's own max-width (already capped, see
+   .family-switcher-name) can't push it back into overflow. */
+@media (max-width: 1180px) {
   .nav-tabs { display: none; }
   .topbar { padding: 8px 14px; }
   /* The Devanagari title + transliteration need ~200px to stay on one line;

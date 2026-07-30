@@ -277,8 +277,11 @@ export default function App() {
     commit({ addBookOpen: true });
   }
 
+  // Always called from within an open BookModal — clear openBookId so the
+  // two don't stack (same class of bug as the room/Folio overlap fixed
+  // earlier: two modal-backdrops mounted at once).
   function openLibraryEntry(bookId, kind) {
-    commit({ libraryEntryRequest: { bookId, kind } });
+    commit({ openBookId: null, libraryEntryRequest: { bookId, kind } });
   }
 
   // Story edits, ownership, and reader status are all direct writes (see
@@ -747,14 +750,14 @@ export default function App() {
           person={selectedPerson}
           contributions={contributions}
           onClose={closeOverlay}
-          onEdit={(req) => commit({ editRequest: { personId: selectedPerson.id, ...req } })}
+          onEdit={(req) => commit({ selectedPersonId: null, editRequest: { personId: selectedPerson.id, ...req } })}
           onShare={(personId, type) => commit({ selectedPersonId: null, contributeRequest: { personId, type } })}
-          onOpenBiography={() => commit({ biographyPersonId: selectedPerson.id })}
+          onOpenBiography={() => commit({ selectedPersonId: null, biographyPersonId: selectedPerson.id })}
           onChangePhoto={changePhoto}
-          onAddFamily={(relation) => commit({ addFamilyRequest: { personId: selectedPerson.id, anchorName: selectedPerson.name, relation } })}
+          onAddFamily={(relation) => commit({ selectedPersonId: null, addFamilyRequest: { personId: selectedPerson.id, anchorName: selectedPerson.name, relation } })}
           onSelectPerson={selectPerson}
-          onOpenInterview={() => commit({ interviewRequest: { personId: selectedPerson.id, name: selectedPerson.name, context: [selectedPerson.summary, selectedPerson.lifeLesson?.quote].filter(Boolean).join(" ") } })}
-          onOpenVoiceWizard={() => commit({ voiceWizardRequest: { personId: selectedPerson.id, name: selectedPerson.name, person: selectedPerson } })}
+          onOpenInterview={() => commit({ selectedPersonId: null, interviewRequest: { personId: selectedPerson.id, name: selectedPerson.name, context: [selectedPerson.summary, selectedPerson.lifeLesson?.quote].filter(Boolean).join(" ") } })}
+          onOpenVoiceWizard={() => commit({ selectedPersonId: null, voiceWizardRequest: { personId: selectedPerson.id, name: selectedPerson.name, person: selectedPerson } })}
           onOpenRoom={() => openRoom(selectedPerson.id)}
           hasRoomObjects={hasAnyRoomObjects(contributions, selectedPerson.id)}
           playingExp={playingExp}
@@ -767,7 +770,7 @@ export default function App() {
         <BiographyOverlay
           person={biographyPerson}
           onClose={closeOverlay}
-          onEditChapter={(idx, text) => commit({ editRequest: { personId: biographyPerson.id, field: `chapter:${idx}`, fieldLabel: `Chapter: ${biographyPerson.chapters[idx].title}`, value: text } })}
+          onEditChapter={(idx, text) => commit({ biographyPersonId: null, editRequest: { personId: biographyPerson.id, field: `chapter:${idx}`, fieldLabel: `Chapter: ${biographyPerson.chapters[idx].title}`, value: text } })}
           canModerate={canModerate}
           isChapterOverridden={(idx) => (rawBiographyPerson?.chapters?.length || 0) > idx}
           onResetChapter={(idx) => clearChapter(biographyPerson.id, idx)}
