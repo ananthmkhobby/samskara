@@ -94,7 +94,7 @@ export default function ClassicTree({ people, contributions, valueFilter, onSele
               <PersonAvatar person={p} size={64} minGen={minGen} maxGen={maxGen} className="avatar" />
               <div className="label">
                 <div className="p-name">{p.name}</div>
-                {role && <div className="p-role">{role}</div>}
+                <div className="p-role">{role || " "}</div>
                 <div className="p-years tnum">{yearsLabel(p)}</div>
               </div>
             </button>
