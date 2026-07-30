@@ -82,8 +82,10 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
             {isBorn ? (
               <div className="form-row">
                 <label>Date of birth</label>
+                <p className="form-hint" style={{ marginTop: 0, marginBottom: 6 }}>
+                  Format: <b>YYYY-MM-DD</b> (e.g. 1963-10-11). Only know the year? Just enter that (e.g. 1963) — it'll show as a year, not a made-up day.
+                </p>
                 <input type="text" placeholder="e.g. 1963-10-11, or just 1963" value={value} onChange={(e) => setValue(e.target.value)} />
-                <p className="form-hint">Only know the year? Just enter that — it'll show as a year, not a made-up day.</p>
                 {bornError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{bornError}</p>}
               </div>
             ) : isHeritage ? (
