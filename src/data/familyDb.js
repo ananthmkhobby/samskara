@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { callApi } from "../lib/apiFetch";
 
 function requireClient() {
   if (!supabase) throw new Error("Backend isn't configured.");
@@ -459,6 +460,21 @@ export async function fetchMemberEmail(memberRowId) {
   const { data, error } = await db.rpc("get_member_email", { p_member_id: memberRowId });
   if (error) throw new Error(error.message);
   return data;
+}
+
+// For a family member with no real email (most elders, per the request
+// this came from) — Head/Admin picks a username and a password directly,
+// no invite link or inbox required. Goes through a serverless function
+// since it needs the service-role key; see api/create-member-login.js.
+export async function createMemberLogin(familyId, { username, password, displayName, personId }) {
+  return callApi("/api/create-member-login", { familyId, username, password, displayName, personId });
+}
+
+// Head/Admin sets a brand new password for any member of their own family
+// directly — covers "forgot password" for anyone who can't do the
+// self-service email reset because there's no inbox to receive it.
+export async function resetMemberPassword(familyId, memberId, password) {
+  return callApi("/api/reset-member-password", { familyId, memberId, password });
 }
 
 // The caller's own membership row for the active family — used at boot to

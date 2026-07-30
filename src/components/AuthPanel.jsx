@@ -8,6 +8,15 @@ import { ACCOUNT_NEEDS_FAMILY } from "../data/session";
 // of defaulting to the login form.
 const INVITE_CODE_FROM_URL = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("code") : null;
 
+// Must match usernameToEmail() in api/_memberAuth.js exactly — a no-email
+// login (built by a Head/Admin on the Members page for someone with no
+// inbox, most often an elder) is really just an auth account whose email
+// is synthesized from the username, so signing in with either one works
+// the same way through supabase-js's normal signInWithPassword.
+function usernameToEmail(username) {
+  return `${username.trim().toLowerCase()}@members.samskara.app`;
+}
+
 async function handleSignOut() {
   await supabase?.auth.signOut();
   window.location.reload();
@@ -53,12 +62,18 @@ export default function AuthPanel() {
 function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, error, setError }) {
   const [resetSent, setResetSent] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
+  // Most elders have no email at all — a Head/Admin can build them a
+  // username+password login instead (Admin > Members). This toggle is the
+  // other half of that: signing back in with just the username, no inbox
+  // ever required.
+  const [loginWithUsername, setLoginWithUsername] = useState(false);
 
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
     setError("");
-    const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    const loginEmail = loginWithUsername ? usernameToEmail(email) : email.trim();
+    const { error: err } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
     if (err) {
       setError(err.message);
       setBusy(false);
@@ -83,20 +98,37 @@ function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, erro
   return (
     <form onSubmit={submit}>
       <div className="form-row">
-        <label>Email</label>
-        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+        <label>{loginWithUsername ? "Username" : "Email"}</label>
+        <input
+          type={loginWithUsername ? "text" : "email"} required value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder={loginWithUsername ? "e.g. amma1950" : "you@example.com"}
+        />
       </div>
       <div className="form-row">
         <label>Password</label>
         <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
       <p className="form-hint" style={{ marginTop: 6 }}>
-        {resetSent ? (
+        {loginWithUsername ? (
+          <>
+            Forgot it? Ask your Family Head or Admin to reset it for you.{" "}
+            <button type="button" className="link-btn" onClick={() => { setLoginWithUsername(false); setEmail(""); setError(""); }}>
+              Log in with email instead
+            </button>
+          </>
+        ) : resetSent ? (
           `Check ${email.trim()} for a reset link.`
         ) : (
-          <button type="button" className="link-btn" disabled={resetBusy} onClick={sendReset}>
-            {resetBusy ? "Sending…" : "Forgot password?"}
-          </button>
+          <>
+            <button type="button" className="link-btn" disabled={resetBusy} onClick={sendReset}>
+              {resetBusy ? "Sending…" : "Forgot password?"}
+            </button>
+            {" · "}
+            <button type="button" className="link-btn" onClick={() => { setLoginWithUsername(true); setEmail(""); setError(""); }}>
+              No email? Log in with username
+            </button>
+          </>
         )}
       </p>
       {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}

@@ -1,11 +1,18 @@
+import { supabase } from "./supabaseClient";
+
 // Calls one of this project's /api/* serverless functions. Those only run
 // when deployed (or under `vercel dev`) — plain `vite dev` doesn't execute
 // them, so this gives a clear message instead of a raw JSON-parse error in
-// that case.
+// that case. Attaches the caller's own access token whenever a session
+// exists — harmless for endpoints that don't check it, and how the
+// member-management endpoints confirm who's actually calling.
 export async function callApi(path, body) {
+  const headers = { "Content-Type": "application/json" };
+  const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+  if (session) headers.Authorization = `Bearer ${session.access_token}`;
   const res = await fetch(path, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(body)
   });
   const contentType = res.headers.get("content-type") || "";

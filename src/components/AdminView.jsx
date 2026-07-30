@@ -4,6 +4,7 @@ import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, CURRENT_ROLE } from "../da
 import {
   createInvite, fetchFamilyMembers, updateMemberRole, setMemberPersonLink,
   updateMemberDisplayName, fetchInvites, revokeInvite, fetchMemberEmail,
+  createMemberLogin, resetMemberPassword,
 } from "../data/familyDb";
 import { categoryFor } from "../lib/parampara";
 import { libraryCategoryFor } from "../lib/library";
@@ -22,6 +23,9 @@ function RosterCard() {
   const [renamingId, setRenamingId] = useState(null);
   const [nameDraft, setNameDraft] = useState("");
   const [emails, setEmails] = useState({});
+  const [resettingId, setResettingId] = useState(null);
+  const [passwordDraft, setPasswordDraft] = useState("");
+  const [resetDone, setResetDone] = useState({});
   const isHead = CURRENT_ROLE === "head";
   const isModerator = CURRENT_ROLE === "head" || CURRENT_ROLE === "admin";
 
@@ -68,6 +72,22 @@ function RosterCard() {
     } catch (err) {
       setEmails((prev) => ({ ...prev, [member.id]: null }));
       setError(err.message);
+    }
+  }
+
+  async function saveReset(member) {
+    if (passwordDraft.length < 6) { setError("Password must be at least 6 characters."); return; }
+    setBusyId(member.id);
+    setError("");
+    try {
+      await resetMemberPassword(CURRENT_FAMILY_ID, member.id, passwordDraft);
+      setResetDone((prev) => ({ ...prev, [member.id]: passwordDraft }));
+      setResettingId(null);
+      setPasswordDraft("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -124,6 +144,28 @@ function RosterCard() {
               ) : (
                 <button type="button" className="link-btn" style={{ fontSize: 11 }} onClick={() => showEmail(m)}>
                   Show sign-up email
+                </button>
+              )
+            )}
+            {isModerator && (
+              resetDone[m.id] ? (
+                <p className="form-hint" style={{ marginTop: 4 }}>
+                  New password: <b>{resetDone[m.id]}</b> — write it down, it won't be shown again.
+                </p>
+              ) : resettingId === m.id ? (
+                <div className="tag-row" style={{ alignItems: "center", marginTop: 4 }}>
+                  <input
+                    type="text" autoFocus minLength={6} value={passwordDraft} onChange={(e) => setPasswordDraft(e.target.value)}
+                    placeholder="New password (min 6 chars)" style={{ fontSize: 13, padding: "4px 6px" }}
+                  />
+                  <button type="button" className="btn small" disabled={busyId === m.id} onClick={() => saveReset(m)}>
+                    {busyId === m.id ? "…" : "Set"}
+                  </button>
+                  <button type="button" className="btn small ghost" onClick={() => { setResettingId(null); setPasswordDraft(""); }}>Cancel</button>
+                </div>
+              ) : (
+                <button type="button" className="link-btn" style={{ fontSize: 11 }} onClick={() => setResettingId(m.id)}>
+                  Reset password
                 </button>
               )
             )}
@@ -304,13 +346,88 @@ function InvitesList({ refreshKey }) {
   );
 }
 
+// Most elders have no email at all — the invite-link flow above needs one
+// (Supabase accounts are always email-backed), so this gives Head/Admin a
+// second path: pick a username and a password directly, hand them over on
+// paper or by voice, done. The email is synthesized from the username
+// under the hood (see usernameToEmail in api/_memberAuth.js) — the person
+// never needs to know or type an email anywhere.
+function CreateLoginCard({ onCreated }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [personId, setPersonId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [created, setCreated] = useState(null);
+
+  async function submit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const result = await createMemberLogin(CURRENT_FAMILY_ID, { username, password, displayName, personId: personId || null });
+      setCreated(result);
+      setUsername(""); setPassword(""); setDisplayName(""); setPersonId("");
+      onCreated?.();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ marginBottom: 18, padding: 16 }}>
+      <h4 style={{ marginTop: 0 }}>Create a login without email</h4>
+      <p className="form-hint" style={{ marginTop: 0 }}>
+        For anyone without an email address — pick a username and password for them, then tell them directly. They'll log in with "No email? Log in with username" on the login page.
+      </p>
+      {created && (
+        <p className="form-hint" style={{ marginBottom: 12 }}>
+          Created — username <b>{created.username}</b>, password <b>{created.password}</b>. Write these down; the password won't be shown again.
+        </p>
+      )}
+      <form onSubmit={submit}>
+        <div className="form-row">
+          <label>Username</label>
+          <input type="text" required value={username} onChange={(e) => setUsername(e.target.value)} placeholder="e.g. amma1950" style={{ fontSize: 13, padding: "4px 6px" }} />
+        </div>
+        <div className="form-row">
+          <label>Password</label>
+          <input type="text" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="min 6 characters" style={{ fontSize: 13, padding: "4px 6px" }} />
+        </div>
+        <div className="form-row">
+          <label>Their name</label>
+          <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="e.g. Lakshmi Devi" style={{ fontSize: 13, padding: "4px 6px" }} />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 11, color: "var(--ink-faint)", display: "block", marginBottom: 3 }}>
+            Which one is this in the tree? (optional)
+          </label>
+          <select value={personId} onChange={(e) => setPersonId(e.target.value)} style={{ fontSize: 13, padding: "4px 6px" }}>
+            <option value="">— not sure yet —</option>
+            {[...PEOPLE].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
+              <option key={p.id} value={p.id}>{p.name}{yearsLabel(p) ? ` (${yearsLabel(p)})` : ""}</option>
+            ))}
+          </select>
+        </div>
+        {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+        <button type="submit" className="btn small primary" disabled={busy}>{busy ? "Creating…" : "Create login"}</button>
+      </form>
+    </div>
+  );
+}
+
 function MembersPage() {
   const [invitesRefreshKey, setInvitesRefreshKey] = useState(0);
+  const [membersRefreshKey, setMembersRefreshKey] = useState(0);
   return (
     <>
       <InviteCard onCreated={() => setInvitesRefreshKey((k) => k + 1)} />
       <InvitesList refreshKey={invitesRefreshKey} />
-      <RosterCard />
+      <CreateLoginCard onCreated={() => setMembersRefreshKey((k) => k + 1)} />
+      <RosterCard key={membersRefreshKey} />
     </>
   );
 }
