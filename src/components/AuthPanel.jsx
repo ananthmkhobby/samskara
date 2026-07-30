@@ -88,6 +88,12 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
   // deliberately makes "does this email already exist" unreliable to
   // detect from a signUp() error alone.
   const [isNewAccount, setIsNewAccount] = useState(true);
+  // The code is already baked into the link and pre-filled here — showing
+  // it as an editable field anyway reads as "asking again" even though
+  // nothing needs re-typing. Only show the field when there's genuinely no
+  // code yet (opened the site directly, no link), with a manual-entry
+  // escape hatch in case a pre-filled code is ever wrong (stale link, etc).
+  const [showCodeField, setShowCodeField] = useState(!INVITE_CODE_FROM_URL);
 
   async function submit(e) {
     e.preventDefault();
@@ -137,10 +143,17 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
           </div>
         </>
       )}
-      <div className="form-row">
-        <label>Invite code</label>
-        <input type="text" required value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. a1b2c3d4e5" />
-      </div>
+      {showCodeField ? (
+        <div className="form-row">
+          <label>Invite code</label>
+          <input type="text" required value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. a1b2c3d4e5" />
+        </div>
+      ) : (
+        <p className="form-hint">
+          Invite code applied from your link.{" "}
+          <button type="button" className="link-btn" onClick={() => setShowCodeField(true)}>Not the right code?</button>
+        </p>
+      )}
       {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
       <button type="submit" className="btn primary small" disabled={busy} style={{ marginTop: 10 }}>
         {busy ? "Joining…" : alreadySignedIn || isNewAccount ? "Join your family →" : "Log in & join →"}
