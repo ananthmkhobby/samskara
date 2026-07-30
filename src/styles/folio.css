@@ -10,7 +10,11 @@
   .modal-backdrop { align-items: center; }
   .modal-panel { border-radius: 14px; max-height: 86vh; }
 }
-.modal-close { position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(255,255,255,.5); background: rgba(255,255,255,.18); color: #fff; cursor: pointer; font-size: 14px; z-index: 3; backdrop-filter: blur(4px); }
+/* No backdrop-filter here — a blurred circle sitting right at the true
+   edge of a rounded, scrolling modal panel is a known source of a thin
+   compositing seam on some Android GPUs; the semi-transparent background
+   already gives it enough contrast against the band behind it. */
+.modal-close { position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(255,255,255,.5); background: rgba(255,255,255,.28); color: #fff; cursor: pointer; font-size: 14px; z-index: 3; }
 .modal-close.on-paper { border-color: var(--line-strong); background: var(--parchment-deep); color: var(--ink); }
 .modal-body { padding: 22px 26px 30px; }
 
