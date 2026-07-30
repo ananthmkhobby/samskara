@@ -36,7 +36,8 @@ export default function BanyanTree({ people, contributions, valueFilter, onSelec
           if (p.id === MY_PERSON_ID) classes.push("me");
           if (valueFilter) {
             const matches = p.lifeLesson && p.lifeLesson.values.includes(valueFilter);
-            classes.push(matches ? "highlighted" : "dimmed");
+            if (matches) classes.push("highlighted");
+            else if (p.id !== MY_PERSON_ID) classes.push("dimmed");
           }
           genCounts[p.gen] = (genCounts[p.gen] || 0) + 1;
           const delay = (p.gen - minGen) * 0.32 + (genCounts[p.gen] - 1) * 0.06;

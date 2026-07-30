@@ -78,7 +78,8 @@ export default function ClassicTree({ people, contributions, valueFilter, onSele
           if (p.id === MY_PERSON_ID) classes.push("me");
           if (valueFilter) {
             const matches = p.lifeLesson && p.lifeLesson.values.includes(valueFilter);
-            classes.push(matches ? "highlighted" : "dimmed");
+            if (matches) classes.push("highlighted");
+            else if (p.id !== MY_PERSON_ID) classes.push("dimmed");
           }
           genCounts[p.gen] = (genCounts[p.gen] || 0) + 1;
           const delay = (p.gen - minGen) * GEN_STAGGER + (genCounts[p.gen] - 1) * 0.06;

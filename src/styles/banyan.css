@@ -67,6 +67,11 @@
 }
 
 .banyan-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.value-filter-banner {
+  background: var(--gold-wash); border: 1px solid var(--gold); border-radius: 10px;
+  padding: 8px 14px; margin: -4px 0 14px; font-size: 13px; color: var(--ink-soft);
+}
+.value-filter-banner b { color: var(--maroon-deep); }
 @media (max-width: 640px) {
   .banyan-wrap { aspect-ratio: 3 / 4; }
   .banyan-marker .dot { width: 19px; height: 19px; border-width: 2.5px; }

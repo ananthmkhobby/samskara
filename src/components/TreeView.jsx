@@ -65,6 +65,12 @@ export default function TreeView({ contributions, onSelectPerson, onNav }) {
           <button className={`chip${valueFilter === null ? " active" : ""}`} onClick={() => setValueFilter(null)}>All</button>
         </div>
       )}
+      {mode !== "focus" && valueFilter && (
+        <div className="value-filter-banner">
+          Showing only who carried <b>{valueFilter}</b> — everyone else is faded.{" "}
+          <button type="button" className="link-btn" onClick={() => setValueFilter(null)}>Clear filter</button>
+        </div>
+      )}
       {mode === "banyan"
         ? <BanyanTree people={people} contributions={contributions} valueFilter={valueFilter} onSelectPerson={onSelectPerson} />
         : mode === "focus"
