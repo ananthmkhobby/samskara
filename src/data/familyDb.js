@@ -292,6 +292,30 @@ export async function createInvite(familyId, userId, personId) {
   return data.code;
 }
 
+// Members page: every invite a moderator has generated for this family, so
+// a forgotten/unused link isn't invisible the moment you navigate away.
+export async function fetchInvites(familyId) {
+  const db = requireClient();
+  const { data, error } = await db
+    .from("invites")
+    .select("id, code, person_id, used_by, used_at, expires_at, created_at")
+    .eq("family_id", familyId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data.map((r) => ({
+    id: r.id, code: r.code, personId: r.person_id, usedBy: r.used_by, usedAt: r.used_at,
+    expiresAt: r.expires_at, createdAt: r.created_at,
+  }));
+}
+
+// Only succeeds on an invite that hasn't been redeemed yet — enforced by
+// RLS ("moderator can delete own unused invites"), not just this call site.
+export async function revokeInvite(inviteId) {
+  const db = requireClient();
+  const { error } = await db.from("invites").delete().eq("id", inviteId);
+  if (error) throw new Error(error.message);
+}
+
 // ---- Family Library ---------------------------------------------------------
 
 function mapBookRow(row) {
@@ -415,6 +439,14 @@ export async function updateMemberRole(memberRowId, role) {
 export async function setMemberPersonLink(memberRowId, personId) {
   const db = requireClient();
   const { error } = await db.rpc("set_member_person_link", { p_member_id: memberRowId, p_person_id: personId });
+  if (error) throw new Error(error.message);
+}
+
+// Same "no raw RLS" reasoning as setMemberPersonLink above, but for the
+// display_name column — a Head/Admin-only RPC that never touches role.
+export async function updateMemberDisplayName(memberRowId, displayName) {
+  const db = requireClient();
+  const { error } = await db.rpc("update_member_display_name", { p_member_id: memberRowId, p_display_name: displayName });
   if (error) throw new Error(error.message);
 }
 

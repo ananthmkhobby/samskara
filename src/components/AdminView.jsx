@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { MIN_GEN, MAX_GEN, byId, yearsLabel } from "../data/helpers";
 import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, CURRENT_ROLE } from "../data/session";
-import { createInvite, fetchFamilyMembers, updateMemberRole, setMemberPersonLink } from "../data/familyDb";
+import {
+  createInvite, fetchFamilyMembers, updateMemberRole, setMemberPersonLink,
+  updateMemberDisplayName, fetchInvites, revokeInvite,
+} from "../data/familyDb";
 import { categoryFor } from "../lib/parampara";
 import { libraryCategoryFor } from "../lib/library";
 import { spotFor } from "../lib/chitrashale";
@@ -9,12 +12,15 @@ import { BOOKS, PEOPLE } from "../data/people";
 import PersonAvatar from "./PersonAvatar";
 
 const TABS = ["Pending", "Verified", "Rejected", "All"];
+const ADMIN_TABS = ["Members", "Review queue"];
 const ROLE_LABELS = { head: "Family Head", admin: "Admin", member: "Member" };
 
 function RosterCard() {
   const [members, setMembers] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
+  const [renamingId, setRenamingId] = useState(null);
+  const [nameDraft, setNameDraft] = useState("");
   const isHead = CURRENT_ROLE === "head";
   const isModerator = CURRENT_ROLE === "head" || CURRENT_ROLE === "admin";
 
@@ -48,6 +54,25 @@ function RosterCard() {
     }
   }
 
+  function startRename(member) {
+    setRenamingId(member.id);
+    setNameDraft(member.displayName || "");
+  }
+
+  async function saveRename(member) {
+    setBusyId(member.id);
+    setError("");
+    try {
+      await updateMemberDisplayName(member.id, nameDraft);
+      setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, displayName: nameDraft.trim() || null } : m)));
+      setRenamingId(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <div className="card" style={{ marginBottom: 18, padding: 16 }}>
       <h4 style={{ marginTop: 0 }}>Family roster</h4>
@@ -61,7 +86,25 @@ function RosterCard() {
             {(m.displayName || "?")[0].toUpperCase()}
           </div>
           <div className="queue-main">
-            <b>{m.displayName || "Unnamed member"}</b>
+            {renamingId === m.id ? (
+              <div className="tag-row" style={{ alignItems: "center", marginBottom: 4 }}>
+                <input
+                  type="text" autoFocus value={nameDraft} onChange={(e) => setNameDraft(e.target.value)}
+                  placeholder="Display name" style={{ fontSize: 13, padding: "4px 6px" }}
+                />
+                <button type="button" className="btn small" disabled={busyId === m.id} onClick={() => saveRename(m)}>
+                  {busyId === m.id ? "…" : "Save"}
+                </button>
+                <button type="button" className="btn small ghost" onClick={() => setRenamingId(null)}>Cancel</button>
+              </div>
+            ) : (
+              <b>
+                {m.displayName || "Unnamed member"}
+                {isModerator && (
+                  <button type="button" className="link-btn" style={{ marginLeft: 8, fontSize: 12 }} onClick={() => startRename(m)}>Rename</button>
+                )}
+              </b>
+            )}
             <div className="queue-meta">{ROLE_LABELS[m.role]} · joined {m.createdAt?.slice(0, 10)}</div>
             {(m.userId === CURRENT_USER_ID || isModerator) && (
               <div style={{ marginTop: 6 }}>
@@ -100,7 +143,7 @@ function RosterCard() {
   );
 }
 
-function InviteCard() {
+function InviteCard({ onCreated }) {
   const [link, setLink] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -114,6 +157,7 @@ function InviteCard() {
     try {
       const code = await createInvite(CURRENT_FAMILY_ID, CURRENT_USER_ID, personId || null);
       setLink(`${window.location.origin}/?code=${code}`);
+      onCreated?.();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -158,7 +202,101 @@ function InviteCard() {
   );
 }
 
+// Every invite generated for this family, so a link that was created and
+// then navigated away from isn't invisible — and so an unused one can be
+// revoked (e.g. sent to the wrong person, or no longer needed).
+function InvitesList({ refreshKey }) {
+  const [invites, setInvites] = useState(null);
+  const [members, setMembers] = useState(null);
+  const [busyId, setBusyId] = useState(null);
+  const [error, setError] = useState("");
+  const [copiedId, setCopiedId] = useState(null);
+
+  useEffect(() => {
+    fetchInvites(CURRENT_FAMILY_ID).then(setInvites).catch((err) => setError(err.message));
+    fetchFamilyMembers(CURRENT_FAMILY_ID).then(setMembers).catch(() => {});
+  }, [refreshKey]);
+
+  function statusFor(inv) {
+    if (inv.usedAt) return "used";
+    if (new Date(inv.expiresAt) < new Date()) return "expired";
+    return "pending";
+  }
+
+  async function copy(inv) {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/?code=${inv.code}`);
+      setCopiedId(inv.id);
+      window.setTimeout(() => setCopiedId(null), 2000);
+    } catch { /* clipboard unavailable */ }
+  }
+
+  async function revoke(inv) {
+    setBusyId(inv.id);
+    setError("");
+    try {
+      await revokeInvite(inv.id);
+      setInvites((prev) => prev.filter((i) => i.id !== inv.id));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  if (invites !== null && !invites.length) return null;
+
+  return (
+    <div className="card" style={{ marginBottom: 18, padding: 16 }}>
+      <h4 style={{ marginTop: 0 }}>Invite links</h4>
+      <p className="form-hint" style={{ marginTop: 0 }}>Every link generated so far, and whether it's been used yet.</p>
+      {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+      {invites === null ? null : invites.map((inv) => {
+        const status = statusFor(inv);
+        const person = inv.personId ? byId(inv.personId) : null;
+        const usedByMember = inv.usedBy ? members?.find((m) => m.userId === inv.usedBy) : null;
+        return (
+          <div className="queue-row" key={inv.id} style={{ gridTemplateColumns: "1fr auto", padding: "10px 0" }}>
+            <div className="queue-main">
+              <b>{person ? `For ${person.name}` : "Open invite"}</b>
+              <div className="queue-meta">
+                {status === "used" && `Used by ${usedByMember?.displayName || "a member"} · ${inv.usedAt.slice(0, 10)}`}
+                {status === "expired" && `Expired ${inv.expiresAt.slice(0, 10)} · never used`}
+                {status === "pending" && `Generated ${inv.createdAt.slice(0, 10)} · expires ${inv.expiresAt.slice(0, 10)}`}
+              </div>
+            </div>
+            <div className="queue-actions">
+              {status === "pending" && (
+                <>
+                  <button type="button" className="btn small" onClick={() => copy(inv)}>{copiedId === inv.id ? "Copied!" : "Copy link"}</button>
+                  <button type="button" className="btn small ghost" disabled={busyId === inv.id} onClick={() => revoke(inv)}>
+                    {busyId === inv.id ? "…" : "Revoke"}
+                  </button>
+                </>
+              )}
+              {status !== "pending" && <span className={`status-pill ${status === "used" ? "Verified" : "Rejected"}`}>{status === "used" ? "Used" : "Expired"}</span>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MembersPage() {
+  const [invitesRefreshKey, setInvitesRefreshKey] = useState(0);
+  return (
+    <>
+      <InviteCard onCreated={() => setInvitesRefreshKey((k) => k + 1)} />
+      <InvitesList refreshKey={invitesRefreshKey} />
+      <RosterCard />
+    </>
+  );
+}
+
 export default function AdminView({ contributions, onApprove, onReject, canModerate }) {
+  const showMembersTab = !IS_DEMO && canModerate;
+  const [adminTab, setAdminTab] = useState(showMembersTab ? "Members" : "Review queue");
   const [tab, setTab] = useState("Pending");
   const pendingCount = contributions.filter((c) => c.status === "Pending").length;
   const rows = contributions.filter((c) => tab === "All" || c.status === tab).slice().reverse();
@@ -213,12 +351,23 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
   return (
     <section className="wrap">
       <div className="section-head">
-        <h2>Review queue</h2>
-        <p>Everything the family has submitted or proposed to edit, waiting for a second pair of eyes before it changes the archive.</p>
-        {!canModerate && <p className="form-hint" style={{ marginTop: 6 }}>You can see what's pending, but only Admins or the Family Head can approve or reject.</p>}
+        <h2>{adminTab === "Members" ? "Manage members" : "Review queue"}</h2>
+        <p>
+          {adminTab === "Members"
+            ? "Invite people, see who's joined, fix a name, or set which person in the tree someone is — for themselves or, if they never got around to it, for anyone."
+            : "Everything the family has submitted or proposed to edit, waiting for a second pair of eyes before it changes the archive."}
+        </p>
+        {adminTab !== "Members" && !canModerate && <p className="form-hint" style={{ marginTop: 6 }}>You can see what's pending, but only Admins or the Family Head can approve or reject.</p>}
       </div>
-      {!IS_DEMO && canModerate && <InviteCard />}
-      {!IS_DEMO && canModerate && <RosterCard />}
+      {showMembersTab && (
+        <div className="admin-tabs">
+          {ADMIN_TABS.map((t) => (
+            <button key={t} className={`chip${adminTab === t ? " active" : ""}`} onClick={() => setAdminTab(t)}>{t}</button>
+          ))}
+        </div>
+      )}
+      {adminTab === "Members" ? <MembersPage /> : (
+      <>
       <div className="admin-tabs">
         {TABS.map((t) => (
           <button key={t} className={`chip${tab === t ? " active" : ""}`} onClick={() => setTab(t)}>
@@ -275,6 +424,8 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
           );
         }) : <div className="empty-state">Nothing in “{tab}” right now.</div>}
       </div>
+      </>
+      )}
     </section>
   );
 }
