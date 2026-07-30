@@ -12,14 +12,20 @@ function pickDefaultRoot(people) {
   return (people.find((p) => p.gen === minGen) || people[0]).id;
 }
 
-function RelativeCard({ person, onGoTo }) {
+// Two distinct actions on one card, not one: tapping the photo/name moves
+// the focus view to that relative (keeps browsing, same as before);
+// "Open folio →" is a separate button that jumps straight to their full
+// Folio instead, which previously had no path from here at all.
+function RelativeCard({ person, onGoTo, onOpenFolio }) {
   return (
-    <button type="button" className="focus-kin-card" onClick={() => onGoTo(person.id)}>
-      <PersonAvatar person={person} size={60} minGen={MIN_GEN} maxGen={MAX_GEN} className="focus-kin-avatar" />
-      <span className="focus-kin-name">{person.name}</span>
-      <span className="focus-kin-years tnum">{yearsLabel(person)}</span>
-      <span className="focus-kin-hint">View →</span>
-    </button>
+    <div className="focus-kin-card">
+      <button type="button" className="focus-kin-main" onClick={() => onGoTo(person.id)} aria-label={`View ${person.name} in focus`}>
+        <PersonAvatar person={person} size={60} minGen={MIN_GEN} maxGen={MAX_GEN} className="focus-kin-avatar" />
+        <span className="focus-kin-name">{person.name}</span>
+        <span className="focus-kin-years tnum">{yearsLabel(person)}</span>
+      </button>
+      <button type="button" className="focus-kin-hint" onClick={() => onOpenFolio(person.id)}>Open folio →</button>
+    </div>
   );
 }
 
@@ -73,7 +79,7 @@ export default function FocusTreeView({ people, onSelectPerson }) {
         <>
           <p className="focus-section-label">Parents</p>
           <div className="focus-kin-row">
-            {parents.map((p) => <RelativeCard key={p.id} person={p} onGoTo={goTo} />)}
+            {parents.map((p) => <RelativeCard key={p.id} person={p} onGoTo={goTo} onOpenFolio={onSelectPerson} />)}
           </div>
           <div className="focus-connector" aria-hidden="true" />
         </>
@@ -87,10 +93,13 @@ export default function FocusTreeView({ people, onSelectPerson }) {
         <p className="focus-years tnum">{yearsLabel(person)}</p>
         {relationship && <p className="focus-relation">{relationship}</p>}
         {spouse && (
-          <button type="button" className="focus-spouse-pill" onClick={() => goTo(spouse.id)}>
-            <PersonAvatar person={spouse} size={34} minGen={MIN_GEN} maxGen={MAX_GEN} className="focus-kin-avatar" />
-            <span className="focus-spouse-text"><span className="focus-spouse-label">Married to</span><b>{spouse.name}</b></span>
-          </button>
+          <div className="focus-spouse-row">
+            <button type="button" className="focus-spouse-pill" onClick={() => goTo(spouse.id)} aria-label={`View ${spouse.name} in focus`}>
+              <PersonAvatar person={spouse} size={34} minGen={MIN_GEN} maxGen={MAX_GEN} className="focus-kin-avatar" />
+              <span className="focus-spouse-text"><span className="focus-spouse-label">Married to</span><b>{spouse.name}</b></span>
+            </button>
+            <button type="button" className="focus-spouse-folio-btn" aria-label={`Open ${spouse.name}'s folio`} title="Open folio" onClick={() => onSelectPerson(spouse.id)}>→</button>
+          </div>
         )}
       </div>
 
@@ -99,7 +108,7 @@ export default function FocusTreeView({ people, onSelectPerson }) {
           <div className="focus-connector" aria-hidden="true" />
           <p className="focus-section-label">Children</p>
           <div className="focus-kin-row">
-            {children.map((p) => <RelativeCard key={p.id} person={p} onGoTo={goTo} />)}
+            {children.map((p) => <RelativeCard key={p.id} person={p} onGoTo={goTo} onOpenFolio={onSelectPerson} />)}
           </div>
         </>
       ) : (

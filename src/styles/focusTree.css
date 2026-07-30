@@ -29,18 +29,30 @@
 
 .focus-kin-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 4px; }
 .focus-kin-card {
-  display: flex; flex-direction: column; align-items: center; gap: 8px; width: 140px;
+  display: flex; flex-direction: column; align-items: stretch; width: 140px;
   background: var(--parchment-paper); border: 1.5px solid var(--line-strong); border-radius: 14px;
-  padding: 14px 10px 12px; cursor: pointer; text-align: center; font: inherit; color: inherit;
-  transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+  overflow: hidden;
 }
-.focus-kin-card:active { transform: scale(.97); }
-.focus-kin-card:hover { border-color: var(--gold-deep); box-shadow: var(--shadow-1); }
-.focus-kin-card:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+/* Two separate tappable regions in one card: the photo/name moves the
+   focus view (browsing), the hint underneath opens the Folio directly —
+   kept visually as one card, but never nested <button>s. */
+.focus-kin-main {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 14px 10px 10px; cursor: pointer; text-align: center; font: inherit; color: inherit;
+  background: none; border: 0; transition: transform .15s ease;
+}
+.focus-kin-main:active { transform: scale(.97); }
+.focus-kin-card:hover .focus-kin-main { color: inherit; }
+.focus-kin-card:has(.focus-kin-main:focus-visible) { outline: 2px solid var(--gold); outline-offset: 2px; }
 .focus-kin-avatar { flex: none; }
 .focus-kin-name { font-size: 16px; font-weight: 600; line-height: 1.25; }
 .focus-kin-years { font-size: 12px; color: var(--ink-faint); }
-.focus-kin-hint { font-size: 11px; color: var(--gold-deep); font-weight: 600; }
+.focus-kin-hint {
+  font: inherit; font-size: 12px; color: var(--gold-deep); font-weight: 600; cursor: pointer;
+  background: var(--gold-wash); border: 0; border-top: 1px solid var(--line-strong);
+  padding: 7px 10px; transition: background .15s ease;
+}
+.focus-kin-hint:hover, .focus-kin-hint:focus-visible { filter: brightness(0.96); outline: none; }
 
 .focus-person { display: flex; flex-direction: column; align-items: center; margin: 4px 0 6px; }
 .focus-avatar { box-shadow: var(--shadow-2); border: 4px solid var(--parchment-paper); outline: 2px solid var(--gold-deep); flex: none; }
@@ -50,14 +62,22 @@
   margin-top: 10px; font-size: 12.5px; font-weight: 600; color: var(--maroon-deep); background: var(--maroon-wash);
   border-radius: 999px; padding: 5px 14px; text-align: center;
 }
+.focus-spouse-row { margin-top: 14px; display: flex; align-items: center; gap: 8px; }
 .focus-spouse-pill {
-  margin-top: 14px; display: flex; align-items: center; gap: 8px; background: var(--gold-wash); border: 1px solid var(--gold);
+  display: flex; align-items: center; gap: 8px; background: var(--gold-wash); border: 1px solid var(--gold);
   border-radius: 999px; padding: 7px 16px 7px 8px; cursor: pointer; font: inherit; color: inherit;
 }
 .focus-spouse-pill:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .focus-spouse-text { font-size: 13.5px; text-align: left; }
 .focus-spouse-text b { font-weight: 700; }
 .focus-spouse-label { font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .06em; display: block; }
+/* Small, distinct from the pill itself — the pill moves focus to the
+   spouse, this jumps straight to their Folio instead. */
+.focus-spouse-folio-btn {
+  width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--gold); background: var(--parchment-paper);
+  color: var(--gold-deep); font-size: 15px; cursor: pointer; flex: none; display: flex; align-items: center; justify-content: center;
+}
+.focus-spouse-folio-btn:hover, .focus-spouse-folio-btn:focus-visible { background: var(--gold-wash); outline: none; }
 
 .focus-empty-note { text-align: center; color: var(--ink-faint); font-size: 13px; padding: 6px 0 18px; }
 
