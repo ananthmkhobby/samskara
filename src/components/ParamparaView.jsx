@@ -3,8 +3,9 @@ import { PARAMPARA_CATEGORIES, categoryFor, parseParamparaContent, continuedForY
 import { batchResolveMediaUrls } from "../lib/mediaUpload";
 import PhotoLightbox from "./PhotoLightbox";
 import HeritageIntro, { DiyaIcon } from "./HeritageIntro";
+import { EditPencilIcon } from "./Icons";
 
-function LineageCard({ entry }) {
+function LineageCard({ entry, canModerate, onEdit }) {
   const chain = parseParamparaContent(entry.content);
   const rows = [
     ["Gotra", chain.gotra], ["Pravara", chain.pravara], ["Veda", chain.veda],
@@ -13,7 +14,10 @@ function LineageCard({ entry }) {
   if (!rows.length) return null;
   return (
     <div className="card parampara-lineage-card">
-      <span className="eyebrow">🕉️ Veda Lineage</span>
+      <div className="folio-section-head">
+        <span className="eyebrow">🕉️ Veda Lineage</span>
+        {canModerate && <button className="icon-only" aria-label="Edit lineage" onClick={() => onEdit(entry)}><EditPencilIcon /></button>}
+      </div>
       <div className="lineage-chain">
         {rows.map(([label, value], i) => (
           <div className="lineage-row" key={label}>
@@ -28,7 +32,7 @@ function LineageCard({ entry }) {
   );
 }
 
-function ParamparaCard({ entry, mediaUrl, onOpenPhoto }) {
+function ParamparaCard({ entry, mediaUrl, canModerate, onOpenPhoto, onEdit }) {
   const { description, sinceYear } = parseParamparaContent(entry.content);
   const cat = categoryFor(entry.field);
   const years = continuedForYears(sinceYear);
@@ -40,7 +44,10 @@ function ParamparaCard({ entry, mediaUrl, onOpenPhoto }) {
         </button>
       )}
       <div className="parampara-card-body">
-        <span className="eyebrow">{cat.icon} {cat.label}</span>
+        <div className="folio-section-head">
+          <span className="eyebrow">{cat.icon} {cat.label}</span>
+          {canModerate && <button className="icon-only" aria-label={`Edit ${entry.title}`} onClick={() => onEdit(entry)}><EditPencilIcon /></button>}
+        </div>
         <h4>{entry.title}</h4>
         <p className="folio-summary">{description}</p>
         {years && <p className="parampara-continued">This has continued for {years} years.</p>}
@@ -50,7 +57,7 @@ function ParamparaCard({ entry, mediaUrl, onOpenPhoto }) {
   );
 }
 
-export default function ParamparaView({ contributions, onContribute }) {
+export default function ParamparaView({ contributions, canModerate, onContribute, onEdit }) {
   const [urlMap, setUrlMap] = useState({});
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const verified = contributions.filter((c) => c.type === "parampara" && c.status === "Verified");
@@ -59,12 +66,15 @@ export default function ParamparaView({ contributions, onContribute }) {
   const [filter, setFilter] = useState(null);
   const filtered = filter ? entries.filter((e) => e.field === filter) : entries;
 
+  // Keyed on the actual set of media paths (not entries.length, which
+  // editing an entry in place never changes) — so replacing or adding a
+  // photo on an existing entry re-resolves its URL instead of leaving the
+  // new photo unresolved until something else happens to change the count.
+  const mediaPathsKey = entries.map((e) => parseParamparaContent(e.content).mediaPath).filter(Boolean).join(",");
   useEffect(() => {
-    const paths = entries.map((e) => parseParamparaContent(e.content).mediaPath).filter(Boolean);
-    if (!paths.length) return;
-    batchResolveMediaUrls(paths).then(setUrlMap);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entries.length]);
+    if (!mediaPathsKey) return;
+    batchResolveMediaUrls(mediaPathsKey.split(",")).then(setUrlMap);
+  }, [mediaPathsKey]);
 
   return (
     <section className="wrap">
@@ -80,7 +90,7 @@ export default function ParamparaView({ contributions, onContribute }) {
 
       {lineageEntry && (
         <div className="heritage-fade-up" style={{ "--enter-delay": "0.75s" }}>
-          <LineageCard entry={lineageEntry} />
+          <LineageCard entry={lineageEntry} canModerate={canModerate} onEdit={onEdit} />
         </div>
       )}
 
@@ -97,7 +107,7 @@ export default function ParamparaView({ contributions, onContribute }) {
         <div className="parampara-grid">
           {filtered.map((e, i) => (
             <div key={e.id} className="heritage-fade-up" style={{ "--enter-delay": `${1 + Math.min(i, 6) * 0.08}s` }}>
-              <ParamparaCard entry={e} mediaUrl={urlMap[parseParamparaContent(e.content).mediaPath]} onOpenPhoto={setLightboxSrc} />
+              <ParamparaCard entry={e} mediaUrl={urlMap[parseParamparaContent(e.content).mediaPath]} canModerate={canModerate} onOpenPhoto={setLightboxSrc} onEdit={onEdit} />
             </div>
           ))}
         </div>

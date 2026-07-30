@@ -34,8 +34,9 @@ import { PEOPLE, INITIAL_CONTRIBUTIONS, BOOKS, BOOK_OWNERSHIP, BOOK_READERS, add
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
 import { verifiedObjectsBySpot, hasAnyRoomObjects } from "./lib/chitrashale";
 import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, NEEDS_LOGIN } from "./data/session";
-import { insertContribution, updateContributionStatus, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus } from "./data/familyDb";
+import { insertContribution, updateContribution, updateContributionStatus, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus } from "./data/familyDb";
 import { resolveMediaUrl, uploadFamilyMedia } from "./lib/mediaUpload";
+import { parseParamparaContent } from "./lib/parampara";
 import { supabase } from "./lib/supabaseClient";
 
 // Audio/video/photo contributions store a Storage path in `content` — this
@@ -112,6 +113,7 @@ export default function App() {
   const [voiceWizardRequest, setVoiceWizardRequest] = useState(null);
   const [joinFamilyRequest, setJoinFamilyRequest] = useState(null);
   const [paramparaContributeOpen, setParamparaContributeOpen] = useState(false);
+  const [editingPhotoUrl, setEditingPhotoUrl] = useState(null);
   const [openBookId, setOpenBookId] = useState(null);
   const [addBookOpen, setAddBookOpen] = useState(false);
   const [libraryEntryRequest, setLibraryEntryRequest] = useState(null);
@@ -254,8 +256,17 @@ export default function App() {
     commit({ joinFamilyRequest: opts });
   }
 
-  function openParamparaContribute() {
-    commit({ paramparaContributeOpen: true });
+  // Called with no args to add a new entry, or with an existing entry
+  // (from ParamparaView's Edit buttons, moderator-only) to revise it in
+  // place — the same overlay slot holds either since both are truthy and
+  // ParamparaContributeModal tells them apart via its editEntry prop.
+  function openParamparaContribute(entry) {
+    if (entry) {
+      const mediaPath = parseParamparaContent(entry.content).mediaPath;
+      setEditingPhotoUrl(null);
+      if (mediaPath) resolveMediaUrl(mediaPath).then(setEditingPhotoUrl);
+    }
+    commit({ paramparaContributeOpen: entry || true });
   }
 
   function openBook(bookId) {
@@ -347,6 +358,24 @@ export default function App() {
   }
 
   async function submitContribution(data) {
+    // Editing an existing Parampara entry in place (ParamparaContributeModal
+    // carries the entry's own id through when it's opened via an Edit
+    // button, moderator-only) — updates that same row instead of inserting
+    // a new one, since the contribution row IS the record here.
+    if (data.id) {
+      const { id, ...rest } = data;
+      try {
+        const updated = await updateContribution(id, {
+          field: rest.field, field_label: rest.fieldLabel, title: rest.title, content: rest.content, contributor: rest.contributor,
+        });
+        setContributions((prev) => prev.map((c) => (c.id === id ? updated : c)));
+        closeOverlay();
+        showToast("Saved.");
+      } catch (err) {
+        showToast(`Couldn't save that: ${err.message}`);
+      }
+      return;
+    }
     const status = canModerate ? "Verified" : "Pending";
     try {
       const contribution = await withMediaUrl(await insertContribution(CURRENT_FAMILY_ID, { ...data, status, date: todayStr(), contributorUserId: CURRENT_USER_ID }));
@@ -697,7 +726,7 @@ export default function App() {
       <main>
         {view === "cover" && <CoverPage contributions={contributions} onNav={goTo} onContribute={openContribute} onOpenRoom={openRoom} />}
         {view === "tree" && <TreeView contributions={contributions} onSelectPerson={selectPerson} onNav={goTo} />}
-        {view === "parampara" && <ParamparaView contributions={contributions} onContribute={openParamparaContribute} />}
+        {view === "parampara" && <ParamparaView contributions={contributions} canModerate={canModerate} onContribute={() => openParamparaContribute()} onEdit={openParamparaContribute} />}
         {view === "library" && <LibraryView onOpenBook={openBook} onAddBook={openAddBook} />}
         {view === "treasury" && <TreasuryView onSelectPerson={selectPerson} />}
         {view === "vault" && <VaultView contributions={contributions} />}
@@ -751,7 +780,11 @@ export default function App() {
         <JoinFamilyModal initialCode={joinFamilyRequest.code || ""} onClose={closeOverlay} />
       )}
       {paramparaContributeOpen && (
-        <ParamparaContributeModal onCancel={closeOverlay} onSubmit={submitContribution} canModerate={canModerate} />
+        <ParamparaContributeModal
+          editEntry={typeof paramparaContributeOpen === "object" ? paramparaContributeOpen : null}
+          existingPhotoUrl={editingPhotoUrl}
+          onCancel={closeOverlay} onSubmit={submitContribution} canModerate={canModerate}
+        />
       )}
       {openBookId && BOOKS.find((b) => b.id === openBookId) && (
         <BookModal

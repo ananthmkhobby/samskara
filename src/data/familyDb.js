@@ -100,6 +100,19 @@ export async function updateContributionStatus(id, status) {
   if (error) throw new Error(error.message);
 }
 
+// Editing a Parampara entry in place — unlike a person-field "edit"
+// contribution (which layers on top of a separate people-table record),
+// a Parampara entry has no other canonical row; the contribution IS the
+// record, so revising it means updating this same row, not inserting a new
+// one. Already covered by the existing "update own or demo contributions"
+// RLS policy (moderator-only for a real family), so no migration needed.
+export async function updateContribution(id, patch) {
+  const db = requireClient();
+  const { data, error } = await db.from("contributions").update(patch).eq("id", id).select().single();
+  if (error) throw new Error(error.message);
+  return mapContributionRow(data);
+}
+
 export function mapContributionRow(row) {
   return {
     id: row.id,

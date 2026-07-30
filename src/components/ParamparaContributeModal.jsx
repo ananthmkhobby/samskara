@@ -1,27 +1,33 @@
 import { useState } from "react";
-import { PARAMPARA_CATEGORIES, LINEAGE_CATEGORY } from "../lib/parampara";
+import { PARAMPARA_CATEGORIES, LINEAGE_CATEGORY, parseParamparaContent } from "../lib/parampara";
 import { resizeImage } from "../lib/imageResize";
 import { uploadFamilyMedia } from "../lib/mediaUpload";
 import { CURRENT_FAMILY_ID } from "../data/session";
 
 const CATEGORY_CHOICES = [...PARAMPARA_CATEGORIES, LINEAGE_CATEGORY];
 
-export default function ParamparaContributeModal({ onCancel, onSubmit, canModerate }) {
-  const [category, setCategory] = useState(PARAMPARA_CATEGORIES[0].key);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [sinceYear, setSinceYear] = useState("");
+// editEntry, when present, means "revise this existing entry in place"
+// rather than add a new one — pre-fills every field from its current
+// content and, on submit, carries the entry's id through so App.jsx knows
+// to update the row instead of inserting one.
+export default function ParamparaContributeModal({ editEntry, existingPhotoUrl, onCancel, onSubmit, canModerate }) {
+  const editedContent = editEntry ? parseParamparaContent(editEntry.content) : {};
+  const [category, setCategory] = useState(editEntry?.field || PARAMPARA_CATEGORIES[0].key);
+  const [title, setTitle] = useState(editEntry?.title || "");
+  const [description, setDescription] = useState(editedContent.description || "");
+  const [sinceYear, setSinceYear] = useState(editedContent.sinceYear ? String(editedContent.sinceYear) : "");
   const [photoDataUrl, setPhotoDataUrl] = useState("");
   const [photoBlob, setPhotoBlob] = useState(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
   const [photoError, setPhotoError] = useState("");
   // Lineage is a structured chain, not a title+story — its own set of fields.
-  const [gotra, setGotra] = useState("");
-  const [pravara, setPravara] = useState("");
-  const [veda, setVeda] = useState("");
-  const [shakha, setShakha] = useState("");
-  const [guru, setGuru] = useState("");
-  const [generations, setGenerations] = useState("");
-  const [contributor, setContributor] = useState("");
+  const [gotra, setGotra] = useState(editedContent.gotra || "");
+  const [pravara, setPravara] = useState(editedContent.pravara || "");
+  const [veda, setVeda] = useState(editedContent.veda || "");
+  const [shakha, setShakha] = useState(editedContent.shakha || "");
+  const [guru, setGuru] = useState(editedContent.guru || "");
+  const [generations, setGenerations] = useState(editedContent.generations || "");
+  const [contributor, setContributor] = useState(editEntry?.contributor && editEntry.contributor !== "Anonymous" ? editEntry.contributor : "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -45,11 +51,13 @@ export default function ParamparaContributeModal({ onCancel, onSubmit, canModera
     e.preventDefault();
     if (submitting) return;
     setError("");
+    const editId = editEntry?.id;
 
     if (isLineage) {
       const payload = { gotra: gotra.trim(), pravara: pravara.trim(), veda: veda.trim(), shakha: shakha.trim(), guru: guru.trim(), generations: generations.trim() };
       if (!Object.values(payload).some(Boolean)) { setError("Fill in at least one field."); return; }
       await onSubmit({
+        id: editId,
         type: "parampara", field: "lineage", fieldLabel: LINEAGE_CATEGORY.label,
         title: "Family lineage", content: JSON.stringify(payload), contributor: contributor.trim() || "Anonymous",
       });
@@ -57,7 +65,10 @@ export default function ParamparaContributeModal({ onCancel, onSubmit, canModera
     }
 
     if (!title.trim() || !description.trim()) { setError("Title and story are both needed."); return; }
-    let mediaPath = null;
+    // Editing: keep the existing photo path unless a new file was chosen or
+    // "Remove photo" was clicked — never silently drop it just because the
+    // file input itself wasn't touched this time.
+    let mediaPath = editEntry ? (removePhoto ? null : editedContent.mediaPath || null) : null;
     try {
       if (photoBlob) {
         setSubmitting(true);
@@ -70,6 +81,7 @@ export default function ParamparaContributeModal({ onCancel, onSubmit, canModera
     }
     const payload = { description: description.trim(), sinceYear: sinceYear ? Number(sinceYear) : null, mediaPath };
     await onSubmit({
+      id: editId,
       type: "parampara", field: category, fieldLabel: categoryDef.label,
       title: title.trim(), content: JSON.stringify(payload), contributor: contributor.trim() || "Anonymous",
     });
@@ -82,7 +94,7 @@ export default function ParamparaContributeModal({ onCancel, onSubmit, canModera
         <button className="modal-close on-paper" onClick={onCancel} aria-label="Close">✕</button>
         <div className="modal-body">
           <span className="eyebrow">Parampara</span>
-          <h2 style={{ fontSize: 20, marginTop: 6 }}>Add to your family's heritage</h2>
+          <h2 style={{ fontSize: 20, marginTop: 6 }}>{editEntry ? "Edit this entry" : "Add to your family's heritage"}</h2>
           <form onSubmit={submit}>
             <div className="form-row">
               <label>What kind of Parampara is this?</label>
@@ -123,7 +135,14 @@ export default function ParamparaContributeModal({ onCancel, onSubmit, canModera
                 </div>
                 <div className="form-row">
                   <label>Photo (optional)</label>
-                  <input type="file" accept="image/*" onChange={handlePhotoFile} />
+                  {existingPhotoUrl && !photoDataUrl && !removePhoto && (
+                    <div style={{ marginBottom: 10 }}>
+                      <img src={existingPhotoUrl} alt="" style={{ width: 120, height: 120, objectFit: "cover", borderRadius: 8, border: "1px solid var(--line-strong)" }} />
+                      <p><button type="button" className="link-btn" onClick={() => setRemovePhoto(true)}>Remove photo</button></p>
+                    </div>
+                  )}
+                  {removePhoto && <p className="form-hint" style={{ marginTop: 0 }}>Photo will be removed unless you choose a new one below.</p>}
+                  <input type="file" accept="image/*" onChange={(e) => { setRemovePhoto(false); handlePhotoFile(e); }} />
                   {photoDataUrl && <img src={photoDataUrl} alt="" style={{ width: 120, height: 120, objectFit: "cover", borderRadius: 8, marginTop: 10, border: "1px solid var(--line-strong)" }} />}
                   {photoError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{photoError}</p>}
                 </div>
@@ -136,7 +155,9 @@ export default function ParamparaContributeModal({ onCancel, onSubmit, canModera
             </div>
             {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
             <div className="folio-actions">
-              <button type="submit" className="btn primary" disabled={submitting}>{submitting ? "Uploading…" : canModerate ? "Add now" : "Submit for review"}</button>
+              <button type="submit" className="btn primary" disabled={submitting}>
+                {submitting ? "Uploading…" : editEntry ? "Save changes" : canModerate ? "Add now" : "Submit for review"}
+              </button>
               <button type="button" className="btn ghost" onClick={onCancel} disabled={submitting}>Cancel</button>
             </div>
           </form>
