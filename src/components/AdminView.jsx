@@ -3,7 +3,7 @@ import { MIN_GEN, MAX_GEN, byId, yearsLabel } from "../data/helpers";
 import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, CURRENT_ROLE } from "../data/session";
 import {
   createInvite, fetchFamilyMembers, updateMemberRole, setMemberPersonLink,
-  updateMemberDisplayName, fetchInvites, revokeInvite,
+  updateMemberDisplayName, fetchInvites, revokeInvite, fetchMemberEmail,
 } from "../data/familyDb";
 import { categoryFor } from "../lib/parampara";
 import { libraryCategoryFor } from "../lib/library";
@@ -21,6 +21,7 @@ function RosterCard() {
   const [error, setError] = useState("");
   const [renamingId, setRenamingId] = useState(null);
   const [nameDraft, setNameDraft] = useState("");
+  const [emails, setEmails] = useState({});
   const isHead = CURRENT_ROLE === "head";
   const isModerator = CURRENT_ROLE === "head" || CURRENT_ROLE === "admin";
 
@@ -57,6 +58,17 @@ function RosterCard() {
   function startRename(member) {
     setRenamingId(member.id);
     setNameDraft(member.displayName || "");
+  }
+
+  async function showEmail(member) {
+    setEmails((prev) => ({ ...prev, [member.id]: "…" }));
+    try {
+      const email = await fetchMemberEmail(member.id);
+      setEmails((prev) => ({ ...prev, [member.id]: email || "(no email on file)" }));
+    } catch (err) {
+      setEmails((prev) => ({ ...prev, [member.id]: null }));
+      setError(err.message);
+    }
   }
 
   async function saveRename(member) {
@@ -106,6 +118,15 @@ function RosterCard() {
               </b>
             )}
             <div className="queue-meta">{ROLE_LABELS[m.role]} · joined {m.createdAt?.slice(0, 10)}</div>
+            {isModerator && (
+              emails[m.id] !== undefined ? (
+                <div className="queue-meta">{emails[m.id] === null ? "Couldn't load email" : emails[m.id]}</div>
+              ) : (
+                <button type="button" className="link-btn" style={{ fontSize: 11 }} onClick={() => showEmail(m)}>
+                  Show sign-up email
+                </button>
+              )
+            )}
             {(m.userId === CURRENT_USER_ID || isModerator) && (
               <div style={{ marginTop: 6 }}>
                 <label style={{ fontSize: 11, color: "var(--ink-faint)", display: "block", marginBottom: 3 }}>

@@ -134,8 +134,14 @@ export default function ChitrashaleRoom({ person, contributions, onClose, onOpen
   const [urlMap, setUrlMap] = useState({});
   const [reflectionText, setReflectionText] = useState("");
   const [reflectionSubmitting, setReflectionSubmitting] = useState(false);
+  // Muted by default for now — only an explicit prior "unmute" (a stored
+  // "0") turns it back on; a first-ever visit or an unreadable localStorage
+  // both fall back to silent.
   const [muted, setMuted] = useState(() => {
-    try { return localStorage.getItem(MUTE_KEY) === "1"; } catch { return false; }
+    try {
+      const stored = localStorage.getItem(MUTE_KEY);
+      return stored === null ? true : stored === "1";
+    } catch { return true; }
   });
   const playerRef = useRef(null);
 
@@ -223,7 +229,11 @@ export default function ChitrashaleRoom({ person, contributions, onClose, onOpen
   return (
     <div className="modal-backdrop chitra-room-backdrop" onClick={(e) => { if (e.target === e.currentTarget) requestClose(); }}>
       <div className="chitra-room-panel">
-        <button className="modal-close on-paper" onClick={requestClose} aria-label="Close">✕</button>
+        {/* In the exit phase this must actually close (same action as "Not
+            now") rather than call requestClose again — requestClose only
+            moves room -> exit, so reusing it here left the ✕ a dead click
+            once already on the exit question. */}
+        <button className="modal-close on-paper" onClick={phase === "exit" ? onClose : requestClose} aria-label="Close">✕</button>
         {phase === "room" && (
           <button
             type="button" className="chitra-mute-toggle on-paper"

@@ -51,6 +51,9 @@ export default function AuthPanel() {
 }
 
 function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, error, setError }) {
+  const [resetSent, setResetSent] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
+
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
@@ -64,6 +67,19 @@ function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, erro
     window.location.reload();
   }
 
+  async function sendReset() {
+    if (!email.trim()) {
+      setError("Enter your email above first, then tap \"Forgot password?\" again.");
+      return;
+    }
+    setResetBusy(true);
+    setError("");
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin });
+    setResetBusy(false);
+    if (err) { setError(err.message); return; }
+    setResetSent(true);
+  }
+
   return (
     <form onSubmit={submit}>
       <div className="form-row">
@@ -74,6 +90,15 @@ function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, erro
         <label>Password</label>
         <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
+      <p className="form-hint" style={{ marginTop: 6 }}>
+        {resetSent ? (
+          `Check ${email.trim()} for a reset link.`
+        ) : (
+          <button type="button" className="link-btn" disabled={resetBusy} onClick={sendReset}>
+            {resetBusy ? "Sending…" : "Forgot password?"}
+          </button>
+        )}
+      </p>
       {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
       <button type="submit" className="btn primary small" disabled={busy} style={{ marginTop: 10 }}>{busy ? "Signing in…" : "Log in →"}</button>
     </form>

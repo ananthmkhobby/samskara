@@ -29,12 +29,14 @@ import ChitrashaleRoom from "./components/ChitrashaleRoom";
 import ChitrashaleAddModal from "./components/ChitrashaleAddModal";
 import LoginPage from "./components/LoginPage";
 import HelpStandalone from "./components/HelpStandalone";
+import ResetPasswordGate from "./components/ResetPasswordGate";
 import { PEOPLE, INITIAL_CONTRIBUTIONS, BOOKS, BOOK_OWNERSHIP, BOOK_READERS, addPerson, addBook, makeUniquePersonId } from "./data/people";
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
 import { verifiedObjectsBySpot, hasAnyRoomObjects } from "./lib/chitrashale";
 import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, NEEDS_LOGIN } from "./data/session";
 import { insertContribution, updateContributionStatus, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus } from "./data/familyDb";
 import { resolveMediaUrl, uploadFamilyMedia } from "./lib/mediaUpload";
+import { supabase } from "./lib/supabaseClient";
 
 // Audio/video/photo contributions store a Storage path in `content` — this
 // resolves it to a directly-playable signed URL right after submission, so
@@ -88,6 +90,19 @@ export default function App() {
   // there's no other state change to ride along on to trigger a re-render —
   // this tick is a plain "something changed, please re-render" signal.
   const [, bump] = useReducer((x) => x + 1, 0);
+  // Following a "reset your password" email link signs the browser in with
+  // a short-lived recovery session before this component ever mounts —
+  // without this listener that session would look identical to a normal
+  // login and boot straight into the family view instead of letting the
+  // person actually set a new password.
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
+  useEffect(() => {
+    if (!supabase) return;
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
   const [selectedPersonId, setSelectedPersonId] = useState(null);
   const [biographyPersonId, setBiographyPersonId] = useState(null);
   const [contributeRequest, setContributeRequest] = useState(null);
@@ -220,7 +235,15 @@ export default function App() {
   }
 
   function openRoom(personId) {
-    commit({ roomPersonId: personId });
+    // Opening a room from the Folio (its "Enter their room" button) must
+    // close the Folio itself — otherwise both stay mounted at once, the
+    // room's own backdrop sits on top of the Folio panel intercepting
+    // clicks meant for it, and a stray click lands on the room's backdrop
+    // and flips it straight to the exit question, which then looks stuck
+    // (two overlapping panels, two "close" buttons, neither behaving as
+    // expected). Mirrors FolioModal's own onShare, which already clears
+    // selectedPersonId the same way when handing off to another overlay.
+    commit({ roomPersonId: personId, selectedPersonId: null });
   }
 
   function openContribute(opts = {}) {
@@ -638,6 +661,14 @@ export default function App() {
   const biographyPerson = rawBiographyPerson
     ? { ...rawBiographyPerson, chapters: getBiographyChapters(rawBiographyPerson), timeline: getBiographyTimeline(rawBiographyPerson) }
     : null;
+
+  // Takes priority over everything else, including NEEDS_LOGIN — a
+  // recovery link's temporary session would otherwise look like a normal
+  // login and drop the person straight into the family view with no
+  // chance to actually set the new password they clicked the link for.
+  if (passwordRecovery) {
+    return <ResetPasswordGate onDone={() => { setPasswordRecovery(false); window.location.href = "/"; }} />;
+  }
 
   // A first-time, fully anonymous visitor (no session, demo not explicitly
   // requested via ?demo=1) sees the login page instead of the public demo

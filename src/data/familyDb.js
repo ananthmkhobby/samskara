@@ -450,6 +450,17 @@ export async function updateMemberDisplayName(memberRowId, displayName) {
   if (error) throw new Error(error.message);
 }
 
+// auth.users isn't client-readable directly — this goes through a
+// Head/Admin-only RPC so someone who "forgot their password" (really: which
+// email they signed up with) can be reminded, then use the self-service
+// reset on the login page.
+export async function fetchMemberEmail(memberRowId) {
+  const db = requireClient();
+  const { data, error } = await db.rpc("get_member_email", { p_member_id: memberRowId });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 // The caller's own membership row for the active family — used at boot to
 // know which tree node (if any) is "me", so the Tree view can highlight it.
 export async function fetchMyPersonLink(familyId, userId) {
