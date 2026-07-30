@@ -22,6 +22,7 @@ import './styles/heritageIntro.css'
 import './styles/login.css'
 import './styles/familyFlame.css'
 import './styles/chitrashale.css'
+import './styles/focusTree.css'
 import App from './App.jsx'
 import { initDataLayer } from './data/people.js'
 

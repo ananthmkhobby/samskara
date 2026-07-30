@@ -1,0 +1,69 @@
+/* Focus view — one person at a time, large names and big tap targets, for
+   anyone (elders especially) who finds the full zoomable graph hard to read
+   on a phone. Reuses the app's own tokens throughout, no new palette. */
+
+.focus-tree { padding-top: 4px; }
+
+/* Not sticky — the app already has its own persistent header at top:0;
+   a second sticky bar at the same offset would land exactly on top of it. */
+.focus-topbar {
+  background: var(--parchment); border-bottom: 1px solid var(--line);
+  padding: 10px 4px 12px; display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
+}
+.focus-icon-btn {
+  width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--parchment-paper);
+  color: var(--ink); font-size: 17px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none;
+  transition: opacity .15s ease;
+}
+.focus-icon-btn:disabled { opacity: .35; cursor: default; }
+.focus-crumb-wrap { flex: 1; min-width: 0; }
+.focus-crumb-eyebrow { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 2px; }
+.focus-crumb { font-size: 13px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+.focus-crumb b { color: var(--maroon-deep); font-weight: 600; }
+
+.focus-section-label {
+  font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--gold-deep);
+  text-align: center; margin: 0 0 12px;
+}
+.focus-connector { height: 22px; margin: 0 auto; width: 2px; background: var(--line-strong); }
+
+.focus-kin-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 4px; }
+.focus-kin-card {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; width: 140px;
+  background: var(--parchment-paper); border: 1.5px solid var(--line-strong); border-radius: 14px;
+  padding: 14px 10px 12px; cursor: pointer; text-align: center; font: inherit; color: inherit;
+  transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.focus-kin-card:active { transform: scale(.97); }
+.focus-kin-card:hover { border-color: var(--gold-deep); box-shadow: var(--shadow-1); }
+.focus-kin-card:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.focus-kin-avatar { flex: none; }
+.focus-kin-name { font-size: 16px; font-weight: 600; line-height: 1.25; }
+.focus-kin-years { font-size: 12px; color: var(--ink-faint); }
+.focus-kin-hint { font-size: 11px; color: var(--gold-deep); font-weight: 600; }
+
+.focus-person { display: flex; flex-direction: column; align-items: center; margin: 4px 0 6px; }
+.focus-avatar { box-shadow: var(--shadow-2); border: 4px solid var(--parchment-paper); outline: 2px solid var(--gold-deep); flex: none; }
+.focus-name { font-family: var(--font-display); font-size: 25px; color: var(--ink); margin: 14px 0 2px; text-align: center; text-wrap: balance; }
+.focus-years { font-size: 13.5px; color: var(--ink-faint); margin: 0; }
+.focus-relation {
+  margin-top: 10px; font-size: 12.5px; font-weight: 600; color: var(--maroon-deep); background: var(--maroon-wash);
+  border-radius: 999px; padding: 5px 14px; text-align: center;
+}
+.focus-spouse-pill {
+  margin-top: 14px; display: flex; align-items: center; gap: 8px; background: var(--gold-wash); border: 1px solid var(--gold);
+  border-radius: 999px; padding: 7px 16px 7px 8px; cursor: pointer; font: inherit; color: inherit;
+}
+.focus-spouse-pill:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.focus-spouse-text { font-size: 13.5px; text-align: left; }
+.focus-spouse-text b { font-weight: 700; }
+.focus-spouse-label { font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .06em; display: block; }
+
+.focus-empty-note { text-align: center; color: var(--ink-faint); font-size: 13px; padding: 6px 0 18px; }
+
+.focus-actions { margin-top: 26px; display: flex; justify-content: center; }
+.focus-actions .btn { min-width: 220px; }
+
+@media (min-width: 640px) {
+  .focus-kin-card { width: 150px; }
+}

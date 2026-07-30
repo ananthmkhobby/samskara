@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PEOPLE, VALUES } from "../data/people";
 import BanyanTree from "./BanyanTree";
 import ClassicTree from "./ClassicTree";
+import FocusTreeView from "./FocusTreeView";
 
 // Banyan view is hidden for now (Classic only) — kept mounted-but-unused
 // rather than deleted so it's a one-line change to bring the toggle back.
@@ -43,25 +44,32 @@ export default function TreeView({ contributions, onSelectPerson, onNav }) {
         <p>
           {mode === "banyan"
             ? "Five generations, from Narasimha & Kamala's founding household to the youngest leaves. Tap anyone glowing in the canopy to open their folio."
-            : "Five generations, laid out generation by generation. Drag to pan, use the controls to zoom, tap anyone to open their folio."}
-          {" "}Highlight a value to see whose life carried it.
+            : mode === "focus"
+              ? "One person at a time, in large print — tap a parent, spouse, or child to move there, or open their full folio."
+              : "Five generations, laid out generation by generation. Drag to pan, use the controls to zoom, tap anyone to open their folio."}
+          {mode !== "focus" && " Highlight a value to see whose life carried it."}
         </p>
       </div>
-      {SHOW_BANYAN_TOGGLE && (
-        <div className="tree-mode-toggle" style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+      <div className="tree-mode-toggle" style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        {SHOW_BANYAN_TOGGLE && (
           <button className={`chip${mode === "banyan" ? " active" : ""}`} onClick={() => setMode("banyan")}>Banyan tree</button>
-          <button className={`chip${mode === "classic" ? " active" : ""}`} onClick={() => setMode("classic")}>Classic tree</button>
+        )}
+        <button className={`chip${mode === "classic" ? " active" : ""}`} onClick={() => setMode("classic")}>Tree</button>
+        <button className={`chip${mode === "focus" ? " active" : ""}`} onClick={() => setMode("focus")}>Focus view</button>
+      </div>
+      {mode !== "focus" && (
+        <div className="banyan-toolbar">
+          {VALUES.map((v) => (
+            <button key={v} className={`chip${valueFilter === v ? " active" : ""}`} onClick={() => setValueFilter(valueFilter === v ? null : v)}>{v}</button>
+          ))}
+          <button className={`chip${valueFilter === null ? " active" : ""}`} onClick={() => setValueFilter(null)}>All</button>
         </div>
       )}
-      <div className="banyan-toolbar">
-        {VALUES.map((v) => (
-          <button key={v} className={`chip${valueFilter === v ? " active" : ""}`} onClick={() => setValueFilter(valueFilter === v ? null : v)}>{v}</button>
-        ))}
-        <button className={`chip${valueFilter === null ? " active" : ""}`} onClick={() => setValueFilter(null)}>All</button>
-      </div>
       {mode === "banyan"
         ? <BanyanTree people={people} contributions={contributions} valueFilter={valueFilter} onSelectPerson={onSelectPerson} />
-        : <ClassicTree people={people} contributions={contributions} valueFilter={valueFilter} onSelectPerson={onSelectPerson} />}
+        : mode === "focus"
+          ? <FocusTreeView people={people} onSelectPerson={onSelectPerson} />
+          : <ClassicTree people={people} contributions={contributions} valueFilter={valueFilter} onSelectPerson={onSelectPerson} />}
     </section>
   );
 }
