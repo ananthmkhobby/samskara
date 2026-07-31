@@ -11,6 +11,7 @@
 .library-locked-badge { position: absolute; top: 8px; right: 8px; background: rgba(15,10,5,.6); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
 .library-book-body { padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 4px; }
 .library-book-body h4 { font-size: 14.5px; font-family: var(--font-display); }
+.library-book-contributor { font-size: 11.5px; color: var(--ink-faint); margin-top: 2px; }
 
 .library-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 18px 0 16px; overflow-x: auto; }
 .library-tabs button {

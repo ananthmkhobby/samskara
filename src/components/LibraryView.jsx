@@ -33,6 +33,7 @@ function BookCard({ book, onOpen }) {
       <div className="library-book-body">
         <span className="eyebrow">{cat.icon} {cat.label}</span>
         <h4>{book.title}</h4>
+        {book.contributor && <p className="library-book-contributor">Added by {book.contributor}</p>}
       </div>
     </button>
   );

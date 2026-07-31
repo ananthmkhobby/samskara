@@ -190,6 +190,7 @@ export default function BookModal({ book, contributions, onClose, canModerate, o
             <div>
               <span className="eyebrow">{cat.icon} {cat.label}</span>
               <h2 style={{ fontSize: 21, marginTop: 4 }}>{book.title}</h2>
+              {book.contributor && <p className="library-book-contributor">Added by {book.contributor}</p>}
             </div>
           </div>
 
