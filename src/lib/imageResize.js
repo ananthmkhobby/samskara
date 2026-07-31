@@ -1,7 +1,15 @@
-// Downscales an uploaded image file to a small square-ish JPEG, returning
-// both a data URL (for an instant local preview) and a Blob (for the actual
-// Supabase Storage upload) — resizing once and reusing the result for both.
-export function resizeImage(file, maxSize = 320) {
+// Downscales an uploaded image file to a JPEG, returning both a data URL
+// (for an instant local preview) and a Blob (for the actual Supabase
+// Storage upload) — resizing once and reusing the result for both.
+// 1600 keeps every photo crisp everywhere it's actually displayed —
+// full-screen PhotoLightbox on a retina phone, Gallery cards, Admin queue
+// previews — while still compressing a modern phone's 3000-4000px camera
+// output well below the storage/bandwidth cost of the original. (Was 320,
+// sized only for small avatar-scale thumbnails; every one of those still
+// downscales further at display time via CSS, so raising this doesn't cost
+// them anything — it only fixes every larger view that was stretching a
+// 320px source past its real resolution.)
+export function resizeImage(file, maxSize = 1600) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error("Could not read that file."));
