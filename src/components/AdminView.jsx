@@ -11,6 +11,7 @@ import { libraryCategoryFor } from "../lib/library";
 import { spotFor } from "../lib/chitrashale";
 import { BOOKS, PEOPLE } from "../data/people";
 import PersonAvatar from "./PersonAvatar";
+import PhotoLightbox from "./PhotoLightbox";
 
 const TABS = ["Pending", "Verified", "Rejected", "All"];
 const ADMIN_TABS = ["Members", "Review queue"];
@@ -436,6 +437,7 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
   const showMembersTab = !IS_DEMO && canModerate;
   const [adminTab, setAdminTab] = useState(showMembersTab ? "Members" : "Review queue");
   const [tab, setTab] = useState("Pending");
+  const [lightboxSrc, setLightboxSrc] = useState(null);
   const pendingCount = contributions.filter((c) => c.status === "Pending").length;
   const rows = contributions.filter((c) => tab === "All" || c.status === tab).slice().reverse();
 
@@ -525,6 +527,7 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
             : `New: ${c.newPersonName}`;
           const isRealAudio = c.type === "audio" && !!c.mediaUrl;
           const isRealVideo = c.type === "video" && !!c.mediaUrl;
+          const isRealPhoto = c.type === "photo" && !!c.mediaUrl;
           return (
             <div className="queue-row" key={c.id}>
               {person
@@ -546,7 +549,15 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
                 </div>
                 {isRealAudio ? <audio src={c.mediaUrl} controls style={{ maxWidth: 260, marginTop: 6 }} />
                   : isRealVideo ? <video src={c.mediaUrl} controls style={{ maxWidth: 260, marginTop: 6, borderRadius: 6 }} />
-                    : <div className="queue-snippet">{snippetFor(c)}</div>}
+                    : isRealPhoto ? (
+                      <button
+                        type="button" onClick={() => setLightboxSrc(c.mediaUrl)}
+                        style={{ display: "block", border: 0, background: "none", padding: 0, cursor: "zoom-in", marginTop: 6 }}
+                        aria-label="View photo full screen"
+                      >
+                        <img src={c.mediaUrl} alt="" style={{ maxWidth: 260, maxHeight: 180, borderRadius: 6, display: "block" }} />
+                      </button>
+                    ) : <div className="queue-snippet">{snippetFor(c)}</div>}
               </div>
               <div className="queue-actions">
                 {c.status === "Pending" ? (
@@ -564,6 +575,7 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
       </div>
       </>
       )}
+      <PhotoLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
     </section>
   );
 }
