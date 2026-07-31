@@ -521,8 +521,10 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
       return `Shows up on "${book?.title || "a book"}", under the ${kindLabel} tab`;
     }
     if (c.type === "chitrashalaObject") {
+      // spot.label is already a full prepositional phrase ("By the
+      // window", "The puja corner") — no extra "at the" needed.
       const spot = spotFor(c.field);
-      return person ? `Shows up in ${person.name}'s room${spot ? `, at the ${spot.label.toLowerCase()}` : ""}` : "Shows up in their room";
+      return person ? `Shows up in ${person.name}'s room — ${spot ? spot.label : "a spot in the room"}` : "Shows up in their room";
     }
     if (c.type === "chitrashalaReflection") {
       return person ? `Shows up as a reflection in ${person.name}'s room` : "Shows up as a reflection";
