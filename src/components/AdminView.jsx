@@ -12,6 +12,7 @@ import { spotFor } from "../lib/chitrashale";
 import { BOOKS, PEOPLE } from "../data/people";
 import PersonAvatar from "./PersonAvatar";
 import PhotoLightbox from "./PhotoLightbox";
+import { EXP_LABELS } from "./Icons";
 
 const TABS = ["Pending", "Verified", "Rejected", "All"];
 const ADMIN_TABS = ["Members", "Review queue"];
@@ -488,6 +489,47 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
     return c.content;
   }
 
+  // Plain-language answer to "where does this actually show up once
+  // approved" — the type badge already hints at it, but tersely (e.g.
+  // "parampara · Ancestor Wisdom"); this spells it out so a moderator
+  // doesn't have to infer it themselves before approving.
+  function destinationFor(c) {
+    const person = c.personId ? byId(c.personId) : null;
+    if (c.type === "newPerson") {
+      const anchor = c.anchorPersonId ? byId(c.anchorPersonId) : null;
+      return `Adds a new person to the family tree${anchor ? `, connected to ${anchor.name}` : ""}`;
+    }
+    if (c.type === "edit") {
+      return person ? `Updates "${c.fieldLabel}" on ${person.name}'s Folio` : `Updates "${c.fieldLabel}"`;
+    }
+    if (c.type === "interview") {
+      return person ? `Adds a new biography chapter to ${person.name}'s Folio` : "Adds a new biography chapter";
+    }
+    if (["photo", "audio", "video", "memory", "document"].includes(c.type)) {
+      if (person && c.expCategory) return `Shows up on ${person.name}'s Folio, under Their Experience (${EXP_LABELS[c.expCategory] || c.expCategory})`;
+      if (person) return `Shows up on ${person.name}'s Folio`;
+      return "Recorded as a family memory";
+    }
+    if (c.type === "date") return "Recorded as a family memory";
+    if (c.type === "parampara") {
+      return c.field === "lineage" ? "Shows up on the Parampara page, under Veda Lineage" : `Shows up on the Parampara page, under ${categoryFor(c.field).label}`;
+    }
+    if (c.type === "newBook") return `Adds a new book to the Family Library, under ${libraryCategoryFor(c.field).label}`;
+    if (c.type === "library_entry") {
+      const book = BOOKS.find((b) => b.id === c.bookId);
+      const kindLabel = { wisdom: "Wisdom", memory: "Memories", discussion: "Discussions" }[c.field] || c.field;
+      return `Shows up on "${book?.title || "a book"}", under the ${kindLabel} tab`;
+    }
+    if (c.type === "chitrashalaObject") {
+      const spot = spotFor(c.field);
+      return person ? `Shows up in ${person.name}'s room${spot ? `, at the ${spot.label.toLowerCase()}` : ""}` : "Shows up in their room";
+    }
+    if (c.type === "chitrashalaReflection") {
+      return person ? `Shows up as a reflection in ${person.name}'s room` : "Shows up as a reflection";
+    }
+    return null;
+  }
+
   return (
     <section className="wrap">
       <div className="section-head">
@@ -547,6 +589,7 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
                       : c.type}
                   </span> · from {c.contributor} · {c.date}
                 </div>
+                {destinationFor(c) && <div className="queue-destination">↳ {destinationFor(c)}</div>}
                 {isRealAudio ? <audio src={c.mediaUrl} controls style={{ maxWidth: 260, marginTop: 6 }} />
                   : isRealVideo ? <video src={c.mediaUrl} controls style={{ maxWidth: 260, marginTop: 6, borderRadius: 6 }} />
                     : isRealPhoto ? (
