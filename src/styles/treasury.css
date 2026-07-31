@@ -8,3 +8,16 @@
 .lesson-who .avatar { width: 36px; height: 36px; }
 .lesson-who b { font-size: 13px; display: block; }
 .lesson-who span { font-size: 11px; color: var(--ink-faint); }
+
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.gallery-card { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.gallery-photo-btn { display: block; border: 0; padding: 0; background: none; cursor: zoom-in; width: 100%; }
+.gallery-photo { width: 100%; height: 170px; object-fit: cover; display: block; }
+.gallery-media-player { width: 100%; margin: 14px 14px 0; width: calc(100% - 28px); }
+.gallery-video { border-radius: 8px; max-height: 170px; }
+.gallery-text-body { padding: 16px 14px 4px; font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; }
+.gallery-card-foot { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; }
+.gallery-who { display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 0; cursor: pointer; font: inherit; color: var(--ink); font-weight: 600; font-size: 12.5px; }
+.gallery-who .avatar { width: 28px; height: 28px; }
+.gallery-who-family { cursor: default; color: var(--gold-deep); }
+.gallery-meta { font-size: 11px; color: var(--ink-faint); }

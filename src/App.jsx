@@ -731,7 +731,7 @@ export default function App() {
         {view === "tree" && <TreeView contributions={contributions} onSelectPerson={selectPerson} onNav={goTo} />}
         {view === "parampara" && <ParamparaView contributions={contributions} canModerate={canModerate} onContribute={() => openParamparaContribute()} onEdit={openParamparaContribute} />}
         {view === "library" && <LibraryView onOpenBook={openBook} onAddBook={openAddBook} />}
-        {view === "treasury" && <TreasuryView onSelectPerson={selectPerson} />}
+        {view === "treasury" && <TreasuryView contributions={contributions} onSelectPerson={selectPerson} />}
         {view === "vault" && <VaultView contributions={contributions} />}
         {view === "map" && <JourneyMapView onSelectPerson={selectPerson} />}
         {view === "admin" && <AdminView contributions={contributions} onApprove={approveContribution} onReject={rejectContribution} canModerate={canModerate} />}
