@@ -572,6 +572,14 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
           const isRealAudio = c.type === "audio" && !!c.mediaUrl;
           const isRealVideo = c.type === "video" && !!c.mediaUrl;
           const isRealPhoto = c.type === "photo" && !!c.mediaUrl;
+          // A proposed profile-photo change is an "edit" contribution whose
+          // content is JSON, not the plain mediaUrl the other photo cases
+          // use — same tap-to-fullscreen treatment once parsed, so a
+          // reviewer sees the actual proposed photo instead of raw JSON text.
+          let photoEditUrl = null;
+          if (c.type === "edit" && c.field === "photo") {
+            try { photoEditUrl = JSON.parse(c.content).photoUrl || null; } catch { /* malformed content */ }
+          }
           return (
             <div className="queue-row" key={c.id}>
               {person
@@ -594,13 +602,13 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
                 {destinationFor(c) && <div className="queue-destination">↳ {destinationFor(c)}</div>}
                 {isRealAudio ? <audio src={c.mediaUrl} controls style={{ maxWidth: 260, marginTop: 6 }} />
                   : isRealVideo ? <video src={c.mediaUrl} controls style={{ maxWidth: 260, marginTop: 6, borderRadius: 6 }} />
-                    : isRealPhoto ? (
+                    : (isRealPhoto || photoEditUrl) ? (
                       <button
-                        type="button" onClick={() => setLightboxSrc(c.mediaUrl)}
+                        type="button" onClick={() => setLightboxSrc(isRealPhoto ? c.mediaUrl : photoEditUrl)}
                         style={{ display: "block", border: 0, background: "none", padding: 0, cursor: "zoom-in", marginTop: 6 }}
                         aria-label="View photo full screen"
                       >
-                        <img src={c.mediaUrl} alt="" style={{ maxWidth: 260, maxHeight: 180, borderRadius: 6, display: "block" }} />
+                        <img src={isRealPhoto ? c.mediaUrl : photoEditUrl} alt="" style={{ maxWidth: 260, maxHeight: 180, borderRadius: 6, display: "block" }} />
                       </button>
                     ) : <div className="queue-snippet">{snippetFor(c)}</div>}
               </div>

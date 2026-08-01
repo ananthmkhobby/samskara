@@ -572,7 +572,14 @@ export default function App() {
     if (c.type === "edit" && c.personId) {
       const person = byId(c.personId);
       if (!person) return;
-      if (c.field === "born") {
+      if (c.field === "photo") {
+        try {
+          const { photoPath, photoUrl } = JSON.parse(c.content);
+          person.photoPath = photoPath;
+          person.photoUrl = photoUrl;
+          updatePersonFields(familyId, c.personId, { photo_path: photoPath }).catch((err) => console.error(err.message));
+        } catch { /* malformed content, skip */ }
+      } else if (c.field === "born") {
         try {
           const { born, bornYearOnly } = JSON.parse(c.content);
           person.born = born;
@@ -649,12 +656,32 @@ export default function App() {
     }
   }
 
-  function changePhoto(personId, photoPath, photoUrl) {
-    const person = byId(personId);
-    if (person) { person.photoPath = photoPath; person.photoUrl = photoUrl; }
-    bump();
-    updatePersonFields(CURRENT_FAMILY_ID, personId, { photo_path: photoPath }).catch((err) => showToast(`Couldn't save photo: ${err.message}`));
-    showToast("Photo updated.");
+  // Same Pending/Verified split as every other field edit (see submitEdit)
+  // — this used to write straight to the person's row for anyone at all,
+  // regardless of role, with no review step and no record of who changed
+  // it. The file itself still uploads to Storage right away either way
+  // (FolioModal already did that before calling this); what's gated now is
+  // only whether it's applied to the person's visible photoUrl.
+  async function changePhoto(personId, photoPath, photoUrl) {
+    if (canModerate) {
+      const person = byId(personId);
+      if (person) { person.photoPath = photoPath; person.photoUrl = photoUrl; }
+      bump();
+      updatePersonFields(CURRENT_FAMILY_ID, personId, { photo_path: photoPath }).catch((err) => showToast(`Couldn't save photo: ${err.message}`));
+      showToast("Photo updated.");
+      return;
+    }
+    try {
+      const contribution = await insertContribution(CURRENT_FAMILY_ID, {
+        type: "edit", field: "photo", fieldLabel: "Profile photo", personId,
+        content: JSON.stringify({ photoPath, photoUrl }),
+        status: "Pending", date: todayStr(), contributorUserId: CURRENT_USER_ID, contributor: "Anonymous"
+      });
+      setContributions((prev) => [...prev, contribution]);
+      showToast("Photo proposed — sent for admin review.");
+    } catch (err) {
+      showToast(`Couldn't submit that: ${err.message}`);
+    }
   }
 
   // Admin/Family Head only — undoes a bad chapter edit by removing it from
