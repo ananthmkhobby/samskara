@@ -88,7 +88,7 @@ export default function VaultView({ contributions }) {
           {[...yearOnlyEntries].sort((a, b) => a.year.localeCompare(b.year)).map((e, j) => (
             <div className="date-row" key={j}>
               <span className={`date-dot ${e.type}`} />
-              <span className="date-day tnum">{e.year}</span>
+              <span className="date-day date-day-year tnum">{e.year}</span>
               <span className="date-label">{e.label}</span>
             </div>
           ))}

@@ -15,4 +15,9 @@
 .date-dot.remembrance { background: var(--maroon); }
 .date-dot.milestone { background: var(--bark); }
 .date-day { font-family: var(--font-mono); font-weight: 700; width: 20px; flex: none; }
+/* The "known only by year" section reuses .date-row/.date-day, but shows a
+   4-digit year ("1930") here instead of a 2-digit day ("15") — the base
+   20px width is sized for the day case and clips a year, making the text
+   overflow the box and run straight into the name next to it with no gap. */
+.date-day-year { width: 40px; }
 .date-label { color: var(--ink-soft); flex: 1; }

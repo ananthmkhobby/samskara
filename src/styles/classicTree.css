@@ -78,7 +78,7 @@ button.illustrated-node { cursor: pointer; }
   background: var(--parchment-paper); border: 1px solid var(--line-strong); border-radius: 999px;
   padding: 3px 10px; text-align: center; box-shadow: var(--shadow-1); max-width: 100%;
 }
-.illustrated-name { font-weight: 700; font-size: 11.5px; font-family: var(--font-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.illustrated-name { font-weight: 700; font-size: 11.5px; font-family: var(--font-display); line-height: 1.25; }
 .illustrated-years { font-size: 9.5px; color: var(--ink-faint); font-family: var(--font-mono); }
 .illustrated-node.dimmed { opacity: .28; }
 .illustrated-node.highlighted .illustrated-avatar { box-shadow: 0 0 0 4px var(--forest-wash), var(--shadow-1); }

@@ -36,7 +36,10 @@ export default function IllustratedTree({ people, onSelectPerson, interactive = 
   const layout = useMemo(() => computeClassicLayout(people), [people]);
   const gens = useMemo(() => Array.from(new Set(people.map((p) => p.gen))).sort((a, b) => a - b), [people]);
   const minGen = gens[0], maxGen = gens[gens.length - 1];
-  const labelW = Math.round(avatarSize * 1.5);
+  // Wide enough to hold a full two/three-word name across a couple of
+  // lines rather than truncating it — a name is the one thing on this card
+  // that shouldn't ever get cut short.
+  const labelW = Math.round(avatarSize * 2.1);
   const gradientUid = useId();
 
   const outerRef = useRef(null);
