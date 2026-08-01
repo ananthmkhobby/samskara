@@ -20,6 +20,10 @@ import FolioVoiceWizard from "./components/FolioVoiceWizard";
 import WelcomeIntro from "./components/WelcomeIntro";
 import SuperAdminView from "./components/SuperAdminView";
 import HelpView from "./components/HelpView";
+import PrivacyPolicyView from "./components/PrivacyPolicyView";
+import TermsOfServiceView from "./components/TermsOfServiceView";
+import PrivacyPolicyStandalone from "./components/PrivacyPolicyStandalone";
+import TermsOfServiceStandalone from "./components/TermsOfServiceStandalone";
 import JoinFamilyModal from "./components/JoinFamilyModal";
 import ParamparaView from "./components/ParamparaView";
 import ParamparaContributeModal from "./components/ParamparaContributeModal";
@@ -51,7 +55,7 @@ async function withMediaUrl(contribution) {
   return { ...contribution, mediaUrl };
 }
 
-const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help" };
+const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
 const pathForView = (v) => VIEW_PATHS[v] || "/";
 const viewForPath = (p) => PATH_TO_VIEW[p] || "cover";
@@ -738,6 +742,8 @@ export default function App() {
   if (NEEDS_LOGIN) {
     if (showIntro) return <WelcomeIntro onDismiss={dismissIntro} />;
     if (view === "help") return <HelpStandalone onBack={() => goTo("cover")} />;
+    if (view === "privacy") return <PrivacyPolicyStandalone onBack={() => goTo("cover")} />;
+    if (view === "terms") return <TermsOfServiceStandalone onBack={() => goTo("cover")} />;
     // /superadmin needs no family data either (it talks to its own API
     // route, not the Supabase family fetch) — it must bypass the login
     // gate the same way Help does, or the provisioning page becomes
@@ -749,7 +755,7 @@ export default function App() {
         </div>
       );
     }
-    return <LoginPage onShowHelp={() => goTo("help")} />;
+    return <LoginPage onShowHelp={() => goTo("help")} onShowPrivacy={() => goTo("privacy")} onShowTerms={() => goTo("terms")} />;
   }
 
   return (
@@ -775,6 +781,8 @@ export default function App() {
         {view === "builder" && <FamilyBuilderView onNav={goTo} />}
         {view === "superadmin" && <SuperAdminView />}
         {view === "help" && <HelpView />}
+        {view === "privacy" && <PrivacyPolicyView />}
+        {view === "terms" && <TermsOfServiceView />}
       </main>
       <BottomBar view={view} onNav={goTo} pendingCount={pendingCount} onContribute={openContribute} />
 

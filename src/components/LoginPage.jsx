@@ -1,6 +1,6 @@
 import AuthPanel from "./AuthPanel";
 
-export default function LoginPage({ onShowHelp }) {
+export default function LoginPage({ onShowHelp, onShowPrivacy, onShowTerms }) {
   return (
     <div className="login-page">
       <button className="login-help-link" onClick={onShowHelp}>Help</button>
@@ -15,6 +15,12 @@ export default function LoginPage({ onShowHelp }) {
         </p>
       </div>
       <AuthPanel />
+      <p className="form-hint" style={{ textAlign: "center", marginTop: 16 }}>
+        By continuing, you agree to our{" "}
+        <button type="button" className="link-btn" onClick={onShowTerms}>Terms &amp; Conditions</button>
+        {" "}and{" "}
+        <button type="button" className="link-btn" onClick={onShowPrivacy}>Privacy Policy</button>.
+      </p>
     </div>
   );
 }
