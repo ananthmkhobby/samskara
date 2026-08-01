@@ -46,8 +46,8 @@ function GalleryCard({ c, onSelectPerson, onOpenPhoto }) {
   );
 }
 
-export default function TreasuryView({ contributions, onSelectPerson }) {
-  const [tab, setTab] = useState("Wisdom");
+export default function TreasuryView({ contributions, onSelectPerson, initialTab = "Wisdom" }) {
+  const [tab, setTab] = useState(initialTab);
   const [filter, setFilter] = useState(null);
   const [typeFilter, setTypeFilter] = useState(null);
   const [lightboxSrc, setLightboxSrc] = useState(null);

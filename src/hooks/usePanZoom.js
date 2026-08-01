@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // synthetic onWheel is passive by default, so preventDefault() inside it is
 // silently ignored — native listeners are required to actually stop page
 // scroll while zooming). Also re-fits on window resize/orientation change.
-export function usePanZoom({ contentWidth, contentHeight, minZoom = 0.15, maxZoom = 2.5 }) {
+export function usePanZoom({ contentWidth, contentHeight, minZoom = 0.15, maxZoom = 2.5, minFitZoom = 0.4 }) {
   const wrapRef = useRef(null);
   const [transform, setTransform] = useState({ x: 0, y: 0, zoom: 1 });
   const transformRef = useRef(transform);
@@ -21,11 +21,16 @@ export function usePanZoom({ contentWidth, contentHeight, minZoom = 0.15, maxZoo
     // 1:1) — "fit" just means reset to identity.
     if (!contentWidth || !contentHeight) { setTransform({ x: 0, y: 0, zoom: 1 }); return; }
     const ww = wrap.clientWidth || 900, wh = wrap.clientHeight || 500;
-    const zoom = Math.max(minZoom, Math.min(maxZoom, Math.min(1, ww / contentWidth, wh / contentHeight)));
+    // Auto-fit is floored at minFitZoom, not the lower manual minZoom — a
+    // large family (50-100 people) should stay legible on first look and
+    // require panning to see the rest, rather than shrinking every avatar
+    // and name label to an unreadable dot. A visitor can still pinch/scroll
+    // past this down to minZoom if they deliberately want the bird's-eye view.
+    const zoom = Math.max(minFitZoom, Math.min(maxZoom, Math.min(1, ww / contentWidth, wh / contentHeight)));
     const x = (ww - contentWidth * zoom) / 2;
     const y = (wh - contentHeight * zoom) / 2;
     setTransform({ x, y, zoom });
-  }, [contentWidth, contentHeight, minZoom, maxZoom]);
+  }, [contentWidth, contentHeight, minFitZoom, maxZoom]);
 
   useEffect(() => { fitToView(); }, [fitToView]);
 

@@ -57,3 +57,57 @@
   .tnode { animation: none; opacity: 1; transform: none; }
   .tree-link { animation: none; stroke-dashoffset: 0; }
 }
+
+/* Illustrated tree skin — same computeClassicLayout positions as .tnode
+   above, just organic tapered branches instead of thin bezier strokes,
+   gold-ringed portrait circles, and pill-shaped name labels. Used for the
+   full Tree page on families small enough to stay legible (see TreeView.jsx)
+   and for the small Home-dashboard crest. */
+.illustrated-tree { position: relative; margin: 0 auto; }
+.illustrated-tree .branch-fill { filter: drop-shadow(0 1px 1px rgba(59, 39, 18, .2)); }
+.illustrated-node {
+  position: absolute; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: none; border: 0; padding: 0; color: inherit; user-select: none;
+}
+button.illustrated-node { cursor: pointer; }
+.illustrated-avatar {
+  border-radius: 50%; border: 3px solid var(--gold); box-shadow: 0 0 0 3px var(--gold-wash), var(--shadow-1);
+  background: var(--parchment-paper);
+}
+.illustrated-label {
+  background: var(--parchment-paper); border: 1px solid var(--line-strong); border-radius: 999px;
+  padding: 3px 10px; text-align: center; box-shadow: var(--shadow-1); max-width: 100%;
+}
+.illustrated-name { font-weight: 700; font-size: 11.5px; font-family: var(--font-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.illustrated-years { font-size: 9.5px; color: var(--ink-faint); font-family: var(--font-mono); }
+.illustrated-node.dimmed { opacity: .28; }
+.illustrated-node.highlighted .illustrated-avatar { box-shadow: 0 0 0 4px var(--forest-wash), var(--shadow-1); }
+
+/* The small, non-interactive Home crest — fixed height, no pan/zoom, just
+   a centered preview of the first couple of generations. */
+.tree-crest-card { padding: 18px 16px 22px; position: relative; overflow: hidden; }
+.tree-crest-badge {
+  display: inline-block; margin: 0 auto 12px; padding: 5px 16px; border-radius: 999px; background: var(--maroon-deep);
+  color: #F8ECE4; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+}
+.tree-crest-head { display: flex; align-items: flex-start; justify-content: space-between; }
+.tree-crest-view-btn {
+  flex: none; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--parchment-paper);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; cursor: pointer;
+  font-size: 8px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--ink-soft);
+}
+.tree-crest-view-btn svg { width: 15px; height: 15px; }
+.tree-crest-canvas-wrap { padding: 10px 0 4px; }
+.tree-crest-partial-note {
+  text-align: center; font-size: 12px; color: var(--ink-faint); margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--line);
+}
+.tree-crest-partial-note button { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; font-weight: 700; color: var(--maroon-deep); }
+
+/* Full illustrated Tree page (small families only) — plain horizontal
+   scroll rather than the Classic Tree's pan/zoom hook; at <=20 people the
+   canvas is rarely so wide that a drag-to-pan affordance earns its
+   complexity, and native scroll is a simpler, equally honest answer. */
+.illustrated-tree-page-wrap {
+  overflow-x: auto; padding: 20px 10px 40px;
+  border-radius: var(--radius); border: 1px solid var(--line); background: var(--parchment-deep);
+}

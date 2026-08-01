@@ -1,7 +1,9 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import TopBar from "./components/TopBar";
 import BottomBar from "./components/BottomBar";
-import CoverPage from "./components/CoverPage";
+import HomeDashboard from "./components/HomeDashboard";
+import MoreMenu from "./components/MoreMenu";
+import SearchView from "./components/SearchView";
 import TreeView from "./components/TreeView";
 import TreasuryView from "./components/TreasuryView";
 import VaultView from "./components/VaultView";
@@ -49,7 +51,7 @@ async function withMediaUrl(contribution) {
   return { ...contribution, mediaUrl };
 }
 
-const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", vault: "/vault", map: "/journey", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help" };
+const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
 const pathForView = (v) => VIEW_PATHS[v] || "/";
 const viewForPath = (p) => PATH_TO_VIEW[p] || "cover";
@@ -725,13 +727,21 @@ export default function App() {
 
   return (
     <div id="app">
-      <TopBar view={view} onNav={goTo} pendingCount={pendingCount} onJoinAnother={() => openJoinFamily({})} />
+      <TopBar view={view} onNav={goTo} pendingCount={pendingCount} onJoinAnother={() => openJoinFamily({})} onContribute={openContribute} />
       <main>
-        {view === "cover" && <CoverPage contributions={contributions} onNav={goTo} onContribute={openContribute} onOpenRoom={openRoom} />}
+        {view === "cover" && (
+          <HomeDashboard
+            contributions={contributions} onNav={goTo} onContribute={openContribute}
+            onParamparaContribute={() => openParamparaContribute()} onSelectPerson={selectPerson} onOpenRoom={openRoom}
+          />
+        )}
         {view === "tree" && <TreeView contributions={contributions} onSelectPerson={selectPerson} onNav={goTo} />}
         {view === "parampara" && <ParamparaView contributions={contributions} canModerate={canModerate} onContribute={() => openParamparaContribute()} onEdit={openParamparaContribute} />}
         {view === "library" && <LibraryView onOpenBook={openBook} onAddBook={openAddBook} />}
-        {view === "treasury" && <TreasuryView contributions={contributions} onSelectPerson={selectPerson} />}
+        {view === "treasury" && <TreasuryView contributions={contributions} onSelectPerson={selectPerson} initialTab="Wisdom" />}
+        {view === "gallery" && <TreasuryView contributions={contributions} onSelectPerson={selectPerson} initialTab="Gallery" />}
+        {view === "search" && <SearchView onSelectPerson={selectPerson} />}
+        {view === "more" && <MoreMenu onNav={goTo} canModerate={canModerate} />}
         {view === "vault" && <VaultView contributions={contributions} />}
         {view === "map" && <JourneyMapView onSelectPerson={selectPerson} />}
         {view === "admin" && <AdminView contributions={contributions} onApprove={approveContribution} onReject={rejectContribution} canModerate={canModerate} />}
@@ -739,11 +749,7 @@ export default function App() {
         {view === "superadmin" && <SuperAdminView />}
         {view === "help" && <HelpView />}
       </main>
-      <BottomBar view={view} onNav={goTo} pendingCount={pendingCount} />
-
-      <button className="record-pill" onClick={() => openContribute({})} aria-label="Record a memory">
-        <span className="dot" /> Record a memory
-      </button>
+      <BottomBar view={view} onNav={goTo} pendingCount={pendingCount} onContribute={openContribute} />
 
       {selectedPerson && (
         <FolioModal

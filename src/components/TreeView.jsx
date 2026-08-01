@@ -3,10 +3,18 @@ import { PEOPLE, VALUES } from "../data/people";
 import BanyanTree from "./BanyanTree";
 import ClassicTree from "./ClassicTree";
 import FocusTreeView from "./FocusTreeView";
+import IllustratedTree from "./IllustratedTree";
 
 // Banyan view is hidden for now (Classic only) — kept mounted-but-unused
 // rather than deleted so it's a one-line change to bring the toggle back.
 const SHOW_BANYAN_TOGGLE = false;
+
+// Families small enough to stay legible in the illustrated style (per the
+// reference mockup) get it automatically; anyone past this size falls back
+// to the plain Classic Tree, which is the same proven layout underneath —
+// just without the organic-branch/gold-ring skin — and was specifically
+// verified against a 90-person synthetic family to hold up at that scale.
+const ILLUSTRATED_MAX_PEOPLE = 20;
 
 export default function TreeView({ contributions, onSelectPerson, onNav }) {
   const [valueFilter, setValueFilter] = useState(null);
@@ -15,6 +23,8 @@ export default function TreeView({ contributions, onSelectPerson, onNav }) {
   // edits, and BanyanTree/ClassicTree's own layout memoization is keyed on
   // this reference.
   const people = [...PEOPLE];
+  const gens = new Set(people.map((p) => p.gen));
+  const illustrated = mode === "classic" && people.length <= ILLUSTRATED_MAX_PEOPLE;
 
   if (!people.length) {
     return (
@@ -46,9 +56,12 @@ export default function TreeView({ contributions, onSelectPerson, onNav }) {
             ? "Five generations, from Narasimha & Kamala's founding household to the youngest leaves. Tap anyone glowing in the canopy to open their folio."
             : mode === "focus"
               ? "One person at a time, in large print — tap a parent, spouse, or child to move there, or open their full folio."
-              : "Five generations, laid out generation by generation. Drag to pan, use the controls to zoom, tap anyone to open their folio."}
-          {mode !== "focus" && " Highlight a value to see whose life carried it."}
+              : illustrated
+                ? "Tap anyone in the branches to open their folio. Highlight a value to see whose life carried it."
+                : "Five generations, laid out generation by generation. Drag to pan, use the controls to zoom, tap anyone to open their folio."}
+          {mode !== "focus" && !illustrated && " Highlight a value to see whose life carried it."}
         </p>
+        {illustrated && <span className="tree-crest-badge" style={{ marginTop: 10 }}>{gens.size} generation{gens.size === 1 ? "" : "s"}</span>}
       </div>
       <div className="tree-mode-toggle" style={{ display: "flex", gap: 8, marginBottom: 14 }}>
         {SHOW_BANYAN_TOGGLE && (
@@ -75,7 +88,13 @@ export default function TreeView({ contributions, onSelectPerson, onNav }) {
         ? <BanyanTree people={people} contributions={contributions} valueFilter={valueFilter} onSelectPerson={onSelectPerson} />
         : mode === "focus"
           ? <FocusTreeView people={people} onSelectPerson={onSelectPerson} />
-          : <ClassicTree people={people} contributions={contributions} valueFilter={valueFilter} onSelectPerson={onSelectPerson} />}
+          : illustrated
+            ? (
+              <div className="illustrated-tree-page-wrap">
+                <IllustratedTree people={people} onSelectPerson={onSelectPerson} interactive avatarSize={76} valueFilter={valueFilter} />
+              </div>
+            )
+            : <ClassicTree people={people} contributions={contributions} valueFilter={valueFilter} onSelectPerson={onSelectPerson} />}
     </section>
   );
 }

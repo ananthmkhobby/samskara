@@ -1,18 +1,25 @@
+/* Redesign v2 — a promoted card, not a small pill: title/description/CTA on
+   the left, a bigger diya illustration on the right, matching the reference
+   mockup's "N-day family flame" card. */
 .family-flame {
-  display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 10px; border-radius: 999px;
-  background: var(--parchment-paper); border: 1px solid var(--line); width: fit-content; margin: 0 auto 20px;
-  position: relative;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 22px;
+  border-radius: var(--radius); background: linear-gradient(160deg, var(--gold-wash), transparent 65%), var(--parchment-paper);
+  border: 1px solid var(--gold-deep); max-width: 640px; margin: 30px auto 0; position: relative;
 }
-.family-flame-icon { width: 40px; height: 28px; position: relative; flex: none; }
-.family-flame-icon .heritage-icon { width: 40px; height: 28px; }
-.family-flame-icon .heritage-glow { display: none; }
-.family-flame-text { display: flex; flex-direction: column; line-height: 1.3; text-align: left; }
-.family-flame-text b { font-size: 13px; font-weight: 700; color: var(--ink); font-family: var(--font-display); }
+.family-flame-text { display: flex; flex-direction: column; gap: 6px; text-align: left; }
+.family-flame-text p { font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; max-width: 380px; }
+.family-flame-cta {
+  align-self: flex-start; margin-top: 2px; background: none; border: 0; padding: 0; cursor: pointer;
+  font-weight: 700; font-size: 13px; color: var(--maroon-deep);
+}
 .family-flame-milestone-label { font-size: 11px; color: var(--gold-deep); font-weight: 700; }
+.family-flame-icon { width: 52px; height: 40px; position: relative; flex: none; }
+.family-flame-icon .heritage-icon { width: 52px; height: 40px; }
+.family-flame-icon .heritage-glow { display: none; }
 
-.family-flame.milestone { background: var(--gold-wash); border-color: var(--gold); padding: 10px 20px 10px 12px; }
-.family-flame.milestone .family-flame-icon { width: 52px; height: 36px; }
-.family-flame.milestone .family-flame-icon .heritage-icon { width: 52px; height: 36px; }
+.family-flame.milestone { background: linear-gradient(160deg, var(--gold-wash), transparent 55%), var(--parchment-paper); border-color: var(--gold); }
+.family-flame.milestone .family-flame-icon { width: 62px; height: 46px; }
+.family-flame.milestone .family-flame-icon .heritage-icon { width: 62px; height: 46px; }
 /* A pseudo-element carries the pulse, deliberately — putting a second
    `animation` shorthand directly on .family-flame.milestone would win the
    cascade over .cover-enter's fade-in (same specificity-collision trap
