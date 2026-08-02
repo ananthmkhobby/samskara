@@ -8,7 +8,9 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
   const isGeo = request.field === "geo";
   const isDayInLife = request.field === "dayInLife";
   const isBorn = request.field === "born";
+  const isDied = request.field === "died";
   const [value, setValue] = useState(request.value || "");
+  const [diedUnknown, setDiedUnknown] = useState(request.diedUnknown || false);
   const [bornError, setBornError] = useState("");
   const [rashi, setRashi] = useState(request.rashi || "");
   const [gotra, setGotra] = useState(request.gotra || "");
@@ -42,6 +44,21 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
       if (!parsed) { setBornError('Use YYYY-MM-DD, or just YYYY if the exact day isn\'t known.'); return; }
       setBornError("");
       onSubmit({ field: request.field, fieldLabel: request.fieldLabel, content: JSON.stringify(parsed), contributor: contributor.trim() || "Anonymous" });
+      return;
+    }
+    if (isDied) {
+      if (diedUnknown) {
+        onSubmit({ field: request.field, fieldLabel: request.fieldLabel, content: JSON.stringify({ died: null, diedYearOnly: false, diedUnknown: true }), contributor: contributor.trim() || "Anonymous" });
+        return;
+      }
+      if (!value.trim()) {
+        onSubmit({ field: request.field, fieldLabel: request.fieldLabel, content: JSON.stringify({ died: null, diedYearOnly: false, diedUnknown: false }), contributor: contributor.trim() || "Anonymous" });
+        return;
+      }
+      const parsed = parseBornInput(value);
+      if (!parsed) { setBornError('Use YYYY-MM-DD, or just YYYY if the exact day isn\'t known.'); return; }
+      setBornError("");
+      onSubmit({ field: request.field, fieldLabel: request.fieldLabel, content: JSON.stringify({ died: parsed.born, diedYearOnly: parsed.bornYearOnly, diedUnknown: false }), contributor: contributor.trim() || "Anonymous" });
       return;
     }
     if (isGeo) {
@@ -87,6 +104,25 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
                 </p>
                 <input type="text" placeholder="e.g. 1963-10-11, or just 1963" value={value} onChange={(e) => setValue(e.target.value)} />
                 {bornError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{bornError}</p>}
+              </div>
+            ) : isDied ? (
+              <div className="form-row">
+                <label>Date of death</label>
+                <p className="form-hint" style={{ marginTop: 0, marginBottom: 6 }}>
+                  Format: <b>YYYY-MM-DD</b>, or just the year if that's all you know. Leave blank if living.
+                </p>
+                <input
+                  type="text" placeholder="e.g. 1978-09-02, or just 1978" value={value}
+                  onChange={(e) => setValue(e.target.value)} disabled={diedUnknown}
+                />
+                {bornError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{bornError}</p>}
+                <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontWeight: 400 }}>
+                  <input
+                    type="checkbox" checked={diedUnknown}
+                    onChange={(e) => { setDiedUnknown(e.target.checked); if (e.target.checked) setValue(""); }}
+                  />
+                  They've passed away, but no one knows exactly when
+                </label>
               </div>
             ) : isHeritage ? (
               <>

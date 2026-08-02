@@ -105,6 +105,21 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
           </div>
           <div className="folio-section">
             <div className="folio-section-head">
+              <h4>Date of death</h4>
+              <button className="icon-only" aria-label="Edit date of death" onClick={() => onEdit({ field: "died", fieldLabel: "Date of death", value: person.died || "", diedUnknown: person.diedUnknown || false })}><EditPencilIcon /></button>
+            </div>
+            {person.diedUnknown ? (
+              <p className="folio-summary">Passed away — exact date not known</p>
+            ) : person.died ? (
+              <p className="folio-summary">
+                {person.diedYearOnly
+                  ? `Known only as ${person.died.slice(0, 4)}`
+                  : new Date(`${person.died}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+              </p>
+            ) : <p className="form-hint" style={{ marginTop: 0 }}>Living, as far as the family record shows.</p>}
+          </div>
+          <div className="folio-section">
+            <div className="folio-section-head">
               <h4>Heritage details</h4>
               <button className="icon-only" aria-label="Edit heritage details" onClick={() => onEdit({ field: "heritage", fieldLabel: "Rashi & gotra", rashi: person.rashi || "", gotra: person.gotra || "" })}><EditPencilIcon /></button>
             </div>

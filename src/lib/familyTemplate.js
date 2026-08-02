@@ -12,7 +12,7 @@ export const TEMPLATE_COLUMNS = [
   { key: "parent2Id", header: "Parent 2 ID", width: 14 },
   { key: "spouseId", header: "Spouse ID", width: 14 },
   { key: "born", header: "Born (YYYY-MM-DD or YYYY)", width: 24 },
-  { key: "died", header: "Died (leave blank if living)", width: 26 },
+  { key: "died", header: "Died (blank if living, \"deceased\" if date unknown)", width: 30 },
   { key: "rashi", header: "Rashi", width: 14 },
   { key: "gotra", header: "Gotra", width: 16 },
   { key: "city", header: "Current City", width: 18 },
@@ -45,7 +45,7 @@ const INSTRUCTIONS_ROWS = [
   ["Parent 1 ID / Parent 2 ID", "The Person ID of one or both parents, if they're also in this file.", "narasimha"],
   ["Spouse ID", "The Person ID of their spouse, if also in this file.", "kamala"],
   ["Born", "A date (YYYY-MM-DD) or just a year.", "1902 or 1902-03-11"],
-  ["Died", "Leave blank if living.", "1978-09-02"],
+  ["Died", "Leave blank if living. Know they've passed but not when? Just write \"deceased\" — it'll be recorded that way instead of guessing a date.", "1978-09-02, or \"deceased\""],
   ["Rashi / Gotra", "Optional heritage details.", "Simha / Bharadwaja"],
   ["Current City", "Where they live now — places them on the family's Journey map.", "Mangalore"],
   ["Places", "Separate multiple places with a semicolon (;).", "Born in Kundapura; Settled in Mangalore, 1934"],
@@ -196,9 +196,16 @@ export async function parseTemplateWorkbook(arrayBuffer) {
   rows.forEach((row) => { row._gen = genCache.has(row._id) ? genCache.get(row._id) : 1; });
   if (errors.length) return { people: [], marriages: [], errors, warnings };
 
+  // A few plain-English synonyms in the Died column mean "definitely
+  // deceased, but no one knows exactly when" — distinct from leaving it
+  // blank (which means still living). Checked before the date parser so
+  // these never fall through to a "couldn't understand this date" warning.
+  const DIED_UNKNOWN_WORDS = new Set(["deceased", "dead", "yes", "unknown", "passed away", "passed"]);
   rows.forEach((row) => {
     const born = parseDate(row.born);
-    const died = parseDate(row.died);
+    const diedRaw = String(row.died ?? "").trim().toLowerCase();
+    row._diedUnknown = DIED_UNKNOWN_WORDS.has(diedRaw);
+    const died = row._diedUnknown ? { value: null, yearOnly: false, warning: null } : parseDate(row.died);
     row._born = born.value;
     row._died = died.value;
     row._bornYearOnly = born.yearOnly;
@@ -243,6 +250,7 @@ export async function parseTemplateWorkbook(arrayBuffer) {
     died: row._died,
     bornYearOnly: row._bornYearOnly,
     diedYearOnly: row._diedYearOnly,
+    diedUnknown: row._diedUnknown,
     parents: [row._parent1, row._parent2].filter(Boolean),
     spouse: row._spouse || undefined,
     rashi: String(row.rashi ?? "").trim() || undefined,

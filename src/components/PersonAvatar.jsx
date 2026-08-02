@@ -20,7 +20,7 @@ export default function PersonAvatar({ person, photoUrl, size = 64, minGen = 1, 
   };
   // A quiet visual cue for a person who has passed — desaturated rather
   // than any starker treatment, so it reads as gentle rather than morbid.
-  if (person.died) {
+  if (person.died || person.diedUnknown) {
     style.filter = "grayscale(55%)";
     style.opacity = 0.86;
   }

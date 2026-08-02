@@ -42,7 +42,7 @@ function recomputeMinMaxGen() {
 function mapPersonRow(row) {
   return {
     id: row.id, name: row.name, gen: row.gen, born: row.born, died: row.died,
-    bornYearOnly: row.born_year_only, diedYearOnly: row.died_year_only,
+    bornYearOnly: row.born_year_only, diedYearOnly: row.died_year_only, diedUnknown: row.died_unknown,
     spouse: row.spouse, parents: row.parents || [], rashi: row.rashi, gotra: row.gotra,
     isLegacy: row.is_legacy, trust: row.trust, geoOrigin: row.geo_origin, geo: row.geo,
     summary: row.summary, places: row.places, lifeLesson: row.life_lesson,

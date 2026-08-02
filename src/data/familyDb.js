@@ -158,6 +158,7 @@ export async function insertPerson(familyId, p, sortIndex) {
     sort_index: sortIndex ?? null,
     born_year_only: p.bornYearOnly ?? false,
     died_year_only: p.diedYearOnly ?? false,
+    died_unknown: p.diedUnknown ?? false,
   };
   const { error } = await db.from("people").insert(row);
   if (error) throw new Error(error.message);
@@ -286,6 +287,7 @@ export async function bulkInsertFamily(familyId, people, marriages) {
     sort_index: i,
     born_year_only: p.bornYearOnly ?? false,
     died_year_only: p.diedYearOnly ?? false,
+    died_unknown: p.diedUnknown ?? false,
   }));
   const { error: peopleError } = await db.from("people").insert(peopleRows);
   if (peopleError) throw new Error(peopleError.message);

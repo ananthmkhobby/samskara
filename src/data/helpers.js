@@ -17,6 +17,7 @@ export function todayStr() {
 export function yearsLabel(p) {
   const by = p.born ? p.born.slice(0, 4) : "?";
   if (p.died) return `${by}–${p.died.slice(0, 4)}`;
+  if (p.diedUnknown) return `${by}–?`;
   return `b. ${by}`;
 }
 
@@ -72,9 +73,9 @@ export function relationshipCaption(p) {
 // at a glance. "Widowed" (adjective) rather than "widow"/"widower" sidesteps
 // the same gender-data gap noted above.
 export function widowedLabel(p) {
-  if (p.died) return "";
+  if (p.died || p.diedUnknown) return "";
   const spouse = p.spouse && byId(p.spouse);
-  return spouse?.died ? "Widowed" : "";
+  return spouse?.died || spouse?.diedUnknown ? "Widowed" : "";
 }
 
 export function monthName(i) {
@@ -128,5 +129,6 @@ export function getBiographyTimeline(person) {
   const items = [];
   if (person.born) items.push({ year: person.born.slice(0, 4), event: "Born" });
   if (person.died) items.push({ year: person.died.slice(0, 4), event: "Passed away" });
+  else if (person.diedUnknown) items.push({ year: "?", event: "Passed away (date unknown)" });
   return items;
 }

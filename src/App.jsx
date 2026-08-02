@@ -590,6 +590,14 @@ export default function App() {
           person.bornYearOnly = bornYearOnly;
           updatePersonFields(familyId, c.personId, { born, born_year_only: bornYearOnly }).catch((err) => console.error(err.message));
         } catch { /* malformed content, skip */ }
+      } else if (c.field === "died") {
+        try {
+          const { died, diedYearOnly, diedUnknown } = JSON.parse(c.content);
+          person.died = died;
+          person.diedYearOnly = diedYearOnly;
+          person.diedUnknown = diedUnknown;
+          updatePersonFields(familyId, c.personId, { died, died_year_only: diedYearOnly, died_unknown: diedUnknown }).catch((err) => console.error(err.message));
+        } catch { /* malformed content, skip */ }
       } else if (c.field === "summary") {
         person.summary = c.content;
         updatePersonFields(familyId, c.personId, { summary: c.content }).catch((err) => console.error(err.message));
