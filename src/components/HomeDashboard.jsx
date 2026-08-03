@@ -189,6 +189,34 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
         )}
       </div>
 
+      {(birthdays.length > 0 || remembrances.length > 0 || upcoming) && (
+        <div className="today-card cover-enter" style={{ "--enter-delay": "0.02s" }}>
+          <div className="today-card-head">
+            <span className="eyebrow">Today in our family</span>
+            <span className="today-card-icon"><DateIcon /></span>
+          </div>
+          {birthdays.map((p) => (
+            <button key={p.id} type="button" className="today-row" onClick={() => onSelectPerson(p.id)}>
+              <PersonAvatar person={p} size={40} minGen={MIN_GEN} maxGen={MAX_GEN} className="avatar" />
+              <span><b className="today-tag today-tag-birthday">Birthday</b>{p.name} · {yearsLabel(p)}</span>
+            </button>
+          ))}
+          {remembrances.map((p) => (
+            <button key={p.id} type="button" className="today-row" onClick={() => onSelectPerson(p.id)}>
+              <PersonAvatar person={p} size={40} minGen={MIN_GEN} maxGen={MAX_GEN} className="avatar" />
+              <span><b className="today-tag today-tag-remembrance">Remembrance</b>{p.name} · {yearsLabel(p)}</span>
+            </button>
+          ))}
+          {upcoming && (
+            <button type="button" className="today-row" onClick={() => onSelectPerson(upcoming.p.id)}>
+              <PersonAvatar person={upcoming.p} size={40} minGen={MIN_GEN} maxGen={MAX_GEN} className="avatar" />
+              <span><b className="today-tag today-tag-upcoming">Coming up</b>{upcoming.p.name}'s birthday, {upcoming.date.toLocaleDateString("en-IN", { day: "numeric", month: "long" })}</span>
+            </button>
+          )}
+          <button type="button" className="home-section-link today-view-all" onClick={() => onNav("vault")}>View all →</button>
+        </div>
+      )}
+
       {crestPeople.length > 0 && (
         <div className="card tree-crest-card cover-enter" style={{ "--enter-delay": "0.04s" }}>
           <div className="tree-crest-head">
@@ -277,34 +305,6 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
             </div>
           </div>
         </>
-      )}
-
-      {(birthdays.length > 0 || remembrances.length > 0 || upcoming) && (
-        <div className="today-card cover-enter" style={{ "--enter-delay": "0.52s" }}>
-          <div className="today-card-head">
-            <span className="eyebrow">Today in our family</span>
-            <span className="today-card-icon"><DateIcon /></span>
-          </div>
-          {birthdays.map((p) => (
-            <button key={p.id} type="button" className="today-row" onClick={() => onSelectPerson(p.id)}>
-              <PersonAvatar person={p} size={40} minGen={MIN_GEN} maxGen={MAX_GEN} className="avatar" />
-              <span><b className="today-tag today-tag-birthday">Birthday</b>{p.name} · {yearsLabel(p)}</span>
-            </button>
-          ))}
-          {remembrances.map((p) => (
-            <button key={p.id} type="button" className="today-row" onClick={() => onSelectPerson(p.id)}>
-              <PersonAvatar person={p} size={40} minGen={MIN_GEN} maxGen={MAX_GEN} className="avatar" />
-              <span><b className="today-tag today-tag-remembrance">Remembrance</b>{p.name} · {yearsLabel(p)}</span>
-            </button>
-          ))}
-          {upcoming && (
-            <button type="button" className="today-row" onClick={() => onSelectPerson(upcoming.p.id)}>
-              <PersonAvatar person={upcoming.p} size={40} minGen={MIN_GEN} maxGen={MAX_GEN} className="avatar" />
-              <span><b className="today-tag today-tag-upcoming">Coming up</b>{upcoming.p.name}'s birthday, {upcoming.date.toLocaleDateString("en-IN", { day: "numeric", month: "long" })}</span>
-            </button>
-          )}
-          <button type="button" className="home-section-link today-view-all" onClick={() => onNav("vault")}>View all →</button>
-        </div>
       )}
 
       <div className="cover-cta cover-enter" style={{ "--enter-delay": "0.58s" }}>
