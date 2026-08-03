@@ -28,6 +28,8 @@ import JoinFamilyModal from "./components/JoinFamilyModal";
 import ParamparaView from "./components/ParamparaView";
 import ParamparaContributeModal from "./components/ParamparaContributeModal";
 import LibraryView from "./components/LibraryView";
+import JapaView from "./components/JapaView";
+import JapaLogModal from "./components/JapaLogModal";
 import BookModal from "./components/BookModal";
 import AddBookModal from "./components/AddBookModal";
 import LibraryEntryModal from "./components/LibraryEntryModal";
@@ -36,11 +38,11 @@ import ChitrashaleAddModal from "./components/ChitrashaleAddModal";
 import LoginPage from "./components/LoginPage";
 import HelpStandalone from "./components/HelpStandalone";
 import ResetPasswordGate from "./components/ResetPasswordGate";
-import { PEOPLE, INITIAL_CONTRIBUTIONS, BOOKS, BOOK_OWNERSHIP, BOOK_READERS, addPerson, addBook, makeUniquePersonId } from "./data/people";
+import { PEOPLE, INITIAL_CONTRIBUTIONS, BOOKS, BOOK_OWNERSHIP, BOOK_READERS, PRACTICE_LOGS, addPerson, addBook, makeUniquePersonId } from "./data/people";
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
 import { verifiedObjectsBySpot, hasAnyRoomObjects } from "./lib/chitrashale";
 import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, NEEDS_LOGIN } from "./data/session";
-import { insertContribution, updateContribution, updateContributionStatus, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus } from "./data/familyDb";
+import { insertContribution, updateContribution, updateContributionStatus, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus, insertPracticeLog } from "./data/familyDb";
 import { resolveMediaUrl, uploadFamilyMedia } from "./lib/mediaUpload";
 import { parseParamparaContent } from "./lib/parampara";
 import { supabase } from "./lib/supabaseClient";
@@ -55,7 +57,7 @@ async function withMediaUrl(contribution) {
   return { ...contribution, mediaUrl };
 }
 
-const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms" };
+const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
 const pathForView = (v) => VIEW_PATHS[v] || "/";
 const viewForPath = (p) => PATH_TO_VIEW[p] || "cover";
@@ -125,6 +127,7 @@ export default function App() {
   const [libraryEntryRequest, setLibraryEntryRequest] = useState(null);
   const [roomPersonId, setRoomPersonId] = useState(null);
   const [chitrashaleAddSpot, setChitrashaleAddSpot] = useState(null);
+  const [japaLogOpen, setJapaLogOpen] = useState(false);
   const [playingExp, setPlayingExp] = useState(null);
   const [toast, setToast] = useState("");
   const isPoppingRef = useRef(false);
@@ -139,11 +142,11 @@ export default function App() {
       selectedPersonId || biographyPersonId || contributeRequest || editRequest ||
       addFamilyRequest || interviewRequest || voiceWizardRequest || joinFamilyRequest ||
       paramparaContributeOpen || openBookId || addBookOpen || libraryEntryRequest ||
-      roomPersonId || chitrashaleAddSpot || showIntro
+      roomPersonId || chitrashaleAddSpot || japaLogOpen || showIntro
     );
     document.body.style.overflow = anyModalOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
-  }, [selectedPersonId, biographyPersonId, contributeRequest, editRequest, addFamilyRequest, interviewRequest, voiceWizardRequest, joinFamilyRequest, paramparaContributeOpen, openBookId, addBookOpen, libraryEntryRequest, roomPersonId, chitrashaleAddSpot, showIntro]);
+  }, [selectedPersonId, biographyPersonId, contributeRequest, editRequest, addFamilyRequest, interviewRequest, voiceWizardRequest, joinFamilyRequest, paramparaContributeOpen, openBookId, addBookOpen, libraryEntryRequest, roomPersonId, chitrashaleAddSpot, japaLogOpen, showIntro]);
 
   // Seed a baseline history entry on load, then let the browser/device Back
   // button step backward through views and close modals one layer at a time
@@ -152,7 +155,7 @@ export default function App() {
   useEffect(() => {
     const initialView = viewForPath(window.location.pathname);
     window.history.replaceState(
-      { view: initialView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null, addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null, paramparaContributeOpen: false, openBookId: null, addBookOpen: false, libraryEntryRequest: null, roomPersonId: null, chitrashaleAddSpot: null },
+      { view: initialView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null, addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null, paramparaContributeOpen: false, openBookId: null, addBookOpen: false, libraryEntryRequest: null, roomPersonId: null, chitrashaleAddSpot: null, japaLogOpen: false },
       "",
       pathForView(initialView)
     );
@@ -175,6 +178,7 @@ export default function App() {
       setLibraryEntryRequest(s.libraryEntryRequest || null);
       setRoomPersonId(s.roomPersonId || null);
       setChitrashaleAddSpot(s.chitrashaleAddSpot || null);
+      setJapaLogOpen(s.japaLogOpen || false);
       requestAnimationFrame(() => { isPoppingRef.current = false; });
     }
     window.addEventListener("popstate", onPopState);
@@ -201,6 +205,7 @@ export default function App() {
       libraryEntryRequest: next.libraryEntryRequest !== undefined ? next.libraryEntryRequest : libraryEntryRequest,
       roomPersonId: next.roomPersonId !== undefined ? next.roomPersonId : roomPersonId,
       chitrashaleAddSpot: next.chitrashaleAddSpot !== undefined ? next.chitrashaleAddSpot : chitrashaleAddSpot,
+      japaLogOpen: next.japaLogOpen !== undefined ? next.japaLogOpen : japaLogOpen,
     };
     setView(full.view);
     setSelectedPersonId(full.selectedPersonId);
@@ -217,6 +222,7 @@ export default function App() {
     setLibraryEntryRequest(full.libraryEntryRequest);
     setRoomPersonId(full.roomPersonId);
     setChitrashaleAddSpot(full.chitrashaleAddSpot);
+    setJapaLogOpen(full.japaLogOpen);
     if (!isPoppingRef.current) {
       window.history.pushState(full, "", pathForView(full.view));
     }
@@ -233,7 +239,7 @@ export default function App() {
       view: nextView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null,
       addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null,
       paramparaContributeOpen: false, openBookId: null, addBookOpen: false, libraryEntryRequest: null,
-      roomPersonId: null, chitrashaleAddSpot: null,
+      roomPersonId: null, chitrashaleAddSpot: null, japaLogOpen: false,
     });
     window.scrollTo({ top: 0 });
   }
@@ -344,6 +350,21 @@ export default function App() {
       bump();
     } catch (err) {
       showToast(`Couldn't update reading status: ${err.message}`);
+    }
+  }
+
+  // No Pending/Verified split — see the practice_logs migration's own
+  // comment for why a count isn't contested content the way a memory or a
+  // proposed edit is.
+  async function logPracticeCount(entry) {
+    try {
+      const row = await insertPracticeLog(CURRENT_FAMILY_ID, { ...entry, contributorUserId: CURRENT_USER_ID });
+      PRACTICE_LOGS.push(row);
+      bump();
+      showToast(`Logged ${entry.count} — thank you.`);
+      closeOverlay();
+    } catch (err) {
+      showToast(`Couldn't log that: ${err.message}`);
     }
   }
 
@@ -774,6 +795,7 @@ export default function App() {
           <HomeDashboard
             contributions={contributions} onNav={goTo} onContribute={openContribute}
             onParamparaContribute={() => openParamparaContribute()} onSelectPerson={selectPerson} onOpenRoom={openRoom}
+            onLogCount={() => commit({ japaLogOpen: true })}
           />
         )}
         {view === "tree" && <TreeView contributions={contributions} onSelectPerson={selectPerson} onNav={goTo} />}
@@ -785,6 +807,7 @@ export default function App() {
         {view === "more" && <MoreMenu onNav={goTo} canModerate={canModerate} />}
         {view === "vault" && <VaultView contributions={contributions} />}
         {view === "map" && <JourneyMapView onSelectPerson={selectPerson} />}
+        {view === "japa" && <JapaView onLogCount={() => commit({ japaLogOpen: true })} onSelectPerson={selectPerson} />}
         {view === "admin" && <AdminView contributions={contributions} onApprove={approveContribution} onReject={rejectContribution} canModerate={canModerate} />}
         {view === "builder" && <FamilyBuilderView onNav={goTo} />}
         {view === "superadmin" && <SuperAdminView />}
@@ -856,6 +879,9 @@ export default function App() {
       )}
       {libraryEntryRequest && (
         <LibraryEntryModal bookId={libraryEntryRequest.bookId} kind={libraryEntryRequest.kind} onCancel={closeOverlay} onSubmit={submitContribution} canModerate={canModerate} />
+      )}
+      {japaLogOpen && (
+        <JapaLogModal onCancel={closeOverlay} onSubmit={logPracticeCount} />
       )}
       {roomPersonId && byId(roomPersonId) && (
         <ChitrashaleRoom

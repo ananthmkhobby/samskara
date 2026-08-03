@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabaseClient";
 import { batchResolveMediaUrls, resolveMediaUrl } from "../lib/mediaUpload";
-import { fetchFamilyData, fetchFamilyName, fetchMyFamilies, fetchActiveFamilyId, fetchLibraryData, mapContributionRow, insertPerson as dbInsertPerson, insertMarriage as dbInsertMarriage, insertBook as dbInsertBook, bumpFamilyFlame, fetchMyPersonLink } from "./familyDb";
+import { fetchFamilyData, fetchFamilyName, fetchMyFamilies, fetchActiveFamilyId, fetchLibraryData, fetchPracticeLogs, mapContributionRow, insertPerson as dbInsertPerson, insertMarriage as dbInsertMarriage, insertBook as dbInsertBook, bumpFamilyFlame, fetchMyPersonLink } from "./familyDb";
 import { setSession, DEMO_FAMILY_ID, CURRENT_FAMILY_ID } from "./session";
 
 export const VALUES = ["Courage", "Seva", "Education", "Simplicity", "Devotion", "Discipline", "Hospitality", "Resilience"];
@@ -29,6 +29,7 @@ export const MARRIAGES = [];
 export const BOOKS = [];
 export const BOOK_OWNERSHIP = [];
 export const BOOK_READERS = [];
+export const PRACTICE_LOGS = [];
 export let INITIAL_CONTRIBUTIONS = [];
 export let MIN_GEN = 1;
 export let MAX_GEN = 1;
@@ -112,10 +113,11 @@ export async function initDataLayer() {
 
   const familyId = resolved.familyId;
 
-  const [{ people, marriages, contributions, experienceEntries }, familyName, libraryData, flameStreak, myPersonId] = await Promise.all([
+  const [{ people, marriages, contributions, experienceEntries }, familyName, libraryData, practiceLogs, flameStreak, myPersonId] = await Promise.all([
     fetchFamilyData(familyId),
     fetchFamilyName(familyId),
     fetchLibraryData(familyId),
+    fetchPracticeLogs(familyId),
     // Non-critical — a failed flame bump should never block the whole app
     // from loading, it just leaves the streak widget hidden this visit.
     bumpFamilyFlame(familyId).catch(() => 0),
@@ -163,6 +165,9 @@ export async function initDataLayer() {
   BOOK_OWNERSHIP.push(...libraryData.ownership);
   BOOK_READERS.length = 0;
   BOOK_READERS.push(...libraryData.readers);
+
+  PRACTICE_LOGS.length = 0;
+  PRACTICE_LOGS.push(...practiceLogs);
 
   INITIAL_CONTRIBUTIONS = mappedContributions;
 

@@ -367,6 +367,34 @@ export async function fetchLibraryData(familyId) {
   };
 }
 
+function mapPracticeLogRow(row) {
+  return {
+    id: row.id, personId: row.person_id, practiceKey: row.practice_key, practiceLabel: row.practice_label,
+    count: row.count, loggedDate: row.logged_date, contributor: row.contributor, createdAt: row.created_at,
+  };
+}
+
+export async function fetchPracticeLogs(familyId) {
+  const db = requireClient();
+  const { data, error } = await db.from("practice_logs").select("*").eq("family_id", familyId);
+  if (error) throw new Error(error.message);
+  return data.map(mapPracticeLogRow);
+}
+
+// No moderation gate — see the migration's own comment: a practice count
+// isn't contested content, it applies for everyone the same way regardless
+// of role.
+export async function insertPracticeLog(familyId, { personId, practiceKey, practiceLabel, count, loggedDate, contributor, contributorUserId }) {
+  const db = requireClient();
+  const row = {
+    family_id: familyId, person_id: personId, practice_key: practiceKey, practice_label: practiceLabel,
+    count, logged_date: loggedDate, contributor: contributor ?? null, contributor_user_id: contributorUserId ?? null,
+  };
+  const { data, error } = await db.from("practice_logs").insert(row).select().single();
+  if (error) throw new Error(error.message);
+  return mapPracticeLogRow(data);
+}
+
 // Only ever called while the acting session is a moderator (a direct add,
 // or approving someone else's "newBook" proposal) — see applyContributionEffects.
 export async function insertBook(familyId, b) {

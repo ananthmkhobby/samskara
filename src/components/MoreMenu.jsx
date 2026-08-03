@@ -1,4 +1,4 @@
-import { ParamparaIcon, LibraryIcon, TreasuryIcon, MapIcon, AdminIcon } from "./NavIcons";
+import { ParamparaIcon, LibraryIcon, TreasuryIcon, MapIcon, JapaIcon, AdminIcon } from "./NavIcons";
 import { IS_DEMO } from "../data/session";
 
 // Redesign v2 — everything that doesn't fit in the six-item bottom nav
@@ -8,6 +8,7 @@ const ITEMS = [
   { key: "library", label: "Family Library", sub: "Books the family has kept and passed down", Icon: LibraryIcon },
   { key: "treasury", label: "Treasury of Wisdom", sub: "One life lesson from each storyteller", Icon: TreasuryIcon },
   { key: "map", label: "Journey", sub: "Where the family has lived, on a map", Icon: MapIcon },
+  { key: "japa", label: "Japa & Chanting", sub: "Every mala round and recitation, counted", Icon: JapaIcon },
 ];
 
 export default function MoreMenu({ onNav, canModerate }) {

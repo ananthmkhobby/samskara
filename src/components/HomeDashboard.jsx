@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { PEOPLE, CHALLENGES } from "../data/people";
+import { PEOPLE, CHALLENGES, PRACTICE_LOGS } from "../data/people";
+import { familyTotal, todayTotal } from "../lib/japa";
 import { IS_DEMO, CURRENT_FAMILY_NAME, FAMILY_FLAME_STREAK } from "../data/session";
 import { useCountUp } from "../hooks/useCountUp";
 import { parseParamparaContent } from "../lib/parampara";
@@ -143,7 +144,7 @@ function timelineMilestones(people) {
   return picks;
 }
 
-export default function HomeDashboard({ contributions, onNav, onContribute, onParamparaContribute, onSelectPerson, onOpenRoom }) {
+export default function HomeDashboard({ contributions, onNav, onContribute, onParamparaContribute, onSelectPerson, onOpenRoom, onLogCount }) {
   const [quoteExpanded, setQuoteExpanded] = useState(false);
   const gens = new Set(PEOPLE.map((p) => p.gen));
   const verifiedStories = contributions.filter((c) => c.status === "Verified" && c.type !== "edit" && c.type !== "parampara").length;
@@ -248,6 +249,20 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
       )}
 
       <FamilyFlame streak={FAMILY_FLAME_STREAK} onContinue={() => onContribute({ type: "memory" })} />
+
+      <div className="card japa-quick-card cover-enter" style={{ "--enter-delay": "0.05s" }}>
+        <div className="japa-quick-head">
+          <span className="eyebrow">🪔 Japa &amp; Chanting</span>
+          <button type="button" className="home-section-link" onClick={() => onNav("japa")}>See all →</button>
+        </div>
+        <div className="japa-quick-body">
+          <div>
+            <b className="tnum japa-quick-total">{familyTotal(PRACTICE_LOGS).toLocaleString("en-IN")}</b>
+            <span className="japa-quick-label">counted by the family{todayTotal(PRACTICE_LOGS) > 0 ? ` · ${todayTotal(PRACTICE_LOGS)} today` : ""}</span>
+          </div>
+          <button type="button" className="btn primary small" onClick={onLogCount}>Log a count</button>
+        </div>
+      </div>
 
       <div className="cover-enter" style={{ "--enter-delay": "0.06s", marginTop: 24 }}>
         <InstallAppCard dismissible />
