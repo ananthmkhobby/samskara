@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { MIN_GEN, MAX_GEN, byId, yearsLabel } from "../data/helpers";
-import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, CURRENT_ROLE } from "../data/session";
+import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_FAMILY_NAME, CURRENT_USER_ID, CURRENT_ROLE } from "../data/session";
 import {
   createInvite, fetchFamilyMembers, updateMemberRole, setMemberPersonLink,
   updateMemberDisplayName, fetchInvites, revokeInvite, fetchMemberEmail,
-  createMemberLogin, resetMemberPassword,
+  createMemberLogin, resetMemberPassword, updateFamilyName,
 } from "../data/familyDb";
 import { categoryFor } from "../lib/parampara";
 import { libraryCategoryFor } from "../lib/library";
@@ -421,11 +421,61 @@ function CreateLoginCard({ onCreated }) {
   );
 }
 
+// The family's name was fixed at setup and previously unchangeable by
+// anyone — a typo meant asking the operator. Head/Admin only, and the RPC
+// behind it can touch nothing but the name.
+function FamilyNameCard() {
+  const [name, setName] = useState(CURRENT_FAMILY_NAME || "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+  const unchanged = name.trim() === (CURRENT_FAMILY_NAME || "").trim();
+
+  async function save(e) {
+    e.preventDefault();
+    if (busy || unchanged || !name.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      await updateFamilyName(CURRENT_FAMILY_ID, name);
+      setSaved(true);
+      // The name is read once at boot into a module binding every view
+      // reads synchronously, so a reload is the honest way to make it
+      // consistent everywhere rather than patching it in one place.
+      setTimeout(() => window.location.reload(), 900);
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ padding: 18, marginBottom: 18 }}>
+      <h4 style={{ fontSize: 15, marginBottom: 4 }}>Family name</h4>
+      <p className="form-hint" style={{ marginTop: 0, marginBottom: 10 }}>
+        Shown at the top of every page and on the family's home screen.
+      </p>
+      <form onSubmit={save} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <input
+          type="text" value={name} maxLength={80} onChange={(e) => { setName(e.target.value); setSaved(false); }}
+          style={{ flex: "1 1 220px", minWidth: 0 }}
+        />
+        <button type="submit" className="btn small primary" disabled={busy || unchanged || !name.trim()}>
+          {busy ? "Saving…" : "Save"}
+        </button>
+      </form>
+      {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+      {saved && <p className="form-hint">Saved — refreshing…</p>}
+    </div>
+  );
+}
+
 function MembersPage() {
   const [invitesRefreshKey, setInvitesRefreshKey] = useState(0);
   const [membersRefreshKey, setMembersRefreshKey] = useState(0);
   return (
     <>
+      <FamilyNameCard />
       <InviteCard onCreated={() => setInvitesRefreshKey((k) => k + 1)} />
       <InvitesList refreshKey={invitesRefreshKey} />
       <CreateLoginCard onCreated={() => setMembersRefreshKey((k) => k + 1)} />

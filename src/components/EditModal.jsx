@@ -9,6 +9,7 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
   const isDayInLife = request.field === "dayInLife";
   const isBorn = request.field === "born";
   const isDied = request.field === "died";
+  const isName = request.field === "name";
   const [value, setValue] = useState(request.value || "");
   const [diedUnknown, setDiedUnknown] = useState(request.diedUnknown || false);
   const [bornError, setBornError] = useState("");
@@ -59,6 +60,10 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
       if (!parsed) { setBornError('Use YYYY-MM-DD, or just YYYY if the exact day isn\'t known.'); return; }
       setBornError("");
       onSubmit({ field: request.field, fieldLabel: request.fieldLabel, content: JSON.stringify({ died: parsed.born, diedYearOnly: parsed.bornYearOnly, diedUnknown: false }), contributor: contributor.trim() || "Anonymous" });
+      return;
+    }
+    if (isName && !value.trim()) {
+      setBornError("A name can't be empty.");
       return;
     }
     if (isGeo) {
@@ -123,6 +128,16 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
                   />
                   They've passed away, but no one knows exactly when
                 </label>
+              </div>
+            ) : isName ? (
+              <div className="form-row">
+                <label>Full name</label>
+                <input type="text" value={value} onChange={(e) => setValue(e.target.value)} />
+                {bornError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{bornError}</p>}
+                <p className="form-hint">
+                  Corrects the spelling shown everywhere in the archive. Their place in the tree,
+                  and everything already recorded about them, stays exactly as it is.
+                </p>
               </div>
             ) : isHeritage ? (
               <>

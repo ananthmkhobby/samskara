@@ -619,6 +619,14 @@ export default function App() {
           person.diedUnknown = diedUnknown;
           updatePersonFields(familyId, c.personId, { died, died_year_only: diedYearOnly, died_unknown: diedUnknown }).catch((err) => console.error(err.message));
         } catch { /* malformed content, skip */ }
+      } else if (c.field === "name") {
+        // Only the display name changes — person.id is the key every
+        // parent/spouse link points at, so it deliberately stays as it was.
+        const name = String(c.content || "").trim();
+        if (name) {
+          person.name = name;
+          updatePersonFields(familyId, c.personId, { name }).catch((err) => console.error(err.message));
+        }
       } else if (c.field === "summary") {
         person.summary = c.content;
         updatePersonFields(familyId, c.personId, { summary: c.content }).catch((err) => console.error(err.message));

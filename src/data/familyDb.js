@@ -488,6 +488,14 @@ export async function setMemberPersonLink(memberRowId, personId) {
 
 // Same "no raw RLS" reasoning as setMemberPersonLink above, but for the
 // display_name column — a Head/Admin-only RPC that never touches role.
+// Head/Admin-only, and only ever touches families.name — see the migration
+// for why this isn't a plain UPDATE policy on the table.
+export async function updateFamilyName(familyId, name) {
+  const db = requireClient();
+  const { error } = await db.rpc("update_family_name", { p_family_id: familyId, p_name: name });
+  if (error) throw new Error(error.message);
+}
+
 export async function updateMemberDisplayName(memberRowId, displayName) {
   const db = requireClient();
   const { error } = await db.rpc("update_member_display_name", { p_member_id: memberRowId, p_display_name: displayName });

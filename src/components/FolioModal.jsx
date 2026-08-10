@@ -59,7 +59,16 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
             </button>
           </div>
           <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoFile} />
-          <h2>{person.name}</h2>
+          <h2 className="folio-name-line">
+            {person.name}
+            <button
+              type="button" className="folio-name-edit"
+              aria-label={`Edit ${person.name}'s name`}
+              onClick={() => onEdit({ field: "name", fieldLabel: "Name", value: person.name })}
+            >
+              <EditPencilIcon />
+            </button>
+          </h2>
           <div className="role">{role || (spouse ? `m. ${spouse.name}` : "")} — {yearsLabel(person)}</div>
           {(relationship || widowed) && (
             <div className="relationship">{[relationship, widowed].filter(Boolean).join(" · ")}</div>

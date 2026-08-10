@@ -35,6 +35,16 @@
 .photo-lightbox img { max-width: min(90vw, 560px); max-height: 80vh; border-radius: 12px; box-shadow: var(--shadow-2); }
 .photo-lightbox .modal-close { position: fixed; top: 18px; right: 18px; }
 .folio-band h2 { font-size: 23px; color: #FBF0E8; margin-top: 14px; }
+/* The pencil sits inline after the name and wraps with it, rather than
+   being absolutely placed — a long name on a narrow phone would otherwise
+   run underneath it. */
+.folio-name-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.folio-name-edit {
+  flex: none; width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.45); background: rgba(255,255,255,.14); color: #FBF0E8;
+  display: flex; align-items: center; justify-content: center;
+}
+.folio-name-edit svg { width: 13px; height: 13px; }
 .folio-band .role { font-size: 12.5px; color: rgba(251,240,232,.75); font-style: italic; margin-top: 3px; }
 .folio-band .relationship { font-size: 11.5px; color: rgba(251,240,232,.55); margin-top: 2px; }
 .folio-badges { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
