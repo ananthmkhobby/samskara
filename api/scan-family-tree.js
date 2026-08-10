@@ -7,6 +7,8 @@ Reply with ONLY valid JSON (no markdown fences, no commentary) matching this exa
 Use "" for any field you don't know. There must be exactly one root person — the earliest generation visible in the photo. If you can't confidently find a single root, pick whoever appears most senior/central.
 If the image clearly is not a family tree chart, reply with exactly {"error": "not a family tree"} instead.`;
 
+import { allowAiRequest } from "./_aiAuth.js";
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
@@ -15,6 +17,15 @@ export default async function handler(req, res) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     res.status(500).json({ error: "Photo scanning isn't set up yet — add OPENAI_API_KEY to this project's environment variables." });
+    return;
+  }
+
+  // Gate before spending any OpenAI credit — signed-in family members pass
+  // straight through; anonymous demo visitors share a daily ceiling.
+  try {
+    await allowAiRequest(req);
+  } catch (err) {
+    res.status(429).json({ error: err.message });
     return;
   }
   const { image } = req.body || {};

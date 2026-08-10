@@ -2,6 +2,8 @@
 // has gone so far, asks OpenAI for one natural, specific follow-up question,
 // the same way a curious grandchild would dig deeper into what was just said
 // instead of moving on to the next item on a generic checklist.
+import { allowAiRequest } from "./_aiAuth.js";
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
@@ -10,6 +12,15 @@ export default async function handler(req, res) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     res.status(500).json({ error: "The AI interview isn't set up yet — add OPENAI_API_KEY to this project's environment variables." });
+    return;
+  }
+
+  // Gate before spending any OpenAI credit — signed-in family members pass
+  // straight through; anonymous demo visitors share a daily ceiling.
+  try {
+    await allowAiRequest(req);
+  } catch (err) {
+    res.status(429).json({ error: err.message });
     return;
   }
   const { personName, context, history } = req.body || {};
