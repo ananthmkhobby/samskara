@@ -30,6 +30,13 @@ export let FAMILY_FLAME_STREAK = 0;
 // themselves to — null in demo mode, or for a real account that hasn't
 // picked one yet via Admin → Roster. Lets the Tree view highlight "you".
 export let MY_PERSON_ID = null;
+// True when a real account is signed in but hasn't accepted the current
+// version of the Privacy Policy and Terms. Covers three cases with one
+// check: accounts an Admin created directly (which never touch the signup
+// form), accounts that predate consent being collected at all, and everyone
+// again after POLICY_VERSION is bumped. Always false in demo mode — there's
+// no account to record consent against.
+export let NEEDS_CONSENT = false;
 
 export function setSession(next) {
   CURRENT_USER_ID = next.userId ?? null;
@@ -42,4 +49,12 @@ export function setSession(next) {
   MY_FAMILIES = next.myFamilies ?? [];
   FAMILY_FLAME_STREAK = next.flameStreak ?? 0;
   MY_PERSON_ID = next.myPersonId ?? null;
+  NEEDS_CONSENT = next.needsConsent ?? false;
+}
+
+// Called once the person accepts, so the gate can step aside without a full
+// reload — the boot-time value is now stale and this is the one thing that
+// changes about the session mid-visit.
+export function markConsentGiven() {
+  NEEDS_CONSENT = false;
 }

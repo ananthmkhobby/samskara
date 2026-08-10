@@ -14,7 +14,7 @@ export default function LoginPage({ onShowHelp, onShowPrivacy, onShowTerms }) {
           Your family's living record — every birth, marriage, memory, and hard-won lesson, kept in one place.
         </p>
       </div>
-      <AuthPanel />
+      <AuthPanel onShowPrivacy={onShowPrivacy} onShowTerms={onShowTerms} />
       <p className="form-hint" style={{ textAlign: "center", marginTop: 16 }}>
         By continuing, you agree to our{" "}
         <button type="button" className="link-btn" onClick={onShowTerms}>Terms &amp; Conditions</button>

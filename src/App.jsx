@@ -39,10 +39,11 @@ import ChitrashaleAddModal from "./components/ChitrashaleAddModal";
 import LoginPage from "./components/LoginPage";
 import HelpStandalone from "./components/HelpStandalone";
 import ResetPasswordGate from "./components/ResetPasswordGate";
+import ConsentGate from "./components/ConsentGate";
 import { PEOPLE, INITIAL_CONTRIBUTIONS, BOOKS, BOOK_OWNERSHIP, BOOK_READERS, PRACTICE_LOGS, addPerson, addBook, makeUniquePersonId } from "./data/people";
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
 import { verifiedObjectsBySpot, hasAnyRoomObjects } from "./lib/chitrashale";
-import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, NEEDS_LOGIN } from "./data/session";
+import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, NEEDS_LOGIN, NEEDS_CONSENT } from "./data/session";
 import { insertContribution, updateContribution, updateContributionStatus, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus, insertPracticeLog } from "./data/familyDb";
 import { resolveMediaUrl, uploadFamilyMedia } from "./lib/mediaUpload";
 import { parseParamparaContent } from "./lib/parampara";
@@ -106,6 +107,9 @@ export default function App() {
   // login and boot straight into the family view instead of letting the
   // person actually set a new password.
   const [passwordRecovery, setPasswordRecovery] = useState(false);
+  // Seeded from the boot-time lookup; the gate clears it on acceptance so
+  // the app appears without a reload.
+  const [needsConsent, setNeedsConsent] = useState(NEEDS_CONSENT);
   useEffect(() => {
     if (!supabase) return;
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
@@ -808,6 +812,13 @@ export default function App() {
       );
     }
     return <LoginPage onShowHelp={() => goTo("help")} onShowPrivacy={() => goTo("privacy")} onShowTerms={() => goTo("terms")} />;
+  }
+
+  // Below NEEDS_LOGIN (there's no account to record consent against until
+  // someone's signed in) but above everything else — the archive itself must
+  // not render behind it, or "they saw it" becomes arguable.
+  if (needsConsent) {
+    return <ConsentGate userId={CURRENT_USER_ID} onAccepted={() => setNeedsConsent(false)} />;
   }
 
   return (

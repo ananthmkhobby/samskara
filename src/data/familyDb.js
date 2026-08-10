@@ -537,6 +537,28 @@ export async function fetchMyPersonLink(familyId, userId) {
   return data?.person_id ?? null;
 }
 
+// Whether this account has already accepted the current policy version.
+// Read rather than written at boot — the write only happens when someone
+// actually ticks the box (recordConsent below).
+export async function hasAcceptedPolicy(userId, version) {
+  const db = requireClient();
+  const { data, error } = await db.from("user_consents")
+    .select("id").eq("user_id", userId).eq("policy_version", version).maybeSingle();
+  if (error) throw new Error(error.message);
+  return !!data;
+}
+
+// user_id is set from the session rather than passed in — the RLS insert
+// policy checks it against auth.uid() anyway, so a caller can only ever
+// record their own consent, never someone else's.
+export async function recordConsent(userId, version) {
+  const db = requireClient();
+  const { error } = await db.from("user_consents").insert({ user_id: userId, policy_version: version });
+  // A second acceptance of the same version trips the unique constraint —
+  // harmless (they've already consented), so it isn't surfaced as a failure.
+  if (error && !/duplicate key/i.test(error.message)) throw new Error(error.message);
+}
+
 // A shared, family-wide streak (not per-user) — whoever's the first to open
 // the app on a given day keeps the whole family's flame lit. The row lock in
 // the function body means simultaneous callers can't double-increment.

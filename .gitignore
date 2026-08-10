@@ -24,3 +24,7 @@ dev-dist
 *.sln
 *.sw?
 .vercel
+
+# Local backup snapshots — real family names, photos and recordings.
+# This repository is public; these must never be committed.
+backups/

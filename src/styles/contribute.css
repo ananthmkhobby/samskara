@@ -1,6 +1,14 @@
 .form-row { margin-top: 16px; }
 .form-row label { display: block; font-size: 12px; font-weight: 700; color: var(--ink-soft); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .03em; }
-.form-row select, .form-row input[type=text], .form-row input[type=date], .form-row textarea, .form-row input[type=file] {
+/* Listed by type rather than a bare `input` so checkboxes and radios keep
+   their native appearance. email/password/number/tel were missing, which left
+   every field on the sign-in and join forms rendering as a browser-default
+   box — noticeably smaller than the ones beside them, and too short to tap
+   comfortably on a phone. */
+.form-row select, .form-row input[type=text], .form-row input[type=date],
+.form-row input[type=email], .form-row input[type=password],
+.form-row input[type=number], .form-row input[type=tel],
+.form-row textarea, .form-row input[type=file] {
   width: 100%; padding: 11px 12px; border-radius: 9px; border: 1px solid var(--line-strong); background: var(--parchment); color: var(--ink); font-size: 14px; font-family: inherit;
 }
 .form-row textarea { min-height: 100px; resize: vertical; }

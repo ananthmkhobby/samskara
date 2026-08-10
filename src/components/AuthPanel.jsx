@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { redeemInvite } from "../data/familyDb";
+import { redeemInvite, recordConsent } from "../data/familyDb";
 import { ACCOUNT_NEEDS_FAMILY } from "../data/session";
+import { POLICY_VERSION } from "../lib/policy";
 
 // Reads a `?code=` invite link once at module load (mirrors App.jsx's
 // FORCE_INTRO pattern) — if present, the join form opens pre-filled instead
@@ -22,7 +23,7 @@ async function handleSignOut() {
   window.location.reload();
 }
 
-export default function AuthPanel() {
+export default function AuthPanel({ onShowPrivacy, onShowTerms }) {
   const [mode, setMode] = useState(INVITE_CODE_FROM_URL ? "join" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,7 +39,7 @@ export default function AuthPanel() {
         <p className="form-hint" style={{ marginTop: 8 }}>
           You're signed in, but this account isn't attached to a family yet — whoever set this up needs to add you, or you can redeem an invite code below if you have one.
         </p>
-        <JoinForm email={email} setEmail={setEmail} password={password} setPassword={setPassword} name={name} setName={setName} code={code} setCode={setCode} busy={busy} setBusy={setBusy} error={error} setError={setError} alreadySignedIn />
+        <JoinForm email={email} setEmail={setEmail} password={password} setPassword={setPassword} name={name} setName={setName} code={code} setCode={setCode} busy={busy} setBusy={setBusy} error={error} setError={setError} onShowPrivacy={onShowPrivacy} onShowTerms={onShowTerms} alreadySignedIn />
         <button className="link-btn" style={{ marginTop: 10 }} onClick={handleSignOut}>Sign out</button>
       </div>
     );
@@ -53,7 +54,7 @@ export default function AuthPanel() {
       {mode === "login" ? (
         <LoginForm email={email} setEmail={setEmail} password={password} setPassword={setPassword} busy={busy} setBusy={setBusy} error={error} setError={setError} />
       ) : (
-        <JoinForm email={email} setEmail={setEmail} password={password} setPassword={setPassword} name={name} setName={setName} code={code} setCode={setCode} busy={busy} setBusy={setBusy} error={error} setError={setError} />
+        <JoinForm email={email} setEmail={setEmail} password={password} setPassword={setPassword} name={name} setName={setName} code={code} setCode={setCode} busy={busy} setBusy={setBusy} error={error} setError={setError} onShowPrivacy={onShowPrivacy} onShowTerms={onShowTerms} />
       )}
     </div>
   );
@@ -137,7 +138,7 @@ function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, erro
   );
 }
 
-function JoinForm({ email, setEmail, password, setPassword, name, setName, code, setCode, busy, setBusy, error, setError, alreadySignedIn }) {
+function JoinForm({ email, setEmail, password, setPassword, name, setName, code, setCode, busy, setBusy, error, setError, alreadySignedIn, onShowPrivacy, onShowTerms }) {
   // Someone opening an invite link isn't necessarily new — they might
   // already have an account (e.g. from joining a different family
   // earlier). Asking explicitly, rather than inferring it from a failed
@@ -151,6 +152,10 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
   // code yet (opened the site directly, no link), with a manual-entry
   // escape hatch in case a pre-filled code is ever wrong (stale link, etc).
   const [showCodeField, setShowCodeField] = useState(!INVITE_CODE_FROM_URL);
+  // Only asked of someone creating an account here — a returning account
+  // already consented when it was made, and re-asking at every sign-in
+  // teaches people to click through without reading.
+  const [agreed, setAgreed] = useState(false);
 
   async function submit(e) {
     e.preventDefault();
@@ -163,6 +168,13 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
             email: email.trim(), password, options: { data: { display_name: name.trim() || undefined } },
           });
           if (signUpErr) throw signUpErr;
+          // Recorded here so consent is on file from the moment the account
+          // exists. If this write fails (or the project ever turns email
+          // confirmation back on, leaving no session yet), the boot-time
+          // consent gate catches them instead — hence the swallowed error
+          // rather than blocking the join over it.
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) await recordConsent(user.id, POLICY_VERSION).catch(() => {});
         } else {
           const { error: signInErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
           if (signInErr) throw signInErr;
@@ -211,8 +223,22 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
           <button type="button" className="link-btn" onClick={() => setShowCodeField(true)}>Not the right code?</button>
         </p>
       )}
+      {!alreadySignedIn && isNewAccount && (
+        <label className="consent-check" style={{ marginTop: 14, marginBottom: 4 }}>
+          <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+          <span>
+            I agree to the{" "}
+            <button type="button" className="link-btn" onClick={onShowPrivacy}>Privacy Policy</button>
+            {" "}and{" "}
+            <button type="button" className="link-btn" onClick={onShowTerms}>Terms &amp; Conditions</button>
+          </span>
+        </label>
+      )}
       {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
-      <button type="submit" className="btn primary small" disabled={busy} style={{ marginTop: 10 }}>
+      <button
+        type="submit" className="btn primary small" style={{ marginTop: 10 }}
+        disabled={busy || (!alreadySignedIn && isNewAccount && !agreed)}
+      >
         {busy ? "Joining…" : alreadySignedIn || isNewAccount ? "Join your family →" : "Log in & join →"}
       </button>
     </form>
