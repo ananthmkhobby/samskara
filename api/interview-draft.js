@@ -47,12 +47,17 @@ export default async function handler(req, res) {
       })
     });
     const data = await r.json();
-    if (!r.ok) throw new Error(data.error?.message || "OpenAI request failed.");
+    if (!r.ok) {
+      // Logged server-side only — the upstream message can name the
+      // provider and expose account/billing state to anyone calling this.
+      console.error("AI provider error:", data.error?.message || r.status);
+      throw new Error("UPSTREAM");
+    }
     const raw = data.choices?.[0]?.message?.content;
     const parsed = JSON.parse(raw);
     if (!parsed.title || !parsed.text) throw new Error("The draft came back incomplete — try again.");
     res.status(200).json({ title: parsed.title, text: parsed.text });
   } catch (err) {
-    res.status(500).json({ error: err.message || "Couldn't draft the chapter." });
+    res.status(500).json({ error: err.message === "UPSTREAM" ? "Couldn't draft the chapter — please try again." : (err.message || "Couldn't draft the chapter — please try again.") });
   }
 }

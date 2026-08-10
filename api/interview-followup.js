@@ -46,11 +46,16 @@ export default async function handler(req, res) {
       })
     });
     const data = await r.json();
-    if (!r.ok) throw new Error(data.error?.message || "OpenAI request failed.");
+    if (!r.ok) {
+      // Logged server-side only — the upstream message can name the
+      // provider and expose account/billing state to anyone calling this.
+      console.error("AI provider error:", data.error?.message || r.status);
+      throw new Error("UPSTREAM");
+    }
     const question = data.choices?.[0]?.message?.content?.trim();
     if (!question) throw new Error("No question came back — try again.");
     res.status(200).json({ question });
   } catch (err) {
-    res.status(500).json({ error: err.message || "Couldn't come up with the next question." });
+    res.status(500).json({ error: err.message === "UPSTREAM" ? "Couldn't come up with the next question — please try again." : (err.message || "Couldn't come up with the next question — please try again.") });
   }
 }

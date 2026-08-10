@@ -51,13 +51,18 @@ export default async function handler(req, res) {
       })
     });
     const data = await r.json();
-    if (!r.ok) throw new Error(data.error?.message || "OpenAI request failed.");
+    if (!r.ok) {
+      // Logged server-side only — the upstream message can name the
+      // provider and expose account/billing state to anyone calling this.
+      console.error("AI provider error:", data.error?.message || r.status);
+      throw new Error("UPSTREAM");
+    }
     const raw = data.choices?.[0]?.message?.content;
     const parsed = JSON.parse(raw);
     if (parsed.error) throw new Error("That doesn't look like a family tree chart — try a clearer photo, or build it manually instead.");
     if (!parsed.name) throw new Error("Couldn't make out a clear starting person — try a clearer photo, or build it manually instead.");
     res.status(200).json({ tree: parsed });
   } catch (err) {
-    res.status(500).json({ error: err.message || "Couldn't read that photo." });
+    res.status(500).json({ error: err.message === "UPSTREAM" ? "Couldn't read that photo — please try again." : (err.message || "Couldn't read that photo — please try again.") });
   }
 }

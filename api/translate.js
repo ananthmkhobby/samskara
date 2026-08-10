@@ -42,11 +42,16 @@ export default async function handler(req, res) {
       })
     });
     const data = await r.json();
-    if (!r.ok) throw new Error(data.error?.message || "OpenAI request failed.");
+    if (!r.ok) {
+      // Logged server-side only — the upstream message can name the
+      // provider and expose account/billing state to anyone calling this.
+      console.error("AI provider error:", data.error?.message || r.status);
+      throw new Error("UPSTREAM");
+    }
     const translated = data.choices?.[0]?.message?.content?.trim();
     if (!translated) throw new Error("No translation came back — try again.");
     res.status(200).json({ translated });
   } catch (err) {
-    res.status(500).json({ error: err.message || "Translation failed." });
+    res.status(500).json({ error: err.message === "UPSTREAM" ? "Translation failed — please try again." : (err.message || "Translation failed — please try again.") });
   }
 }
