@@ -29,6 +29,7 @@ import ParamparaView from "./components/ParamparaView";
 import ParamparaContributeModal from "./components/ParamparaContributeModal";
 import LibraryView from "./components/LibraryView";
 import JapaView from "./components/JapaView";
+import ActivityView, { lastSeenId, markAllSeen } from "./components/ActivityView";
 import JapaLogModal from "./components/JapaLogModal";
 import BookModal from "./components/BookModal";
 import AddBookModal from "./components/AddBookModal";
@@ -57,7 +58,7 @@ async function withMediaUrl(contribution) {
   return { ...contribution, mediaUrl };
 }
 
-const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms" };
+const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
 const pathForView = (v) => VIEW_PATHS[v] || "/";
 const viewForPath = (p) => PATH_TO_VIEW[p] || "cover";
@@ -133,6 +134,20 @@ export default function App() {
   const isPoppingRef = useRef(false);
 
   const pendingCount = contributions.filter((c) => c.status === "Pending").length;
+  // What the bell counts now: family news this device hasn't looked at yet.
+  // Recomputed from the same contributions list, so it can never disagree
+  // with what the activity page actually shows.
+  const verifiedIds = contributions.filter((c) => c.status === "Verified").map((c) => c.id);
+  const highestActivityId = verifiedIds.length ? Math.max(...verifiedIds) : 0;
+  const [seenActivityId, setSeenActivityId] = useState(() => lastSeenId(CURRENT_FAMILY_ID));
+  const unseenCount = verifiedIds.filter((id) => id > seenActivityId).length;
+  // Opening the page is the acknowledgement — no separate "mark all read".
+  useEffect(() => {
+    if (view === "activity" && highestActivityId > seenActivityId) {
+      markAllSeen(CURRENT_FAMILY_ID, highestActivityId);
+      setSeenActivityId(highestActivityId);
+    }
+  }, [view, highestActivityId, seenActivityId]);
 
   // Without this, the page behind any open modal stays scrollable — wheel/touch
   // drag on the backdrop scrolls the body instead of (or in addition to) the
@@ -797,7 +812,7 @@ export default function App() {
 
   return (
     <div id="app">
-      <TopBar view={view} onNav={goTo} pendingCount={pendingCount} onJoinAnother={() => openJoinFamily({})} onContribute={openContribute} />
+      <TopBar view={view} onNav={goTo} pendingCount={pendingCount} unseenCount={unseenCount} onJoinAnother={() => openJoinFamily({})} onContribute={openContribute} />
       <main>
         {view === "cover" && (
           <HomeDashboard
@@ -815,6 +830,12 @@ export default function App() {
         {view === "more" && <MoreMenu onNav={goTo} canModerate={canModerate} />}
         {view === "vault" && <VaultView contributions={contributions} />}
         {view === "map" && <JourneyMapView onSelectPerson={selectPerson} />}
+        {view === "activity" && (
+          <ActivityView
+            contributions={contributions} canModerate={canModerate}
+            onSelectPerson={selectPerson} onNav={goTo} familyId={CURRENT_FAMILY_ID}
+          />
+        )}
         {view === "japa" && <JapaView onLogCount={() => commit({ japaLogOpen: true })} onSelectPerson={selectPerson} />}
         {view === "admin" && <AdminView contributions={contributions} onApprove={approveContribution} onReject={rejectContribution} canModerate={canModerate} />}
         {view === "builder" && <FamilyBuilderView onNav={goTo} />}

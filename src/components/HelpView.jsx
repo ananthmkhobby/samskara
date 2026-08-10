@@ -113,6 +113,81 @@ export default function HelpView() {
         </p>
       </div>
 
+      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>What's new — seeing what the family has added</h4>
+        <p className="folio-summary">
+          The bell at the top of the screen opens <b>What's new</b>: everything the family has added
+          lately, newest first, grouped by day. A number on the bell means there are things you
+          haven't looked at yet; opening the page clears it. Tap any line to jump straight to that
+          person's folio. Admins also see a reminder there of anything still waiting to be reviewed.
+        </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>Anubhava Chitrashale — a person's room</h4>
+        <p className="folio-summary">
+          From anyone's folio you can step into <b>their room</b>: a small illustrated space the
+          family furnishes with objects that carry a memory — a lamp, a tumbler, a pair of
+          slippers. Each object stays quiet until it's tapped, then reveals a memory, a recorded
+          voice, or simply a silence. On the way out you're asked one question: if someone had to
+          remember them in a single sentence, what would you add?
+        </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>Japa &amp; Chanting counts</h4>
+        <p className="folio-summary">
+          Log mala rounds, Hanuman Chalisa, Vishnu Sahasranama, Gayatri Mantra — or any practice
+          your family keeps — from the card on the Home screen or from More → Japa &amp; Chanting.
+          You can log for yourself or on behalf of an elder who doesn't use the app. Counts apply
+          straight away with no review, and you'll see both your own total and the whole family's.
+        </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>Dates, and what to do when you don't know one</h4>
+        <p className="folio-summary">
+          Birthdays and anniversaries collect in the <b>Dates Vault</b>, and the nearest upcoming
+          birthday is shown at the top of Home. If you only know a year, enter just the year —
+          it'll be recorded honestly as a year rather than inventing a day. If you know someone has
+          passed away but not when, open their folio, edit <b>Date of death</b> and tick
+          "they've passed away, but no one knows exactly when." A living husband or wife of someone
+          who has passed is quietly marked <b>Widowed</b> on their folio.
+        </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>Fixing names and details</h4>
+        <p className="folio-summary">
+          Spelling mistakes happen, especially after a bulk import. Tap the small pencil beside
+          anyone's name on their folio to correct it — their place in the tree and everything
+          recorded about them stays exactly as it is. A Head or Admin can also correct the
+          <b> family's own name</b> under Admin → Manage members, and rename a member in the roster.
+        </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>Adding a whole family at once</h4>
+        <p className="folio-summary">
+          For a large family, don't add people one at a time. Download the spreadsheet template
+          from the Family Builder, fill in one row per person offline, and upload it — the tree,
+          the marriages and the generations are worked out for you. Photos and recordings are
+          added afterwards inside the app. You can always add earlier generations later:
+          open the oldest person's folio and add a parent above them, as many times as you need.
+        </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>Your family's privacy</h4>
+        <p className="folio-summary">
+          Your family's archive is completely separate from every other family's — that separation
+          is enforced by the database itself, not just hidden in the app. Photos and recordings are
+          kept privately and opened through short-lived links, never public web addresses. You can
+          read the full <b>Privacy Policy</b> and <b>Terms</b> from the sign-in screen. Keep your
+          own copies of anything truly irreplaceable, as you would with any app.
+        </p>
+      </div>
+
       <div className="card" style={{ padding: 20 }}>
         <h4 style={{ fontSize: 15, marginBottom: 10 }}>The review queue</h4>
         <p className="folio-summary">

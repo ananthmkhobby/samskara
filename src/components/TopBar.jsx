@@ -10,7 +10,7 @@ const TABS = [
 ];
 const MORE_VIEWS = ["parampara", "library", "treasury", "map", "admin", "help"];
 
-export default function TopBar({ view, onNav, pendingCount, onJoinAnother, onContribute }) {
+export default function TopBar({ view, onNav, pendingCount, unseenCount = 0, onJoinAnother, onContribute }) {
   const isMoreActive = MORE_VIEWS.includes(view);
   return (
     <header className="topbar">
@@ -36,9 +36,9 @@ export default function TopBar({ view, onNav, pendingCount, onJoinAnother, onCon
         {/* Reuses the same pendingCount signal already shown on the More
             tab's badge — a second, more visible surface for it, not a
             separate notification feed that doesn't exist yet. */}
-        <button className="icon-only topbar-bell-btn" style={{ width: 34, height: 34, position: "relative" }} onClick={() => onNav("more")} aria-label="Pending review items">
+        <button className="icon-only topbar-bell-btn" style={{ width: 34, height: 34, position: "relative" }} onClick={() => onNav("activity")} aria-label="What's new in the family">
           <BellIcon />
-          {pendingCount > 0 && <span className="badge-count" style={{ top: -3, right: -3 }}>{pendingCount}</span>}
+          {unseenCount > 0 && <span className="badge-count" style={{ top: -3, right: -3 }}>{unseenCount}</span>}
         </button>
         <button className="icon-only" style={{ width: 34, height: 34 }} onClick={() => onNav("help")} aria-label="Help">?</button>
         {IS_DEMO ? (
