@@ -19,7 +19,7 @@ const RIGHT_TABS = [
 
 // Views that now live behind "More" — used so the More tab itself lights
 // up "active" while any of them is open, instead of nothing being highlighted.
-const MORE_VIEWS = ["parampara", "library", "treasury", "map", "admin", "help"];
+const MORE_VIEWS = ["parampara", "library", "treasury", "map", "japa", "admin", "help", "privacy", "terms"];
 
 function NavButton({ tab, active, onNav, pendingCount }) {
   const { key, label, Icon } = tab;

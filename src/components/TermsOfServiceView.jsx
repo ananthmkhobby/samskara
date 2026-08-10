@@ -107,10 +107,10 @@ export default function TermsOfServiceView() {
         </p>
         <p className="folio-summary" style={{ marginBottom: 8 }}>
           These terms are governed by the laws of India. Any dispute is subject to the exclusive jurisdiction of
-          the courts of [CITY], India.
+          the courts of Bangalore, India.
         </p>
         <p className="folio-summary">
-          Questions about these terms: <b>support@samskara.com</b>
+          Questions about these terms: <b>whyvasupport@gmail.com</b>
         </p>
       </div>
     </section>

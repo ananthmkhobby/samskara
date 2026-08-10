@@ -8,7 +8,7 @@ const TABS = [
   { key: "gallery", label: "Gallery", Icon: GalleryIcon },
   { key: "search", label: "Search", Icon: SearchIcon }
 ];
-const MORE_VIEWS = ["parampara", "library", "treasury", "map", "admin", "help"];
+const MORE_VIEWS = ["parampara", "library", "treasury", "map", "japa", "admin", "help", "privacy", "terms"];
 
 export default function TopBar({ view, onNav, pendingCount, unseenCount = 0, onJoinAnother, onContribute }) {
   const isMoreActive = MORE_VIEWS.includes(view);
