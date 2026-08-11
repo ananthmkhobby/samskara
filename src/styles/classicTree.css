@@ -85,7 +85,10 @@ button.illustrated-node { cursor: pointer; }
 
 /* The small, non-interactive Home crest — fixed height, no pan/zoom, just
    a centered preview of the first couple of generations. */
-.tree-crest-card { padding: 18px 16px 22px; position: relative; overflow: hidden; }
+/* margin-top matches the rhythm every other Home block sets inline (24-34px).
+   Without it this card sat flush against the "Today in our family" card above,
+   reading as one merged block rather than two. Only used on Home. */
+.tree-crest-card { margin-top: 26px; padding: 18px 16px 22px; position: relative; overflow: hidden; }
 .tree-crest-badge {
   display: inline-block; margin: 0 auto 12px; padding: 5px 16px; border-radius: 999px; background: var(--maroon-deep);
   color: #F8ECE4; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
