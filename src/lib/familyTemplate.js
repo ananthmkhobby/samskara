@@ -209,6 +209,30 @@ export async function parseTemplateWorkbook(arrayBuffer, existingPeople = []) {
   });
   if (errors.length) return { people: [], marriages: [], errors, warnings, spouseLinks };
 
+  // A same-name warning, not a block — two genuinely different people can
+  // share a name (common across generations), so this can't be an error.
+  // But the likely real mistake is re-typing someone already in the tree
+  // instead of linking to them by ID, and that's worth flagging loudly: a
+  // second "Ramesh Rao" is either a real second Ramesh or a duplicate
+  // record, and only the person filling in the sheet can tell which.
+  const nameKey = (s) => String(s ?? "").trim().toLowerCase();
+  const existingNames = new Map();
+  existingPeople.forEach((p) => existingNames.set(nameKey(p.name), p));
+  const seenNamesInFile = new Map();
+  rows.forEach((row) => {
+    const key = nameKey(row.name);
+    if (!key) return;
+    const existingMatch = existingNames.get(key);
+    if (existingMatch) {
+      warnings.push(`Row ${row._rowNum}: "${row.name}" has the same name as "${existingMatch.name}" already in your family tree (Person ID "${existingMatch.id}") — if this is the same person, use Parent/Spouse ID "${existingMatch.id}" to link to them instead of adding a duplicate.`);
+    }
+    const fileMatch = seenNamesInFile.get(key);
+    if (fileMatch && fileMatch !== row._id) {
+      warnings.push(`Row ${row._rowNum}: "${row.name}" has the same name as row for "${fileMatch}" earlier in this file — make sure these are two different people.`);
+    }
+    seenNamesInFile.set(key, row._id);
+  });
+
   // Generation is computed from parent chains, not a manual column — but a
   // person with no parents listed isn't necessarily a root: they might have
   // married into the family, in which case they belong at their spouse's

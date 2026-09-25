@@ -318,6 +318,25 @@ export async function linkExistingSpouses(familyId, spouseLinks) {
   }
 }
 
+// Undoes a mistaken addition — currently only wired up right after a bulk
+// import (AddPeopleCard's "review before you commit" step), not as a
+// standing delete-anyone control elsewhere in the app.
+//
+// A thin wrapper around the delete_person() RPC (see its migration for the
+// full story) — the validation, the children/spouse safety checks, and the
+// cleanup of four tables with a genuinely broken composite-FK ON DELETE SET
+// NULL all happen server-side, atomically, as the Family Head. Two of those
+// four tables (book_ownership, invites) have no client-reachable UPDATE
+// policy at all — a plain client-side update() against them would silently
+// affect zero rows under RLS — so this can't be done as a sequence of plain
+// table calls the way linkExistingSpouses is; it has to run with the
+// function's own privileges.
+export async function deletePerson(familyId, personId) {
+  const db = requireClient();
+  const { error } = await db.rpc("delete_person", { p_family_id: familyId, p_person_id: personId });
+  if (error) throw new Error(error.message);
+}
+
 // ---- Invites ---------------------------------------------------------------
 
 export async function createInvite(familyId, userId, personId) {

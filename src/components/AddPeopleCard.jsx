@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
 import { PEOPLE } from "../data/people";
-import { CURRENT_FAMILY_ID } from "../data/session";
-import { bulkInsertFamily, linkExistingSpouses } from "../data/familyDb";
+import { CURRENT_FAMILY_ID, CURRENT_USER_ID, CURRENT_ROLE } from "../data/session";
+import { bulkInsertFamily, linkExistingSpouses, deletePerson, insertContribution, fetchFamilyMembers } from "../data/familyDb";
 import { downloadTemplate, parseTemplateWorkbook } from "../lib/familyTemplate";
+import { todayStr } from "../data/helpers";
 
 // The bulk-upload path in FamilyBuilderView only ever worked once, on a
 // completely empty tree (PEOPLE.length > 0 replaced the whole wizard with a
@@ -18,6 +19,14 @@ export default function AddPeopleCard() {
   const [parsing, setParsing] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState("");
+  // Set once the rows are actually saved — the import itself can't be
+  // undone, but a mistake within it still can be, which is what this state
+  // is for: a short review window, before anything is announced to the rest
+  // of the family, to remove a person who shouldn't have been added.
+  const [justAdded, setJustAdded] = useState(null); // [{id, name}] | null
+  const [removingId, setRemovingId] = useState(null);
+  const [removeError, setRemoveError] = useState("");
+  const [finishing, setFinishing] = useState(false);
   const fileRef = useRef(null);
 
   const existingPeople = PEOPLE.map((p) => ({ id: p.id, name: p.name, gen: p.gen, spouse: p.spouse }));
@@ -46,19 +55,88 @@ export default function AddPeopleCard() {
     try {
       await bulkInsertFamily(CURRENT_FAMILY_ID, preview.people, preview.marriages, PEOPLE.length);
       await linkExistingSpouses(CURRENT_FAMILY_ID, preview.spouseLinks);
-      window.location.reload();
+      // Saved for real at this point — the review step below only ever
+      // removes a row from here on, it never re-runs the import.
+      setJustAdded(preview.people.map((p) => ({ id: p.id, name: p.name })));
+      setPreview(null);
+      if (fileRef.current) fileRef.current.value = "";
     } catch (err) {
       // People rows land first and marriages/spouse-links after — a failure
       // here means the new people are already saved, so the message says so
       // rather than implying the whole import can just be retried from zero.
       setImportError(`${err.message} — some or all of the new people may already be saved; check the tree before re-uploading.`);
+    } finally {
       setImporting(false);
+    }
+  }
+
+  async function handleRemove(id) {
+    setRemovingId(id);
+    setRemoveError("");
+    try {
+      await deletePerson(CURRENT_FAMILY_ID, id);
+      setJustAdded((list) => list.filter((p) => p.id !== id));
+    } catch (err) {
+      setRemoveError(err.message);
+    } finally {
+      setRemovingId(null);
+    }
+  }
+
+  async function handleFinish() {
+    setFinishing(true);
+    try {
+      // Best-effort: the people are already safely saved regardless of
+      // whether this succeeds, so a failure here shouldn't block finishing —
+      // it would only mean this batch doesn't show up in "What's new".
+      let contributor = CURRENT_ROLE === "head" ? "Family Head" : "Admin";
+      try {
+        const members = await fetchFamilyMembers(CURRENT_FAMILY_ID);
+        const me = members.find((m) => m.userId === CURRENT_USER_ID);
+        if (me?.displayName) contributor = me.displayName;
+      } catch { /* fall back to the role label above */ }
+      await Promise.all(justAdded.map((p) =>
+        insertContribution(CURRENT_FAMILY_ID, { type: "newPerson", personId: p.id, name: p.name, contributor, status: "Verified", date: todayStr() }).catch(() => null)
+      ));
+    } finally {
+      window.location.reload();
     }
   }
 
   const newCount = preview?.people.length ?? 0;
   const genCount = preview ? new Set(preview.people.map((p) => p.gen)).size : 0;
   const linkCount = preview?.spouseLinks.length ?? 0;
+
+  if (justAdded) {
+    return (
+      <div className="card" style={{ padding: 18, marginBottom: 18 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 4 }}>
+          {justAdded.length === 0 ? "Nothing left to add" : `Added ${justAdded.length} ${justAdded.length === 1 ? "person" : "people"}`}
+        </h4>
+        <p className="form-hint" style={{ marginTop: 0, marginBottom: 10 }}>
+          {justAdded.length === 0
+            ? "Everything from this upload was removed."
+            : "Take a moment to check these before finishing — remove anyone added by mistake."}
+        </p>
+        {justAdded.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            {justAdded.map((p) => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "6px 0", borderBottom: "1px solid var(--line)" }}>
+                <span style={{ fontSize: 14 }}>{p.name}</span>
+                <button type="button" className="link-btn" disabled={removingId === p.id} onClick={() => handleRemove(p.id)} style={{ color: "var(--maroon-ink)", fontSize: 13 }}>
+                  {removingId === p.id ? "Removing…" : "Remove"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {removeError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{removeError}</p>}
+        <button type="button" className="btn primary small" onClick={handleFinish} disabled={finishing}>
+          {finishing ? "Finishing…" : "Done — view the family tree"}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="card" style={{ padding: 18, marginBottom: 18 }}>
@@ -101,7 +179,7 @@ export default function AddPeopleCard() {
             <>
               <p className="form-hint">
                 Found <strong>{newCount}</strong> new {newCount === 1 ? "person" : "people"} across <strong>{genCount}</strong> generation{genCount === 1 ? "" : "s"}
-                {linkCount > 0 && <>, <strong>{linkCount}</strong> {linkCount === 1 ? "of them marrying" : "of them marrying"} someone already in your tree</>}.
+                {linkCount > 0 && <>, <strong>{linkCount}</strong> of them marrying someone already in your tree</>}.
               </p>
               {preview.warnings.length > 0 && (
                 <ul className="form-hint" style={{ marginTop: 4, paddingLeft: 18 }}>
