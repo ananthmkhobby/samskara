@@ -12,6 +12,7 @@ import { spotFor } from "../lib/chitrashale";
 import { BOOKS, PEOPLE } from "../data/people";
 import PersonAvatar from "./PersonAvatar";
 import PhotoLightbox from "./PhotoLightbox";
+import AddPeopleCard from "./AddPeopleCard";
 import { EXP_LABELS } from "./Icons";
 
 const TABS = ["Pending", "Verified", "Rejected", "All"];
@@ -480,6 +481,9 @@ function MembersPage() {
       <InvitesList refreshKey={invitesRefreshKey} />
       <CreateLoginCard onCreated={() => setMembersRefreshKey((k) => k + 1)} />
       <RosterCard key={membersRefreshKey} />
+      {/* Placed last — this is an occasional bulk action, not something a
+          Head/Admin needs on every visit to the Members page. */}
+      <AddPeopleCard />
     </>
   );
 }

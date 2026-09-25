@@ -90,23 +90,40 @@ function parseDate(raw) {
 }
 
 // Parses an uploaded, filled-in template. Returns { people, marriages,
-// errors, warnings } in the shape data/familyDb.js's bulkInsertFamily
-// expects — blocking errors mean nothing should be imported; warnings are
-// informational only.
-export async function parseTemplateWorkbook(arrayBuffer) {
+// errors, warnings, spouseLinks } in the shape data/familyDb.js's
+// bulkInsertFamily expects — blocking errors mean nothing should be
+// imported; warnings are informational only.
+//
+// existingPeople — optional, [{ id, name, gen, spouse }] — the family's
+// current roster, passed in when this upload is *adding to* a tree that
+// already has people (Admin → "Add more people from a spreadsheet") rather
+// than seeding a brand-new one. Default [] keeps every existing caller
+// (FamilyBuilderView's empty-tree flow) behaving exactly as before: a
+// Parent/Spouse ID that doesn't match a row in the file is still an error,
+// same message as always, because there's nothing else it could mean.
+//
+// With a roster passed in, a Parent or Spouse ID that isn't in the file is
+// checked against it before being rejected — the whole point of a second
+// import is usually attaching new people to someone already in the tree.
+// A Person ID that collides with an existing person is a blocking error
+// (people table's primary key is (family_id, id), so this would otherwise
+// fail as a raw constraint violation instead of a readable message).
+export async function parseTemplateWorkbook(arrayBuffer, existingPeople = []) {
   const errors = [];
   const warnings = [];
+  const spouseLinks = []; // [{ existingId, newId }] — resolved after the main pass below.
+  const existingById = new Map(existingPeople.map((p) => [p.id, p]));
   const wb = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
   const sheet = wb.Sheets["Family Data"] || wb.Sheets[wb.SheetNames[wb.SheetNames.length - 1]];
   if (!sheet) {
     errors.push('Couldn\'t find a "Family Data" sheet in this file — make sure you\'re uploading the template as downloaded.');
-    return { people: [], marriages: [], errors, warnings };
+    return { people: [], marriages: [], errors, warnings, spouseLinks };
   }
 
   const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
   if (!rawRows.length) {
     errors.push("No people found — the Family Data sheet is empty.");
-    return { people: [], marriages: [], errors, warnings };
+    return { people: [], marriages: [], errors, warnings, spouseLinks };
   }
 
   const headerToKey = Object.fromEntries(TEMPLATE_COLUMNS.map((c) => [c.header, c.key]));
@@ -126,35 +143,71 @@ export async function parseTemplateWorkbook(arrayBuffer) {
     if (!id) { errors.push(`Row ${row._rowNum}: missing Person ID.`); return; }
     if (!String(row.name ?? "").trim()) { errors.push(`Row ${row._rowNum} ("${id}"): missing Name.`); return; }
     if (byId.has(id)) { errors.push(`Row ${row._rowNum}: Person ID "${id}" is used more than once (also row ${byId.get(id)._rowNum}).`); return; }
+    if (existingById.has(id)) { errors.push(`Row ${row._rowNum}: Person ID "${id}" is already used by "${existingById.get(id).name}" in your family tree — pick a different one.`); return; }
     byId.set(id, row);
   });
-  if (errors.length) return { people: [], marriages: [], errors, warnings };
+  if (errors.length) return { people: [], marriages: [], errors, warnings, spouseLinks };
 
-  function checkRef(row, field, label) {
+  // Resolves a Parent/Spouse ID against the file first, then (if given) the
+  // family's existing roster. Returns { id, existing } so callers can tell
+  // the two apart — an existing-person reference needs no row of its own and
+  // must not be pushed into byId.
+  function resolveRef(row, field, label) {
     const ref = slugifyId(row[field]);
-    if (!ref) return "";
-    if (!byId.has(ref)) { errors.push(`Row ${row._rowNum} ("${row._id}"): ${label} "${row[field]}" doesn't match any Person ID in this file.`); return ""; }
-    return ref;
+    if (!ref) return null;
+    if (byId.has(ref)) return { id: ref, existing: false };
+    if (existingById.has(ref)) return { id: ref, existing: true };
+    errors.push(`Row ${row._rowNum} ("${row._id}"): ${label} "${row[field]}" doesn't match any Person ID in this file${existingPeople.length ? " or in your family tree" : ""}.`);
+    return null;
   }
   rows.forEach((row) => {
-    row._parent1 = checkRef(row, "parent1Id", "Parent 1 ID");
-    row._parent2 = checkRef(row, "parent2Id", "Parent 2 ID");
-    row._spouse = checkRef(row, "spouseId", "Spouse ID");
+    const p1 = resolveRef(row, "parent1Id", "Parent 1 ID");
+    const p2 = resolveRef(row, "parent2Id", "Parent 2 ID");
+    const sp = resolveRef(row, "spouseId", "Spouse ID");
+    row._parent1 = p1?.id || ""; row._parent1Existing = !!p1?.existing;
+    row._parent2 = p2?.id || ""; row._parent2Existing = !!p2?.existing;
+    row._spouse = sp?.id || ""; row._spouseExisting = !!sp?.existing;
     if (row._parent1 && row._parent1 === row._id) errors.push(`Row ${row._rowNum} ("${row._id}"): can't be their own parent.`);
     if (row._parent2 && row._parent2 === row._id) errors.push(`Row ${row._rowNum} ("${row._id}"): can't be their own parent.`);
     if (row._spouse && row._spouse === row._id) errors.push(`Row ${row._rowNum} ("${row._id}"): can't be their own spouse.`);
   });
-  if (errors.length) return { people: [], marriages: [], errors, warnings };
+  if (errors.length) return { people: [], marriages: [], errors, warnings, spouseLinks };
 
-  // Mirror one-sided spouse declarations so pairing/labels work from
-  // either person's row, same as if both had listed each other.
+  // Mirror one-sided spouse declarations so pairing/labels work from either
+  // person's row, same as if both had listed each other — only meaningful
+  // between two rows in this file. A spouse reference to an existing person
+  // is handled separately below, since there's no in-file row to mirror onto.
   rows.forEach((row) => {
-    if (!row._spouse) return;
+    if (!row._spouse || row._spouseExisting) return;
     const other = byId.get(row._spouse);
     if (!other._spouse) other._spouse = row._id;
     else if (other._spouse !== row._id) errors.push(`Row ${row._rowNum} ("${row._id}") and row ${other._rowNum} ("${other._id}") disagree about who their spouse is.`);
   });
-  if (errors.length) return { people: [], marriages: [], errors, warnings };
+  if (errors.length) return { people: [], marriages: [], errors, warnings, spouseLinks };
+
+  // Marrying into an existing family member: the existing person's own
+  // `spouse` column has to be updated too (the tree layout pairs couples by
+  // following that field from each side — see classicTreeLayout.js — so a
+  // one-directional link would render both people as single). Refusing
+  // rather than silently overwriting protects a real marriage already on
+  // record from being clobbered by a mistaken ID in the new sheet.
+  const claimedExisting = new Map();
+  rows.forEach((row) => {
+    if (!row._spouse || !row._spouseExisting) return;
+    const existing = existingById.get(row._spouse);
+    if (existing.spouse) {
+      errors.push(`Row ${row._rowNum} ("${row._id}"): "${existing.name}" already has a spouse recorded in your family tree.`);
+      return;
+    }
+    if (claimedExisting.has(row._spouse)) {
+      const earlier = claimedExisting.get(row._spouse);
+      errors.push(`Row ${row._rowNum} ("${row._id}") and row ${earlier._rowNum} ("${earlier._id}") both list "${existing.name}" as their spouse.`);
+      return;
+    }
+    claimedExisting.set(row._spouse, row);
+    spouseLinks.push({ existingId: row._spouse, newId: row._id });
+  });
+  if (errors.length) return { people: [], marriages: [], errors, warnings, spouseLinks };
 
   // Generation is computed from parent chains, not a manual column — but a
   // person with no parents listed isn't necessarily a root: they might have
@@ -165,9 +218,14 @@ export async function parseTemplateWorkbook(arrayBuffer) {
   // themselves only just resolved this way); anyone left over — truly
   // isolated, or two married-in people paired with each other and no
   // blood link to anyone — defaults to generation 1.
+  // A parent id outside the file is always an existing person (resolveRef
+  // above already rejected anything unresolvable) — their generation is
+  // already fixed and known, so it's a base case rather than something to
+  // recurse into.
   const genCache = new Map();
   function fromParents(id, stack) {
     if (genCache.has(id)) return genCache.get(id);
+    if (!byId.has(id)) return existingById.get(id)?.gen ?? null;
     if (stack.includes(id)) { errors.push(`Circular parent relationship detected involving "${id}".`); genCache.set(id, 1); return 1; }
     const row = byId.get(id);
     const parents = [row._parent1, row._parent2].filter(Boolean);
@@ -180,21 +238,22 @@ export async function parseTemplateWorkbook(arrayBuffer) {
     const gen = fromParents(row._id, []);
     if (gen !== null) genCache.set(row._id, gen);
   });
+  // A married-in spouse with no parents listed inherits their spouse's
+  // generation — including a spouse who is an existing person, whose
+  // generation is already known rather than something to resolve.
   let resolvedMore = true;
   let guard = 0;
   while (resolvedMore && guard < rows.length + 1) {
     resolvedMore = false;
     guard++;
     rows.forEach((row) => {
-      if (genCache.has(row._id)) return;
-      if (row._spouse && genCache.has(row._spouse)) {
-        genCache.set(row._id, genCache.get(row._spouse));
-        resolvedMore = true;
-      }
+      if (genCache.has(row._id) || !row._spouse) return;
+      const spouseGen = row._spouseExisting ? existingById.get(row._spouse)?.gen : genCache.get(row._spouse);
+      if (spouseGen !== undefined) { genCache.set(row._id, spouseGen); resolvedMore = true; }
     });
   }
   rows.forEach((row) => { row._gen = genCache.has(row._id) ? genCache.get(row._id) : 1; });
-  if (errors.length) return { people: [], marriages: [], errors, warnings };
+  if (errors.length) return { people: [], marriages: [], errors, warnings, spouseLinks };
 
   // A few plain-English synonyms in the Died column mean "definitely
   // deceased, but no one knows exactly when" — distinct from leaving it
@@ -274,5 +333,9 @@ export async function parseTemplateWorkbook(arrayBuffer) {
     marriages.push({ a: row._id, b: row._spouse, date: null });
   });
 
-  return { people, marriages, errors, warnings };
+  // spouseLinks is returned separately from marriages (rather than folded
+  // in) because it needs a different write: an UPDATE to an existing
+  // person's own `spouse` column, not an insert of a new row. The marriages
+  // table entry for that pair is still created above like any other couple.
+  return { people, marriages, errors, warnings, spouseLinks };
 }

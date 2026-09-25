@@ -263,11 +263,13 @@ export async function deleteExperienceEntry(entryId) {
 // multi-row insert for all people at once (not one insert per person) —
 // required so the deferred spouse foreign key can see mutually-referencing
 // spouses before the transaction commits.
-export async function bulkInsertFamily(familyId, people, marriages) {
+// startIndex defaults to 0 — safe for the original caller (FamilyBuilderView,
+// always seeding a still-empty tree). The Admin page's "add more people"
+// import passes the family's current person count instead, so new rows
+// append after everyone already there rather than overwriting their
+// sort_index and scrambling sibling order across the whole tree.
+export async function bulkInsertFamily(familyId, people, marriages, startIndex = 0) {
   const db = requireClient();
-  // sort_index = the row's position in the uploaded sheet — this path is
-  // only ever used to seed a still-empty tree (FamilyBuilderView's
-  // alreadyHasPeople gate), so starting the sequence at 0 is safe.
   const peopleRows = people.map((p, i) => ({
     family_id: familyId,
     id: p.id,
@@ -284,7 +286,7 @@ export async function bulkInsertFamily(familyId, people, marriages) {
     summary: p.summary ?? null,
     places: p.places ?? null,
     life_lesson: p.lifeLesson ?? null,
-    sort_index: i,
+    sort_index: startIndex + i,
     born_year_only: p.bornYearOnly ?? false,
     died_year_only: p.diedYearOnly ?? false,
     died_unknown: p.diedUnknown ?? false,
@@ -296,6 +298,23 @@ export async function bulkInsertFamily(familyId, people, marriages) {
     const marriageRows = marriages.map((m) => ({ family_id: familyId, a: m.a, b: m.b, date: m.date ?? null }));
     const { error: marriageError } = await db.from("marriages").insert(marriageRows);
     if (marriageError) throw new Error(marriageError.message);
+  }
+}
+
+// Points an already-existing person's `spouse` column at a newly-imported
+// person — the other half of parseTemplateWorkbook's spouseLinks. Needed
+// because the tree layout pairs couples by following `.spouse` from each
+// side (classicTreeLayout.js): without this, the new person would show
+// married to the existing one, but the existing person would still render
+// as single. Covered by the same "update own or demo people" RLS policy
+// every other direct person-field edit in Admin already goes through
+// (updatePersonFields), so no new policy or RPC is needed for this.
+export async function linkExistingSpouses(familyId, spouseLinks) {
+  if (!spouseLinks?.length) return;
+  const db = requireClient();
+  for (const { existingId, newId } of spouseLinks) {
+    const { error } = await db.from("people").update({ spouse: newId }).eq("family_id", familyId).eq("id", existingId);
+    if (error) throw new Error(error.message);
   }
 }
 
