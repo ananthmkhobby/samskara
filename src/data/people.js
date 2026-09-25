@@ -138,11 +138,12 @@ export async function initDataLayer() {
   for (const p of mappedPeople) p.experience = mappedExperience.filter((e) => e.personId === p.id);
 
   const mappedContributions = contributions.map(mapContributionRow);
-  // Audio/video/photo contributions store a Storage path in `content` (once
-  // actually uploaded through the app — pre-existing demo/seed contributions
-  // with fake filenames simply resolve to nothing, handled gracefully below).
+  // Audio/video/photo/document contributions store a Storage path in
+  // `content` (once actually uploaded through the app — pre-existing
+  // demo/seed contributions with fake filenames simply resolve to nothing,
+  // handled gracefully below).
   const contributionMediaPaths = mappedContributions
-    .filter((c) => ["audio", "video", "photo"].includes(c.type))
+    .filter((c) => ["audio", "video", "photo", "document"].includes(c.type))
     .map((c) => c.content);
 
   const allPaths = [
@@ -153,7 +154,7 @@ export async function initDataLayer() {
   for (const p of mappedPeople) if (p.photoPath) p.photoUrl = urlMap[p.photoPath] || null;
   for (const e of mappedExperience) if (e.mediaPath) e.mediaUrl = urlMap[e.mediaPath] || null;
   for (const c of mappedContributions) {
-    if (["audio", "video", "photo"].includes(c.type)) c.mediaUrl = urlMap[c.content] || null;
+    if (["audio", "video", "photo", "document"].includes(c.type)) c.mediaUrl = urlMap[c.content] || null;
   }
   for (const b of libraryData.books) {
     if (b.coverPath) b.coverUrl = urlMap[b.coverPath] || null;

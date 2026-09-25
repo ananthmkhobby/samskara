@@ -309,11 +309,19 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
                 {contribs.length ? contribs.map((c) => {
                   const isRealAudio = c.type === "audio" && !!c.mediaUrl;
                   const isRealVideo = c.type === "video" && !!c.mediaUrl;
+                  const isRealDocument = c.type === "document" && !!c.mediaUrl;
                   return (
                     <div className="contrib-item" key={c.id} style={{ flexDirection: isRealAudio || isRealVideo ? "column" : "row", alignItems: "stretch" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                         <div className="contrib-text">
-                          {c.type === "edit" ? `Proposed change to ${c.fieldLabel}` : isRealAudio ? "Voice recording" : isRealVideo ? "Video recording" : (c.type === "memory" || c.type === "date" ? c.content : `[${c.type}] ${c.content}`)}
+                          {c.type === "edit" ? `Proposed change to ${c.fieldLabel}`
+                            : isRealAudio ? "Voice recording"
+                            : isRealVideo ? "Video recording"
+                            : isRealDocument
+                              ? <a href={c.mediaUrl} target="_blank" rel="noreferrer">📄 {c.title || "Document"}</a>
+                              : (c.type === "memory" || c.type === "date" ? c.content
+                                : c.type === "document" ? `📄 ${c.title || "Document"} (couldn't be opened)`
+                                : `[${c.type}] ${c.content}`)}
                           <span className="who">{c.contributor}</span>
                         </div>
                         <span className={`status-pill ${c.status}`}>{c.status}</span>

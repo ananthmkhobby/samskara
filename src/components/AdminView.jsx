@@ -538,7 +538,7 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
     }
     if (c.type === "edit") return `✎ Proposed ${c.fieldLabel}: "${c.content.slice(0, 90)}${c.content.length > 90 ? "…" : ""}"`;
     if (c.type === "photo") return `📷 Photo — ${c.content}`;
-    if (c.type === "document") return `📄 Document — ${c.content}`;
+    if (c.type === "document") return `📄 ${c.title || "Document"}${c.mediaUrl ? "" : " (couldn't be opened)"}`;
     if (c.type === "date") return `📅 ${c.content}`;
     return c.content;
   }
@@ -626,6 +626,7 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
           const isRealAudio = c.type === "audio" && !!c.mediaUrl;
           const isRealVideo = c.type === "video" && !!c.mediaUrl;
           const isRealPhoto = c.type === "photo" && !!c.mediaUrl;
+          const isRealDocument = c.type === "document" && !!c.mediaUrl;
           // A proposed profile-photo change is an "edit" contribution whose
           // content is JSON, not the plain mediaUrl the other photo cases
           // use — same tap-to-fullscreen treatment once parsed, so a
@@ -664,6 +665,13 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
                       >
                         <img src={isRealPhoto ? c.mediaUrl : photoEditUrl} alt="" style={{ maxWidth: 260, maxHeight: 180, borderRadius: 6, display: "block" }} />
                       </button>
+                    ) : isRealDocument ? (
+                      // A document isn't inline-previewable the way a photo
+                      // is — a reviewer needs to actually open it in a new
+                      // tab to check it before approving, not just see a name.
+                      <a href={c.mediaUrl} target="_blank" rel="noreferrer" className="queue-snippet" style={{ display: "inline-block", marginTop: 6 }}>
+                        📄 {c.title || "Document"} — open to review →
+                      </a>
                     ) : <div className="queue-snippet">{snippetFor(c)}</div>}
               </div>
               <div className="queue-actions">

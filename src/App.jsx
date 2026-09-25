@@ -49,12 +49,13 @@ import { resolveMediaUrl, uploadFamilyMedia } from "./lib/mediaUpload";
 import { parseParamparaContent } from "./lib/parampara";
 import { supabase } from "./lib/supabaseClient";
 
-// Audio/video/photo contributions store a Storage path in `content` — this
-// resolves it to a directly-playable signed URL right after submission, so
-// playback works immediately without waiting for a reload (boot hydration
-// does the same resolution for everything fetched at startup).
+// Audio/video/photo/document contributions store a Storage path in
+// `content` — this resolves it to a directly-playable/downloadable signed
+// URL right after submission, so it works immediately without waiting for a
+// reload (boot hydration does the same resolution for everything fetched at
+// startup).
 async function withMediaUrl(contribution) {
-  if (!["audio", "video", "photo"].includes(contribution.type)) return contribution;
+  if (!["audio", "video", "photo", "document"].includes(contribution.type)) return contribution;
   const mediaUrl = await resolveMediaUrl(contribution.content);
   return { ...contribution, mediaUrl };
 }

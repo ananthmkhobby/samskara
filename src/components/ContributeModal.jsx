@@ -76,6 +76,8 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
   const [text, setText] = useState("");
   const [speechLang, setSpeechLang] = useState("en-IN");
   const [fileName, setFileName] = useState("");
+  const [docFile, setDocFile] = useState(null);
+  const [docError, setDocError] = useState("");
   const [photoDataUrl, setPhotoDataUrl] = useState("");
   const [photoBlob, setPhotoBlob] = useState(null);
   const [photoError, setPhotoError] = useState("");
@@ -115,6 +117,24 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
     } catch {
       setPhotoError("Couldn't read that image — try a different file.");
     }
+  }
+
+  // A soft client-side guard, not a claim about the platform's real limit —
+  // it exists to fail fast with a clear message rather than let someone wait
+  // through a whole upload only to get a raw storage error at the end.
+  const MAX_DOC_BYTES = 20 * 1024 * 1024;
+  function handleDocFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setDocError("");
+    if (file.size > MAX_DOC_BYTES) {
+      setDocError(`That file is too large (${(file.size / 1024 / 1024).toFixed(1)} MB) — 20 MB is the most this can take right now.`);
+      setDocFile(null);
+      setFileName("");
+      return;
+    }
+    setDocFile(file);
+    setFileName(file.name);
   }
 
   function toggleSpeech() {
@@ -160,7 +180,16 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
         if (!photoBlob) return;
         setSubmitting(true);
         content = await uploadFamilyMedia(CURRENT_FAMILY_ID, uploadPersonId, photoBlob, "jpg");
-      } else if (type === "document") content = fileName || "document.pdf";
+      } else if (type === "document") {
+        if (!docFile) return;
+        setSubmitting(true);
+        // A real extension, not a hardcoded one like photo/audio/video use —
+        // documents genuinely vary (pdf, jpg scans, docx). Falls back to
+        // "dat" only for the rare file with no extension at all, so the
+        // upload never fails over something this cosmetic.
+        const ext = docFile.name.includes(".") ? docFile.name.split(".").pop().toLowerCase() : "dat";
+        content = await uploadFamilyMedia(CURRENT_FAMILY_ID, uploadPersonId, docFile, ext);
+      }
       else if (type === "date") content = `${date || "date TBD"} — ${dateLabel.trim() || "Untitled date"}`;
     } catch (err) {
       setSubmitError(err.message);
@@ -171,7 +200,12 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
     await onSubmit({
       personId: personId === "__new__" ? null : personId,
       newPersonName: personId === "__new__" ? (newName.trim() || "Unnamed relative") : undefined,
-      type, content, expCategory: expCategory || undefined, contributor: contributor.trim() || "Anonymous"
+      // title carries the original filename for documents — content is the
+      // storage path (matching how photo/audio/video use content), so the
+      // human-readable name needs a field of its own rather than overloading
+      // content the way the old filename-only version did.
+      type, content, title: type === "document" ? fileName : undefined,
+      expCategory: expCategory || undefined, contributor: contributor.trim() || "Anonymous"
     });
     setSubmitting(false);
   }
@@ -247,7 +281,9 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
               {type === "document" && (
                 <>
                   <label>Upload document</label>
-                  <input type="file" onChange={(e) => setFileName(e.target.files[0]?.name || "")} />
+                  <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={handleDocFile} />
+                  {fileName && !docError && <p className="form-hint">{fileName}</p>}
+                  {docError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{docError}</p>}
                 </>
               )}
               {type === "date" && (

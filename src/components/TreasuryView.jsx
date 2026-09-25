@@ -13,6 +13,7 @@ function GalleryCard({ c, onSelectPerson, onOpenPhoto }) {
   const isRealPhoto = c.type === "photo" && !!c.mediaUrl;
   const isRealAudio = c.type === "audio" && !!c.mediaUrl;
   const isRealVideo = c.type === "video" && !!c.mediaUrl;
+  const isRealDocument = c.type === "document" && !!c.mediaUrl;
 
   return (
     <div className="card gallery-card">
@@ -23,9 +24,14 @@ function GalleryCard({ c, onSelectPerson, onOpenPhoto }) {
       )}
       {isRealAudio && <audio src={c.mediaUrl} controls className="gallery-media-player" />}
       {isRealVideo && <video src={c.mediaUrl} controls className="gallery-media-player gallery-video" />}
-      {!isRealPhoto && !isRealAudio && !isRealVideo && (
+      {isRealDocument && (
         <div className="gallery-text-body">
-          {c.type === "document" ? `📄 ${c.content}` : c.content}
+          <a href={c.mediaUrl} target="_blank" rel="noreferrer">📄 {c.title || "Document"}</a>
+        </div>
+      )}
+      {!isRealPhoto && !isRealAudio && !isRealVideo && !isRealDocument && (
+        <div className="gallery-text-body">
+          {c.type === "document" ? `📄 ${c.title || "Document"} (couldn't be opened)` : c.content}
         </div>
       )}
       <div className="gallery-card-foot">
