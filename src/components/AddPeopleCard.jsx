@@ -15,6 +15,7 @@ import { todayStr } from "../data/helpers";
 // both know how to attach new rows onto people who already exist.
 export default function AddPeopleCard() {
   const [showIds, setShowIds] = useState(false);
+  const [showSkipped, setShowSkipped] = useState(false);
   const [preview, setPreview] = useState(null);
   const [parsing, setParsing] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -36,13 +37,14 @@ export default function AddPeopleCard() {
     if (!file) return;
     setPreview(null);
     setImportError("");
+    setShowSkipped(false);
     setParsing(true);
     try {
       const buffer = await file.arrayBuffer();
       const result = await parseTemplateWorkbook(buffer, existingPeople);
       setPreview(result);
     } catch (err) {
-      setPreview({ people: [], marriages: [], spouseLinks: [], errors: [err.message || "Couldn't read that file — make sure it's the downloaded template."], warnings: [] });
+      setPreview({ people: [], marriages: [], spouseLinks: [], skipped: [], errors: [err.message || "Couldn't read that file — make sure it's the downloaded template."], warnings: [] });
     } finally {
       setParsing(false);
     }
@@ -106,6 +108,7 @@ export default function AddPeopleCard() {
   const newCount = preview?.people.length ?? 0;
   const genCount = preview ? new Set(preview.people.map((p) => p.gen)).size : 0;
   const linkCount = preview?.spouseLinks.length ?? 0;
+  const skippedCount = preview?.skipped.length ?? 0;
 
   if (justAdded) {
     return (
@@ -177,18 +180,46 @@ export default function AddPeopleCard() {
             </>
           ) : (
             <>
-              <p className="form-hint">
-                Found <strong>{newCount}</strong> new {newCount === 1 ? "person" : "people"} across <strong>{genCount}</strong> generation{genCount === 1 ? "" : "s"}
-                {linkCount > 0 && <>, <strong>{linkCount}</strong> of them marrying someone already in your tree</>}.
-              </p>
-              {preview.warnings.length > 0 && (
-                <ul className="form-hint" style={{ marginTop: 4, paddingLeft: 18 }}>
-                  {preview.warnings.map((w, i) => <li key={i}>{w}</li>)}
-                </ul>
+              {/* Re-uploading one growing master sheet — not just ever-smaller
+                  "new rows only" files — is the realistic way families do this,
+                  so anyone already in the tree (same Person ID, same name) was
+                  quietly left out above rather than treated as an error. Said
+                  here, calmly, as a fact rather than a warning. */}
+              {skippedCount > 0 && (
+                <p className="form-hint" style={{ marginBottom: 6 }}>
+                  <strong>{skippedCount}</strong> {skippedCount === 1 ? "person" : "people"} in this file {skippedCount === 1 ? "is" : "are"} already in your tree — skipping{" "}
+                  {skippedCount === 1 ? "that one" : "those"}.{" "}
+                  <button type="button" className="link-btn" onClick={() => setShowSkipped((s) => !s)}>
+                    {showSkipped ? "Hide" : "See who"} →
+                  </button>
+                </p>
               )}
-              <button type="button" className="btn primary small" onClick={handleImport} disabled={importing} style={{ marginTop: 8 }}>
-                {importing ? "Importing…" : `Add ${newCount} ${newCount === 1 ? "person" : "people"}`}
-              </button>
+              {showSkipped && skippedCount > 0 && (
+                <div style={{ maxHeight: 140, overflowY: "auto", border: "1px solid var(--line)", borderRadius: 8, padding: "6px 12px", marginBottom: 10, background: "var(--parchment)" }}>
+                  {preview.skipped.map((p) => (
+                    <div key={p.id} style={{ fontSize: 13, padding: "3px 0" }}>{p.name}</div>
+                  ))}
+                </div>
+              )}
+
+              {newCount === 0 ? (
+                <p className="form-hint">Everyone in this file is already in your tree — nothing new to add.</p>
+              ) : (
+                <>
+                  <p className="form-hint">
+                    Found <strong>{newCount}</strong> new {newCount === 1 ? "person" : "people"} across <strong>{genCount}</strong> generation{genCount === 1 ? "" : "s"}
+                    {linkCount > 0 && <>, <strong>{linkCount}</strong> of them marrying someone already in your tree</>}.
+                  </p>
+                  {preview.warnings.length > 0 && (
+                    <ul className="form-hint" style={{ marginTop: 4, paddingLeft: 18 }}>
+                      {preview.warnings.map((w, i) => <li key={i}>{w}</li>)}
+                    </ul>
+                  )}
+                  <button type="button" className="btn primary small" onClick={handleImport} disabled={importing} style={{ marginTop: 8 }}>
+                    {importing ? "Importing…" : `Add ${newCount} ${newCount === 1 ? "person" : "people"}`}
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>

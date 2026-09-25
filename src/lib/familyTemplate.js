@@ -117,23 +117,46 @@ export async function parseTemplateWorkbook(arrayBuffer, existingPeople = []) {
   const sheet = wb.Sheets["Family Data"] || wb.Sheets[wb.SheetNames[wb.SheetNames.length - 1]];
   if (!sheet) {
     errors.push('Couldn\'t find a "Family Data" sheet in this file — make sure you\'re uploading the template as downloaded.');
-    return { people: [], marriages: [], errors, warnings, spouseLinks };
+    return { people: [], marriages: [], errors, warnings, spouseLinks, skipped: [] };
   }
 
   const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
   if (!rawRows.length) {
     errors.push("No people found — the Family Data sheet is empty.");
-    return { people: [], marriages: [], errors, warnings, spouseLinks };
+    return { people: [], marriages: [], errors, warnings, spouseLinks, skipped: [] };
   }
 
   const headerToKey = Object.fromEntries(TEMPLATE_COLUMNS.map((c) => [c.header, c.key]));
-  const rows = rawRows.map((raw, i) => {
+  const nameKey = (s) => String(s ?? "").trim().toLowerCase();
+  let rows = rawRows.map((raw, i) => {
     const row = { _rowNum: i + 2 };
     for (const [header, value] of Object.entries(raw)) {
       const key = headerToKey[header];
       if (key) row[key] = value;
     }
     return row;
+  });
+
+  // A family maintaining one growing master sheet — the realistic workflow,
+  // not "only ever add new rows" — will naturally re-upload people already
+  // in the tree every time. Blocking on that punishes the normal case to
+  // guard against a rare one. So: same Person ID AND same name as an
+  // existing person is treated as "already here", quietly excluded from
+  // import and reported separately — never as an error, and processed no
+  // further (their other column values are ignored; this path only ever
+  // adds people, never edits one already on record). Same ID but a
+  // DIFFERENT name is kept as a hard error below — that's a genuine
+  // collision (two different people who ended up with the same slug), the
+  // one case still worth stopping for.
+  const skipped = [];
+  rows = rows.filter((row) => {
+    const id = slugifyId(row.personId);
+    const existingMatch = existingById.get(id);
+    if (existingMatch && nameKey(row.name) === nameKey(existingMatch.name)) {
+      skipped.push({ id, name: existingMatch.name, rowNum: row._rowNum });
+      return false;
+    }
+    return true;
   });
 
   const byId = new Map();
@@ -143,10 +166,10 @@ export async function parseTemplateWorkbook(arrayBuffer, existingPeople = []) {
     if (!id) { errors.push(`Row ${row._rowNum}: missing Person ID.`); return; }
     if (!String(row.name ?? "").trim()) { errors.push(`Row ${row._rowNum} ("${id}"): missing Name.`); return; }
     if (byId.has(id)) { errors.push(`Row ${row._rowNum}: Person ID "${id}" is used more than once (also row ${byId.get(id)._rowNum}).`); return; }
-    if (existingById.has(id)) { errors.push(`Row ${row._rowNum}: Person ID "${id}" is already used by "${existingById.get(id).name}" in your family tree — pick a different one.`); return; }
+    if (existingById.has(id)) { errors.push(`Row ${row._rowNum}: Person ID "${id}" is already used by "${existingById.get(id).name}" in your family tree, but for a different name ("${row.name}") — if this is the same person, fix the name to match; if not, give them a different Person ID.`); return; }
     byId.set(id, row);
   });
-  if (errors.length) return { people: [], marriages: [], errors, warnings, spouseLinks };
+  if (errors.length) return { people: [], marriages: [], errors, warnings, spouseLinks, skipped };
 
   // Resolves a Parent/Spouse ID against the file first, then (if given) the
   // family's existing roster. Returns { id, existing } so callers can tell
@@ -171,7 +194,7 @@ export async function parseTemplateWorkbook(arrayBuffer, existingPeople = []) {
     if (row._parent2 && row._parent2 === row._id) errors.push(`Row ${row._rowNum} ("${row._id}"): can't be their own parent.`);
     if (row._spouse && row._spouse === row._id) errors.push(`Row ${row._rowNum} ("${row._id}"): can't be their own spouse.`);
   });
-  if (errors.length) return { people: [], marriages: [], errors, warnings, spouseLinks };
+  if (errors.length) return { people: [], marriages: [], errors, warnings, spouseLinks, skipped };
 
   // Mirror one-sided spouse declarations so pairing/labels work from either
   // person's row, same as if both had listed each other — only meaningful
@@ -183,7 +206,7 @@ export async function parseTemplateWorkbook(arrayBuffer, existingPeople = []) {
     if (!other._spouse) other._spouse = row._id;
     else if (other._spouse !== row._id) errors.push(`Row ${row._rowNum} ("${row._id}") and row ${other._rowNum} ("${other._id}") disagree about who their spouse is.`);
   });
-  if (errors.length) return { people: [], marriages: [], errors, warnings, spouseLinks };
+  if (errors.length) return { people: [], marriages: [], errors, warnings, spouseLinks, skipped };
 
   // Marrying into an existing family member: the existing person's own
   // `spouse` column has to be updated too (the tree layout pairs couples by
@@ -207,15 +230,15 @@ export async function parseTemplateWorkbook(arrayBuffer, existingPeople = []) {
     claimedExisting.set(row._spouse, row);
     spouseLinks.push({ existingId: row._spouse, newId: row._id });
   });
-  if (errors.length) return { people: [], marriages: [], errors, warnings, spouseLinks };
+  if (errors.length) return { people: [], marriages: [], errors, warnings, spouseLinks, skipped };
 
-  // A same-name warning, not a block — two genuinely different people can
-  // share a name (common across generations), so this can't be an error.
-  // But the likely real mistake is re-typing someone already in the tree
-  // instead of linking to them by ID, and that's worth flagging loudly: a
-  // second "Ramesh Rao" is either a real second Ramesh or a duplicate
-  // record, and only the person filling in the sheet can tell which.
-  const nameKey = (s) => String(s ?? "").trim().toLowerCase();
+  // A same-name warning for everyone who WASN'T already silently skipped
+  // above — same Person ID + same name means "already here" and is handled
+  // there. This catches the other case: a different (deliberately new)
+  // Person ID but a name that matches someone existing, which is genuinely
+  // ambiguous rather than an obvious re-upload, so it's worth a warning
+  // rather than a skip. Also still not a block — two genuinely different
+  // people can share a name (common across generations).
   const existingNames = new Map();
   existingPeople.forEach((p) => existingNames.set(nameKey(p.name), p));
   const seenNamesInFile = new Map();
@@ -277,7 +300,7 @@ export async function parseTemplateWorkbook(arrayBuffer, existingPeople = []) {
     });
   }
   rows.forEach((row) => { row._gen = genCache.has(row._id) ? genCache.get(row._id) : 1; });
-  if (errors.length) return { people: [], marriages: [], errors, warnings, spouseLinks };
+  if (errors.length) return { people: [], marriages: [], errors, warnings, spouseLinks, skipped };
 
   // A few plain-English synonyms in the Died column mean "definitely
   // deceased, but no one knows exactly when" — distinct from leaving it
@@ -361,5 +384,5 @@ export async function parseTemplateWorkbook(arrayBuffer, existingPeople = []) {
   // in) because it needs a different write: an UPDATE to an existing
   // person's own `spouse` column, not an insert of a new row. The marriages
   // table entry for that pair is still created above like any other couple.
-  return { people, marriages, errors, warnings, spouseLinks };
+  return { people, marriages, errors, warnings, spouseLinks, skipped };
 }
