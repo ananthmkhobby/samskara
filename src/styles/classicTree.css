@@ -6,9 +6,16 @@
 /* Fixed, viewport-filling overlay rather than the real Fullscreen API —
    more reliable across mobile browsers and inside an installed PWA, where
    requestFullscreen is often unavailable or behaves inconsistently. Sits
-   above TopBar/BottomBar (z-index 90) so no other chrome shows through. */
+   above TopBar/BottomBar (z-index 40) but below any modal (folio, photo
+   lightbox — z-index 60+), so opening someone's folio from here still
+   comes to the front instead of rendering behind the tree.
+   `height`/`width: auto` are required, not decorative — without them the
+   base rule's `height: min(72vh, 660px)` above wins the cascade (a more
+   specific selector doesn't clear properties it doesn't mention), capping
+   the overlay well short of the real viewport and leaving whatever was
+   below the tree on the page visible through the gap at the bottom. */
 .tree-canvas-wrap.tree-fullscreen {
-  position: fixed; inset: 0; z-index: 90;
+  position: fixed; inset: 0; z-index: 50; height: auto; width: auto;
   border-radius: 0; border: 0;
 }
 .tree-canvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
