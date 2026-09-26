@@ -647,6 +647,15 @@ export default function App() {
           person.name = name;
           updatePersonFields(familyId, c.personId, { name }).catch((err) => console.error(err.message));
         }
+      } else if (c.field === "trust") {
+        // Guarded against anything but the three real values EditModal ever
+        // sends — a stray/garbled value here would otherwise silently fall
+        // through trustLabel()'s default and just read "Approximate" anyway,
+        // but there's no reason to let a bad value reach the database.
+        if (["verified", "elder", "approx"].includes(c.content)) {
+          person.trust = c.content;
+          updatePersonFields(familyId, c.personId, { trust: c.content }).catch((err) => console.error(err.message));
+        }
       } else if (c.field === "summary") {
         person.summary = c.content;
         updatePersonFields(familyId, c.personId, { summary: c.content }).catch((err) => console.error(err.message));

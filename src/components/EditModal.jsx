@@ -10,7 +10,9 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
   const isBorn = request.field === "born";
   const isDied = request.field === "died";
   const isName = request.field === "name";
+  const isTrust = request.field === "trust";
   const [value, setValue] = useState(request.value || "");
+  const [trustChoice, setTrustChoice] = useState(request.value || "approx");
   const [diedUnknown, setDiedUnknown] = useState(request.diedUnknown || false);
   const [bornError, setBornError] = useState("");
   const [rashi, setRashi] = useState(request.rashi || "");
@@ -64,6 +66,10 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
     }
     if (isName && !value.trim()) {
       setBornError("A name can't be empty.");
+      return;
+    }
+    if (isTrust) {
+      onSubmit({ field: request.field, fieldLabel: request.fieldLabel, content: trustChoice, contributor: contributor.trim() || "Anonymous" });
       return;
     }
     if (isGeo) {
@@ -138,6 +144,29 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
                   Corrects the spelling shown everywhere in the archive. Their place in the tree,
                   and everything already recorded about them, stays exactly as it is.
                 </p>
+              </div>
+            ) : isTrust ? (
+              <div className="form-row">
+                <label>How certain is this record?</label>
+                <p className="form-hint" style={{ marginTop: 0, marginBottom: 8 }}>
+                  "Verified" means a document or firm record backs this up. "Remembered by an elder" means someone who
+                  knew them told it directly. Shown as a small badge on their folio — nothing else about their record changes.
+                </p>
+                <div className="tag-row">
+                  {[
+                    ["verified", "Verified"],
+                    ["elder", "Remembered by an elder"],
+                    ["approx", "Approximate"],
+                  ].map(([key, label]) => (
+                    <button
+                      type="button" key={key}
+                      className={`chip${trustChoice === key ? " active" : ""}`}
+                      onClick={() => setTrustChoice(key)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : isHeritage ? (
               <>

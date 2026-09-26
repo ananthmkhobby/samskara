@@ -73,7 +73,15 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
           {(relationship || widowed) && (
             <div className="relationship">{[relationship, widowed].filter(Boolean).join(" · ")}</div>
           )}
-          <div className="folio-badges"><span className={`trust ${person.trust}`}>{trustLabel(person.trust)}</span></div>
+          <div className="folio-badges">
+            <button
+              type="button" className={`trust ${person.trust}`}
+              aria-label={`Change how certain ${person.name}'s record is — currently ${trustLabel(person.trust)}`}
+              onClick={() => onEdit({ field: "trust", fieldLabel: "How certain is this record?", value: person.trust || "approx" })}
+            >
+              {trustLabel(person.trust)}
+            </button>
+          </div>
         </div>
         <div className="modal-body">
           <button type="button" className="interview-cta wizard-cta" onClick={onOpenVoiceWizard}>
