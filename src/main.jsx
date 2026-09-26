@@ -25,6 +25,7 @@ import './styles/chitrashale.css'
 import './styles/focusTree.css'
 import './styles/redesignNav.css'
 import './styles/homeDashboard.css'
+import './styles/familySplash.css'
 import App from './App.jsx'
 import { initDataLayer } from './data/people.js'
 

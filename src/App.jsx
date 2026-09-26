@@ -18,6 +18,7 @@ import AddFamilyMemberModal from "./components/AddFamilyMemberModal";
 import AIInterviewModal from "./components/AIInterviewModal";
 import FolioVoiceWizard from "./components/FolioVoiceWizard";
 import WelcomeIntro from "./components/WelcomeIntro";
+import FamilySplash from "./components/FamilySplash";
 import SuperAdminView from "./components/SuperAdminView";
 import HelpView from "./components/HelpView";
 import PrivacyPolicyView from "./components/PrivacyPolicyView";
@@ -43,7 +44,7 @@ import ConsentGate from "./components/ConsentGate";
 import { PEOPLE, INITIAL_CONTRIBUTIONS, BOOKS, BOOK_OWNERSHIP, BOOK_READERS, PRACTICE_LOGS, addPerson, addBook, makeUniquePersonId } from "./data/people";
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
 import { verifiedObjectsBySpot, hasAnyRoomObjects } from "./lib/chitrashale";
-import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, NEEDS_LOGIN, NEEDS_CONSENT } from "./data/session";
+import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, NEEDS_LOGIN, NEEDS_CONSENT, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL } from "./data/session";
 import { insertContribution, updateContribution, updateContributionStatus, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus, insertPracticeLog } from "./data/familyDb";
 import { resolveMediaUrl, uploadFamilyMedia } from "./lib/mediaUpload";
 import { parseParamparaContent } from "./lib/parampara";
@@ -92,6 +93,11 @@ export default function App() {
       return false;
     }
   });
+  // Every fresh app open, not gated by localStorage the way showIntro is —
+  // it's the family's own logo/tagline, not a one-time app-wide welcome, so
+  // it's fine (and expected) to see it again next time. Skipped entirely
+  // below when a family has set neither.
+  const [showFamilySplash, setShowFamilySplash] = useState(true);
   const [contributions, setContributions] = useState(INITIAL_CONTRIBUTIONS);
   // Real per-family role from Supabase Auth (data/session.js), resolved once
   // at boot — the demo family stays fully open to match its original
@@ -829,6 +835,15 @@ export default function App() {
   // not render behind it, or "they saw it" becomes arguable.
   if (needsConsent) {
     return <ConsentGate userId={CURRENT_USER_ID} onAccepted={() => setNeedsConsent(false)} />;
+  }
+
+  if (showFamilySplash && (CURRENT_FAMILY_LOGO_URL || CURRENT_FAMILY_TAGLINE)) {
+    return (
+      <FamilySplash
+        logoUrl={CURRENT_FAMILY_LOGO_URL} tagline={CURRENT_FAMILY_TAGLINE}
+        familyName={CURRENT_FAMILY_NAME} onDone={() => setShowFamilySplash(false)}
+      />
+    );
   }
 
   return (

@@ -1,0 +1,28 @@
+.family-splash {
+  position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center; padding: 40px 30px;
+  gap: 18px; cursor: pointer;
+  background:
+    radial-gradient(55% 46% at 50% 44%, var(--gold-wash) 0%, rgba(169,121,28,0) 72%),
+    radial-gradient(circle at 1px 1px, var(--line) 1px, transparent 0);
+  background-size: auto, 26px 26px;
+  background-color: var(--parchment);
+  animation: familySplashIn .45s ease-out;
+}
+.family-splash.family-splash-exit { animation: familySplashOut .38s ease-in forwards; pointer-events: none; }
+@keyframes familySplashIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes familySplashOut { to { opacity: 0; transform: scale(1.03); } }
+
+.family-splash-logo {
+  width: auto; height: min(30vh, 220px); max-width: 80vw; object-fit: contain;
+  border-radius: 20px; background: var(--parchment-paper); border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-2); padding: 16px;
+}
+.family-splash-name {
+  font-family: var(--font-display); font-size: clamp(24px, 7vw, 38px); font-weight: 700;
+  color: var(--maroon-deep); line-height: 1.15; max-width: 620px;
+}
+.family-splash-tagline {
+  font-family: var(--font-display); font-style: italic; font-weight: 600;
+  font-size: clamp(17px, 4.4vw, 22px); color: var(--gold-deep); max-width: 560px; line-height: 1.4;
+}
