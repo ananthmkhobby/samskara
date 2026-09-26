@@ -3,6 +3,14 @@
   background: var(--parchment-deep); touch-action: none; cursor: grab;
 }
 .tree-canvas-wrap.grabbing { cursor: grabbing; }
+/* Fixed, viewport-filling overlay rather than the real Fullscreen API —
+   more reliable across mobile browsers and inside an installed PWA, where
+   requestFullscreen is often unavailable or behaves inconsistently. Sits
+   above TopBar/BottomBar (z-index 90) so no other chrome shows through. */
+.tree-canvas-wrap.tree-fullscreen {
+  position: fixed; inset: 0; z-index: 90;
+  border-radius: 0; border: 0;
+}
 .tree-canvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
 .tree-hud { position: absolute; top: 12px; left: 14px; z-index: 2; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); font-weight: 700; background: color-mix(in srgb, var(--parchment-paper) 80%, transparent); padding: 5px 10px; border-radius: 999px; }
 .tree-zoom { position: absolute; right: 14px; bottom: 14px; z-index: 2; display: flex; flex-direction: column; gap: 8px; }
