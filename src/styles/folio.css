@@ -19,7 +19,7 @@
 .modal-body { padding: 22px 26px 30px; }
 
 .folio-band { background: linear-gradient(155deg, var(--maroon-deep), var(--maroon)); padding: 26px 26px 22px; border-radius: 14px 14px 0 0; position: relative; }
-.folio-band .avatar { width: 74px; height: 74px; background: rgba(255,255,255,.14); border: 2px solid rgba(255,255,255,.5); color: rgba(255,255,255,.85); }
+.folio-band .avatar { width: 96px; height: 96px; background: rgba(255,255,255,.14); border: 2px solid rgba(255,255,255,.5); color: rgba(255,255,255,.85); }
 .avatar-wrap { position: relative; display: inline-block; }
 .avatar-view-btn { display: inline-flex; background: none; border: 0; padding: 0; cursor: pointer; border-radius: 50%; }
 .avatar-edit-fab {
@@ -29,11 +29,20 @@
 }
 .avatar-edit-fab svg { width: 12px; height: 12px; }
 .photo-lightbox {
-  position: fixed; inset: 0; background: rgba(10,6,3,.85); z-index: 80;
-  display: flex; align-items: center; justify-content: center; padding: 30px; cursor: zoom-out;
+  position: fixed; inset: 0; background: rgba(10,6,3,.9); z-index: 80;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+  overflow: auto; cursor: zoom-out;
 }
-.photo-lightbox img { max-width: min(90vw, 560px); max-height: 80vh; border-radius: 12px; box-shadow: var(--shadow-2); }
-.photo-lightbox .modal-close { position: fixed; top: 18px; right: 18px; }
+.photo-lightbox.is-zoomed { align-items: flex-start; justify-content: flex-start; }
+.photo-lightbox img {
+  max-width: 96vw; max-height: 92vh; border-radius: 12px; box-shadow: var(--shadow-2);
+  cursor: zoom-in;
+}
+/* Swapping to native resolution (no cap) makes the image scrollable within
+   the overlay's own overflow, so fine detail can actually be zoomed into
+   instead of just staring at a slightly bigger version of the same fit. */
+.photo-lightbox img.is-zoomed { max-width: none; max-height: none; width: auto; height: auto; border-radius: 4px; cursor: zoom-out; }
+.photo-lightbox .modal-close { position: fixed; top: 18px; right: 18px; z-index: 3; }
 .folio-band h2 { font-size: 23px; color: #FBF0E8; margin-top: 14px; }
 /* The pencil sits inline after the name and wraps with it, rather than
    being absolutely placed — a long name on a narrow phone would otherwise

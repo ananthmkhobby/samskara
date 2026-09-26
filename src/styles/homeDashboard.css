@@ -7,6 +7,20 @@
 .home-hero .eyebrow { display: block; margin-bottom: 8px; }
 .home-hero h1 { font-family: var(--font-display); font-size: clamp(28px, 6vw, 40px); color: var(--maroon-deep); line-height: 1.15; }
 .home-hero p.lede { margin-top: 12px; color: var(--ink-soft); font-size: 15px; max-width: 480px; margin-left: auto; margin-right: auto; }
+.home-family-logo-btn {
+  display: block; margin: 0 auto 14px; padding: 8px; border-radius: 18px; border: 1px solid var(--line-strong);
+  background: var(--parchment-paper); box-shadow: var(--shadow-1); cursor: zoom-in; line-height: 0;
+}
+.home-family-logo {
+  /* object-fit: contain (not cover) so a rectangular crest or any text
+     painted into the logo is never cropped at the edges. */
+  width: auto; height: 88px; max-width: min(70vw, 260px); object-fit: contain; display: block;
+}
+.home-tagline {
+  margin-top: 10px; font-family: var(--font-display); font-style: italic; font-weight: 600;
+  font-size: clamp(17px, 4.2vw, 22px); line-height: 1.4;
+  color: var(--maroon-deep); max-width: 560px; margin-left: auto; margin-right: auto;
+}
 
 .home-quote-card {
   display: block; width: 100%; margin-top: 20px; padding: 16px 20px; text-align: left;

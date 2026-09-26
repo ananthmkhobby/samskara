@@ -23,6 +23,13 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
   const [contributor, setContributor] = useState("");
   const [busy, setBusy] = useState(false);
   const [geoError, setGeoError] = useState("");
+  // Two-step location entry: look up first, confirm what was actually
+  // matched second — a vague or misspelled query can resolve to something
+  // far coarser than intended (a whole city instead of a neighborhood) with
+  // nothing to show it happened, which is the real cause behind a pin that
+  // looks "randomly placed". null = still typing; set once a lookup returns.
+  const [geoResult, setGeoResult] = useState(null);
+  const [geoCandidateIdx, setGeoCandidateIdx] = useState(0);
 
   function toggleValue(v) {
     setSelectedValues((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]));
@@ -73,19 +80,30 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
       return;
     }
     if (isGeo) {
+      // Second step: a result is already on screen for confirmation — this
+      // submit finalizes whichever candidate is currently selected, rather
+      // than re-running the lookup.
+      if (geoResult) {
+        const chosen = geoResult.candidates[geoCandidateIdx] || geoResult;
+        const geo = { place: value.trim(), lat: chosen.lat, lng: chosen.lng, resolvedName: chosen.resolvedName };
+        onSubmit({ field: request.field, fieldLabel: request.fieldLabel, content: JSON.stringify(geo), contributor: contributor.trim() || "Anonymous" });
+        return;
+      }
+      // First step: look up, then show what actually got matched instead of
+      // silently trusting it — a vague or misspelled query can resolve to
+      // something far coarser (a whole city) than what was typed.
       if (!value.trim()) return;
       setBusy(true);
       setGeoError("");
-      let geo;
       try {
-        geo = await geocodePlace(value.trim());
+        const geo = await geocodePlace(value.trim());
+        setGeoResult(geo);
+        setGeoCandidateIdx(0);
       } catch (err) {
         setGeoError(err.message);
+      } finally {
         setBusy(false);
-        return;
       }
-      setBusy(false);
-      onSubmit({ field: request.field, fieldLabel: request.fieldLabel, content: JSON.stringify(geo), contributor: contributor.trim() || "Anonymous" });
       return;
     }
     const content = isHeritage
@@ -196,10 +214,42 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
               </>
             ) : isGeo ? (
               <div className="form-row">
-                <label>City</label>
-                <input type="text" placeholder="e.g. Mangalore" value={value} onChange={(e) => setValue(e.target.value)} />
-                <p className="form-hint">This shows them as a pin on the family's Journey map.</p>
+                <label>City / place</label>
+                <input
+                  type="text" placeholder="e.g. Kathriguppe, Bangalore" value={value}
+                  onChange={(e) => { setValue(e.target.value); setGeoResult(null); setGeoError(""); }}
+                  disabled={busy}
+                />
+                <p className="form-hint">
+                  Be as specific as you can — a neighbourhood name places them more precisely on the family's Journey
+                  map than just the city on its own.
+                </p>
                 {geoError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{geoError}</p>}
+                {geoResult && (
+                  <div style={{ marginTop: 10, padding: "10px 12px", background: "var(--parchment)", border: "1px solid var(--line)", borderRadius: 8 }}>
+                    <p className="form-hint" style={{ marginTop: 0, marginBottom: 8, fontWeight: 700, color: "var(--ink)" }}>
+                      {geoResult.candidates.length > 1 ? "Found a few matches — pick the right one:" : "Found this — is it right?"}
+                    </p>
+                    <div className="tag-row">
+                      {geoResult.candidates.map((c, i) => (
+                        <button
+                          type="button" key={i}
+                          className={`chip${geoCandidateIdx === i ? " active" : ""}`}
+                          onClick={() => setGeoCandidateIdx(i)}
+                          style={{ textAlign: "left" }}
+                        >
+                          {c.resolvedName}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button" className="link-btn" style={{ marginTop: 8 }}
+                      onClick={() => { setGeoResult(null); setGeoError(""); }}
+                    >
+                      None of these — try a different search
+                    </button>
+                  </div>
+                )}
               </div>
             ) : isDayInLife ? (
               <>
@@ -229,7 +279,9 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
               <input type="text" placeholder="e.g. Kavya Reddy" value={contributor} onChange={(e) => setContributor(e.target.value)} />
             </div>
             <div className="folio-actions">
-              <button type="submit" className="btn primary" disabled={busy}>{busy ? "Looking up city…" : canModerate ? "Apply now" : "Submit for review"}</button>
+              <button type="submit" className="btn primary" disabled={busy || (isGeo && !value.trim())}>
+                {busy ? "Looking up…" : isGeo && !geoResult ? "Look this up" : canModerate ? "Apply now" : "Submit for review"}
+              </button>
               <button type="button" className="btn ghost" onClick={onCancel}>Cancel</button>
             </div>
           </form>

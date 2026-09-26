@@ -18,8 +18,12 @@ export function computeBanyanLayout(people) {
     byGen[g].forEach((p) => {
       if (consumed.has(p.id)) return;
       const spouse = p.spouse && people.find((x) => x.id === p.spouse);
+      // Same bidirectional-agreement requirement as classicTreeLayout.js —
+      // see its comment for why a one-directional lookup here can strand a
+      // couple far apart.
+      const mutual = spouse && spouse.spouse === p.id;
       let members;
-      if (spouse && !consumed.has(spouse.id)) {
+      if (mutual && !consumed.has(spouse.id)) {
         members = [p, spouse];
         consumed.add(spouse.id);
       } else {

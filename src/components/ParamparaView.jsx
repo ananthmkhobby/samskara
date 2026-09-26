@@ -80,7 +80,7 @@ export default function ParamparaView({ contributions, canModerate, onContribute
     <section className="wrap">
       <HeritageIntro icon={<DiyaIcon />} />
       <div className="section-head heritage-wipe">
-        <span className="eyebrow parampara-eyebrow">✨ Parampara</span>
+        <span className="eyebrow parampara-eyebrow">✨ Parampare</span>
         <h2>Your family's living heritage</h2>
         <p>
           Not "what is your surname" — instead, what traditions survived because of your family? Every ritual, prayer,
@@ -101,7 +101,7 @@ export default function ParamparaView({ contributions, canModerate, onContribute
         ))}
       </div>
 
-      <button type="button" className="btn primary parampara-cta heritage-fade-up" style={{ "--enter-delay": "0.92s" }} onClick={onContribute}>+ Share your family's Parampara</button>
+      <button type="button" className="btn primary parampara-cta heritage-fade-up" style={{ "--enter-delay": "0.92s" }} onClick={onContribute}>+ Share your family's Parampare</button>
 
       {filtered.length ? (
         <div className="parampara-grid">

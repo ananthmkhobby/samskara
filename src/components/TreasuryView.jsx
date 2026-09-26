@@ -31,7 +31,7 @@ function GalleryCard({ c, onSelectPerson, onOpenPhoto }) {
       )}
       {!isRealPhoto && !isRealAudio && !isRealVideo && !isRealDocument && (
         <div className="gallery-text-body">
-          {c.type === "document" ? `📄 ${c.title || "Document"} (couldn't be opened)` : c.content}
+          {c.type === "document" ? `📄 ${c.title || "Document"} — wasn't saved; ask them to upload it again` : c.content}
         </div>
       )}
       <div className="gallery-card-foot">

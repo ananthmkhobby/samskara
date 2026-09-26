@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MIN_GEN, MAX_GEN, byId, yearsLabel } from "../data/helpers";
-import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_FAMILY_NAME, CURRENT_USER_ID, CURRENT_ROLE } from "../data/session";
+import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL, CURRENT_USER_ID, CURRENT_ROLE } from "../data/session";
 import {
   createInvite, fetchFamilyMembers, updateMemberRole, setMemberPersonLink,
   updateMemberDisplayName, fetchInvites, revokeInvite, fetchMemberEmail,
-  createMemberLogin, resetMemberPassword, updateFamilyName,
+  createMemberLogin, resetMemberPassword, updateFamilyName, updateFamilyTagline, updateFamilyLogo,
 } from "../data/familyDb";
 import { categoryFor } from "../lib/parampara";
 import { libraryCategoryFor } from "../lib/library";
 import { spotFor } from "../lib/chitrashale";
+import { resizeImage } from "../lib/imageResize";
+import { uploadFamilyMedia } from "../lib/mediaUpload";
 import { BOOKS, PEOPLE } from "../data/people";
 import PersonAvatar from "./PersonAvatar";
 import PhotoLightbox from "./PhotoLightbox";
@@ -471,12 +473,101 @@ function FamilyNameCard() {
   );
 }
 
+// Same "reload to stay consistent" reasoning as FamilyNameCard — both
+// tagline and logo are read once at boot into plain module bindings.
+function FamilyTaglineLogoCard() {
+  const [tagline, setTagline] = useState(CURRENT_FAMILY_TAGLINE || "");
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [taglineBusy, setTaglineBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+  const unchanged = tagline.trim() === (CURRENT_FAMILY_TAGLINE || "").trim();
+  const fileRef = useRef(null);
+
+  async function saveTagline(e) {
+    e.preventDefault();
+    if (taglineBusy || unchanged) return;
+    setTaglineBusy(true);
+    setError("");
+    try {
+      await updateFamilyTagline(CURRENT_FAMILY_ID, tagline);
+      setSaved(true);
+      setTimeout(() => window.location.reload(), 900);
+    } catch (err) {
+      setError(err.message);
+      setTaglineBusy(false);
+    }
+  }
+
+  async function handleLogoFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setLogoBusy(true);
+    setError("");
+    try {
+      const { blob } = await resizeImage(file, 480);
+      const path = await uploadFamilyMedia(CURRENT_FAMILY_ID, "family", blob, "jpg");
+      await updateFamilyLogo(CURRENT_FAMILY_ID, path);
+      window.location.reload();
+    } catch (err) {
+      setError(err.message);
+      setLogoBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function removeLogo() {
+    setLogoBusy(true);
+    setError("");
+    try {
+      await updateFamilyLogo(CURRENT_FAMILY_ID, "");
+      window.location.reload();
+    } catch (err) {
+      setError(err.message);
+      setLogoBusy(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ padding: 18, marginBottom: 18 }}>
+      <h4 style={{ fontSize: 15, marginBottom: 4 }}>Family tagline &amp; logo</h4>
+      <p className="form-hint" style={{ marginTop: 0, marginBottom: 10 }}>
+        Shown under the family name on Home. Both optional.
+      </p>
+      <form onSubmit={saveTagline} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 14 }}>
+        <input
+          type="text" placeholder="e.g. hosa chiguru haLe beru koodiralu mara sobagu" value={tagline} maxLength={200}
+          onChange={(e) => { setTagline(e.target.value); setSaved(false); }}
+          style={{ flex: "1 1 260px", minWidth: 0 }}
+        />
+        <button type="submit" className="btn small primary" disabled={taglineBusy || unchanged}>
+          {taglineBusy ? "Saving…" : "Save"}
+        </button>
+      </form>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        {CURRENT_FAMILY_LOGO_URL && (
+          <img src={CURRENT_FAMILY_LOGO_URL} alt="" style={{ width: 64, height: 64, borderRadius: 10, objectFit: "contain", padding: 4, border: "1px solid var(--line-strong)", background: "var(--parchment-paper)" }} />
+        )}
+        <input ref={fileRef} type="file" accept="image/*" onChange={handleLogoFile} disabled={logoBusy} />
+        {CURRENT_FAMILY_LOGO_URL && (
+          <button type="button" className="link-btn" onClick={removeLogo} disabled={logoBusy} style={{ color: "var(--maroon-ink)", fontSize: 13 }}>
+            Remove
+          </button>
+        )}
+      </div>
+      {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+      {saved && <p className="form-hint">Saved — refreshing…</p>}
+    </div>
+  );
+}
+
 function MembersPage() {
   const [invitesRefreshKey, setInvitesRefreshKey] = useState(0);
   const [membersRefreshKey, setMembersRefreshKey] = useState(0);
   return (
     <>
       <FamilyNameCard />
+      <FamilyTaglineLogoCard />
       <InviteCard onCreated={() => setInvitesRefreshKey((k) => k + 1)} />
       <InvitesList refreshKey={invitesRefreshKey} />
       <CreateLoginCard onCreated={() => setMembersRefreshKey((k) => k + 1)} />
@@ -513,7 +604,7 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
       try {
         const { description } = JSON.parse(c.content);
         return `${categoryFor(c.field).icon} ${description.slice(0, 90)}${description.length > 90 ? "…" : ""}`;
-      } catch { return "New Parampara entry"; }
+      } catch { return "New Parampare entry"; }
     }
     if (c.type === "chitrashalaObject") {
       const spot = spotFor(c.field);
@@ -538,7 +629,7 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
     }
     if (c.type === "edit") return `✎ Proposed ${c.fieldLabel}: "${c.content.slice(0, 90)}${c.content.length > 90 ? "…" : ""}"`;
     if (c.type === "photo") return `📷 Photo — ${c.content}`;
-    if (c.type === "document") return `📄 ${c.title || "Document"}${c.mediaUrl ? "" : " (couldn't be opened)"}`;
+    if (c.type === "document") return `📄 ${c.title || "Document"}${c.mediaUrl ? "" : " — wasn't saved; ask them to upload it again"}`;
     if (c.type === "date") return `📅 ${c.content}`;
     return c.content;
   }
@@ -566,7 +657,7 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
     }
     if (c.type === "date") return "Recorded as a family memory";
     if (c.type === "parampara") {
-      return c.field === "lineage" ? "Shows up on the Parampara page, under Veda Lineage" : `Shows up on the Parampara page, under ${categoryFor(c.field).label}`;
+      return c.field === "lineage" ? "Shows up on the Parampare page, under Veda Lineage" : `Shows up on the Parampare page, under ${categoryFor(c.field).label}`;
     }
     if (c.type === "newBook") return `Adds a new book to the Family Library, under ${libraryCategoryFor(c.field).label}`;
     if (c.type === "library_entry") {

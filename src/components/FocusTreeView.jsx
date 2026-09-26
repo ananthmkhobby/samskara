@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { byId, yearsLabel, relationshipCaption, MIN_GEN, MAX_GEN } from "../data/helpers";
+import { byId, yearsLabel, relationshipCaption, mutualSpouse, MIN_GEN, MAX_GEN } from "../data/helpers";
 import { MY_PERSON_ID } from "../data/session";
 import PersonAvatar from "./PersonAvatar";
 
@@ -16,11 +16,11 @@ function pickDefaultRoot(people) {
 // the focus view to that relative (keeps browsing, same as before);
 // "Open folio →" is a separate button that jumps straight to their full
 // Folio instead, which previously had no path from here at all.
-function RelativeCard({ person, onGoTo, onOpenFolio }) {
+function RelativeCard({ person, onGoTo, onOpenFolio, size = 60 }) {
   return (
     <div className="focus-kin-card">
       <button type="button" className="focus-kin-main" onClick={() => onGoTo(person.id)} aria-label={`View ${person.name} in focus`}>
-        <PersonAvatar person={person} size={60} minGen={MIN_GEN} maxGen={MAX_GEN} className="focus-kin-avatar" />
+        <PersonAvatar person={person} size={size} minGen={MIN_GEN} maxGen={MAX_GEN} className="focus-kin-avatar" />
         <span className="focus-kin-name">{person.name}</span>
         <span className="focus-kin-years tnum">{yearsLabel(person)}</span>
       </button>
@@ -54,11 +54,18 @@ export default function FocusTreeView({ people, onSelectPerson }) {
   if (!person) return null;
 
   const parents = (person.parents || []).map((id) => byId(id)).filter(Boolean);
-  const spouse = person.spouse ? byId(person.spouse) : null;
+  const spouse = mutualSpouse(person);
   const children = people.filter((p) => p.parents?.includes(person.id));
   const relationship = relationshipCaption(person);
   const crumbNames = history.map((id) => byId(id)?.name || "?");
   const atStart = history.length <= 1;
+  // The very first screen you land on, with a spouse and no parents of
+  // their own recorded — the actual founding couple of the tree. Shown
+  // co-equally (both large) here specifically, rather than the usual one-
+  // big-plus-a-small-pill treatment every other focused person gets, since
+  // there's no single "main" one between two people who founded the family
+  // together.
+  const isRootCouple = atStart && parents.length === 0 && !!spouse;
 
   return (
     <div className="focus-tree" ref={topRef}>
@@ -87,21 +94,32 @@ export default function FocusTreeView({ people, onSelectPerson }) {
         <p className="focus-empty-note">Top of this branch — no parents recorded</p>
       )}
 
-      <div className="focus-person">
-        <PersonAvatar person={person} size={104} minGen={MIN_GEN} maxGen={MAX_GEN} className="focus-avatar" />
-        <p className="focus-name">{person.name}</p>
-        <p className="focus-years tnum">{yearsLabel(person)}</p>
-        {relationship && <p className="focus-relation">{relationship}</p>}
-        {spouse && (
-          <div className="focus-spouse-row">
-            <button type="button" className="focus-spouse-pill" onClick={() => goTo(spouse.id)} aria-label={`View ${spouse.name} in focus`}>
-              <PersonAvatar person={spouse} size={34} minGen={MIN_GEN} maxGen={MAX_GEN} className="focus-kin-avatar" />
-              <span className="focus-spouse-text"><span className="focus-spouse-label">Married to</span><b>{spouse.name}</b></span>
-            </button>
-            <button type="button" className="focus-spouse-folio-btn" aria-label={`Open ${spouse.name}'s folio`} title="Open folio" onClick={() => onSelectPerson(spouse.id)}>→</button>
+      {isRootCouple ? (
+        <div className="focus-root-couple">
+          <p className="focus-root-label">Where this family's record begins</p>
+          <div className="focus-root-pair">
+            <RelativeCard person={person} onGoTo={goTo} onOpenFolio={onSelectPerson} size={88} />
+            <span className="focus-root-and" aria-hidden="true">&amp;</span>
+            <RelativeCard person={spouse} onGoTo={goTo} onOpenFolio={onSelectPerson} size={88} />
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="focus-person">
+          <PersonAvatar person={person} size={104} minGen={MIN_GEN} maxGen={MAX_GEN} className="focus-avatar" />
+          <p className="focus-name">{person.name}</p>
+          <p className="focus-years tnum">{yearsLabel(person)}</p>
+          {relationship && <p className="focus-relation">{relationship}</p>}
+          {spouse && (
+            <div className="focus-spouse-row">
+              <button type="button" className="focus-spouse-pill" onClick={() => goTo(spouse.id)} aria-label={`View ${spouse.name} in focus`}>
+                <PersonAvatar person={spouse} size={34} minGen={MIN_GEN} maxGen={MAX_GEN} className="focus-kin-avatar" />
+                <span className="focus-spouse-text"><span className="focus-spouse-label">Married to</span><b>{spouse.name}</b></span>
+              </button>
+              <button type="button" className="focus-spouse-folio-btn" aria-label={`Open ${spouse.name}'s folio`} title="Open folio" onClick={() => onSelectPerson(spouse.id)}>→</button>
+            </div>
+          )}
+        </div>
+      )}
 
       {children.length > 0 ? (
         <>

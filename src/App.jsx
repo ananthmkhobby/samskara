@@ -839,7 +839,6 @@ export default function App() {
           <HomeDashboard
             contributions={contributions} onNav={goTo} onContribute={openContribute}
             onParamparaContribute={() => openParamparaContribute()} onSelectPerson={selectPerson} onOpenRoom={openRoom}
-            onLogCount={() => commit({ japaLogOpen: true })}
           />
         )}
         {view === "tree" && <TreeView contributions={contributions} onSelectPerson={selectPerson} onNav={goTo} />}

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { byId, yearsLabel, trustLabel, contributionsFor, verifiedMediaFor, personHasContent, roleTag, relationshipCaption, widowedLabel, MIN_GEN, MAX_GEN } from "../data/helpers";
+import { byId, yearsLabel, trustLabel, contributionsFor, verifiedMediaFor, personHasContent, roleTag, relationshipCaption, widowedLabel, mutualSpouse, MIN_GEN, MAX_GEN } from "../data/helpers";
 import { MEDIA_ICONS, EXP_LABELS, ExpIcon, AUDIO_EXP_TYPES, EditPencilIcon } from "./Icons";
 import PersonAvatar from "./PersonAvatar";
 import PhotoLightbox from "./PhotoLightbox";
@@ -18,7 +18,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
   const media = verifiedMediaFor(contributions, person.id);
   const hasContent = personHasContent(contributions, person);
   const role = roleTag(contributions, person);
-  const spouse = person.spouse && byId(person.spouse);
+  const spouse = mutualSpouse(person);
   const relationship = relationshipCaption(person);
   const widowed = widowedLabel(person);
   const photoInputRef = useRef(null);
@@ -52,7 +52,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
               onClick={() => (hasPhoto ? setLightboxSrc(person.photoUrl) : photoInputRef.current?.click())}
               aria-label={hasPhoto ? `View ${person.name}'s photo` : "Add profile photo"}
             >
-              <PersonAvatar person={person} size={74} minGen={MIN_GEN} maxGen={MAX_GEN} variant="band" className="avatar" />
+              <PersonAvatar person={person} size={96} minGen={MIN_GEN} maxGen={MAX_GEN} variant="band" className="avatar" />
             </button>
             <button type="button" className="avatar-edit-fab" onClick={() => photoInputRef.current?.click()} aria-label="Change profile photo">
               <EditPencilIcon />
@@ -133,7 +133,9 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
                   ? `Known only as ${person.died.slice(0, 4)}`
                   : new Date(`${person.died}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
               </p>
-            ) : <p className="form-hint" style={{ marginTop: 0 }}>Living, as far as the family record shows.</p>}
+            ) : null /* Alive: the section header and edit pencil above still
+                        offer a way to record a death date later — nothing
+                        needs to be said about it while there's nothing to say. */}
           </div>
           <div className="folio-section">
             <div className="folio-section-head">
@@ -161,7 +163,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
                 recorded parent belongs to which side of the family (the app
                 deliberately doesn't track gender, so "Father"/"Mother" labels
                 aren't guessed — the name itself is what disambiguates). */}
-            {(person.parents?.length > 0 || person.spouse) && (
+            {(person.parents?.length > 0 || spouse) && (
               <div className="tag-row" style={{ marginBottom: 10 }}>
                 {person.parents?.map((pid) => {
                   const parent = byId(pid);
@@ -172,9 +174,9 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
                     </button>
                   );
                 })}
-                {person.spouse && byId(person.spouse) && (
-                  <button type="button" className="tag" style={{ font: "inherit", cursor: "pointer" }} onClick={() => onSelectPerson?.(person.spouse)}>
-                    Spouse: {byId(person.spouse).name}
+                {spouse && (
+                  <button type="button" className="tag" style={{ font: "inherit", cursor: "pointer" }} onClick={() => onSelectPerson?.(spouse.id)}>
+                    Spouse: {spouse.name}
                   </button>
                 )}
               </div>
@@ -328,7 +330,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
                             : isRealDocument
                               ? <a href={c.mediaUrl} target="_blank" rel="noreferrer">📄 {c.title || "Document"}</a>
                               : (c.type === "memory" || c.type === "date" ? c.content
-                                : c.type === "document" ? `📄 ${c.title || "Document"} (couldn't be opened)`
+                                : c.type === "document" ? `📄 ${c.title || "Document"} — wasn't saved; ask them to upload it again`
                                 : `[${c.type}] ${c.content}`)}
                           <span className="who">{c.contributor}</span>
                         </div>

@@ -49,7 +49,7 @@ function describe(c) {
     case "edit": return who ? `updated ${c.fieldLabel || "a detail"} on ${who}'s folio` : `updated ${c.fieldLabel || "a detail"}`;
     case "newPerson": return `added ${c.name || c.newPersonName || "someone new"} to the tree`;
     case "interview": return who ? `recorded a guided interview with ${who}` : "recorded a guided interview";
-    case "parampara": return `added to Parampara — ${categoryFor(c.field).label}`;
+    case "parampara": return `added to Parampare — ${categoryFor(c.field).label}`;
     case "newBook": return `added ${c.name || "a book"} to the Family Library`;
     case "library_entry": return "added to a book's story in the Library";
     case "chitrashalaObject": return who ? `placed something in ${who}'s room` : "placed something in a room";

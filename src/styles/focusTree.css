@@ -79,6 +79,17 @@
 }
 .focus-spouse-folio-btn:hover, .focus-spouse-folio-btn:focus-visible { background: var(--gold-wash); outline: none; }
 
+/* The founding couple, shown co-equally — reuses .focus-kin-card (via
+   RelativeCard) at a larger size rather than the asymmetric main+pill
+   treatment every other focused person gets. */
+.focus-root-couple { display: flex; flex-direction: column; align-items: center; margin: 4px 0 6px; }
+.focus-root-label {
+  font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint);
+  margin-bottom: 14px; text-align: center;
+}
+.focus-root-pair { display: flex; align-items: center; gap: 18px; }
+.focus-root-and { font-family: var(--font-display); font-size: 20px; color: var(--gold-deep); }
+
 .focus-empty-note { text-align: center; color: var(--ink-faint); font-size: 13px; padding: 6px 0 18px; }
 
 .focus-actions { margin-top: 26px; display: flex; justify-content: center; }

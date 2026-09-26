@@ -4,7 +4,7 @@ import { IS_DEMO } from "../data/session";
 // Redesign v2 — everything that doesn't fit in the six-item bottom nav
 // anymore lives here instead. One extra tap instead of permanent crowding.
 const ITEMS = [
-  { key: "parampara", label: "Parampara", sub: "Family traditions, sayings, and heritage", Icon: ParamparaIcon },
+  { key: "parampara", label: "Parampare", sub: "Family traditions, sayings, and heritage", Icon: ParamparaIcon },
   { key: "library", label: "Family Library", sub: "Books the family has kept and passed down", Icon: LibraryIcon },
   { key: "treasury", label: "Treasury of Wisdom", sub: "One life lesson from each storyteller", Icon: TreasuryIcon },
   { key: "map", label: "Journey", sub: "Where the family has lived, on a map", Icon: MapIcon },

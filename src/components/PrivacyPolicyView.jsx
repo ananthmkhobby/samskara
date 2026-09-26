@@ -18,7 +18,7 @@ export default function PrivacyPolicyView() {
         <p className="folio-summary">
           This policy explains how Samskara ("we", "us", "the app") handles information when a family uses it to
           build and maintain their archive — the tree, Folios, photos, voice recordings, videos, documents,
-          memories, traditions (Parampara), family library, and anything else contributed through the app.
+          memories, traditions (Parampare), family library, and anything else contributed through the app.
         </p>
         <p className="folio-summary" style={{ marginTop: 10 }}>
           Contact for any privacy question or request: <b>whyvasupport@gmail.com</b>
@@ -34,7 +34,7 @@ export default function PrivacyPolicyView() {
         <p className="folio-summary" style={{ marginBottom: 8 }}>
           <b>Family content you or your family contribute.</b> Names, birth/death dates (or year-only where the
           exact date isn't known), relationships, rashi/gotra, current city, places lived, photographs, audio
-          recordings, videos, written memories, life lessons, biography chapters, Parampara entries, and Chitrashale
+          recordings, videos, written memories, life lessons, biography chapters, Parampare entries, and Chitrashale
           room contributions. If you use the voice-guided interview, your spoken answers are transcribed and used to
           draft written text for your review before it's saved.
         </p>

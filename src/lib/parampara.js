@@ -5,7 +5,7 @@
 // is shown, rendered as a chain rather than a card grid.
 export const PARAMPARA_CATEGORIES = [
   { key: "tradition", label: "Family Tradition", icon: "🪔", prompt: "What tradition has survived because of your family?" },
-  { key: "kula_devata", label: "Kula Devata Journey", icon: "🛕", prompt: "Which deity does your family turn to, and how did that begin?" },
+  { key: "kula_devata", label: "Kula Devathe (Family Deity) Journey", icon: "🛕", prompt: "Which deity does your family turn to, and how did that begin?" },
   { key: "sloka", label: "Family Sloka", icon: "📿", prompt: "Which prayer has been passed down in your family, and who recites it?" },
   { key: "festival", label: "Festival Through Generations", icon: "🎇", prompt: "How has a festival been celebrated differently across generations?" },
   { key: "dharma", label: "Family Dharma", icon: "⚖️", prompt: "What unwritten rule has your family always lived by?" },
@@ -13,7 +13,7 @@ export const PARAMPARA_CATEGORIES = [
   { key: "lost_skill", label: "Lost Skill", icon: "🧵", prompt: "What skill did someone in the family have that's since disappeared?" },
   { key: "memory", label: "Living Memory", icon: "🎥", prompt: "What should this family never forget?" },
   { key: "recipe", label: "Family Recipe", icon: "🍲", prompt: "What dish has been made in your family for generations — who makes it best, and what's the secret in it?" },
-  { key: "rangoli_art", label: "Rangoli / Kolam Art", icon: "🎨", prompt: "What pattern, rangoli, or handmade art has been passed down — who taught it, and when is it drawn or made?" },
+  { key: "rangoli_art", label: "Rangoli / Other Art Forms", icon: "🎨", prompt: "What pattern, rangoli, or handmade art has been passed down — who taught it, and when is it drawn or made?" },
 ];
 
 export const LINEAGE_CATEGORY = { key: "lineage", label: "Veda Lineage", icon: "🕉️" };

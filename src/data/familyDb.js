@@ -23,11 +23,11 @@ export async function fetchFamilyData(familyId) {
   return { people: people.data, marriages: marriages.data, contributions: contributions.data, experienceEntries: experienceEntries.data };
 }
 
-export async function fetchFamilyName(familyId) {
+export async function fetchFamilyDetails(familyId) {
   const db = requireClient();
-  const { data, error } = await db.from("families").select("name").eq("id", familyId).maybeSingle();
-  if (error || !data) return null;
-  return data.name;
+  const { data, error } = await db.from("families").select("name, tagline, logo_path").eq("id", familyId).maybeSingle();
+  if (error || !data) return { name: null, tagline: null, logoPath: null };
+  return { name: data.name, tagline: data.tagline, logoPath: data.logo_path };
 }
 
 // ---- Multi-family membership -----------------------------------------------
@@ -531,6 +531,20 @@ export async function setMemberPersonLink(memberRowId, personId) {
 export async function updateFamilyName(familyId, name) {
   const db = requireClient();
   const { error } = await db.rpc("update_family_name", { p_family_id: familyId, p_name: name });
+  if (error) throw new Error(error.message);
+}
+
+export async function updateFamilyTagline(familyId, tagline) {
+  const db = requireClient();
+  const { error } = await db.rpc("update_family_tagline", { p_family_id: familyId, p_tagline: tagline });
+  if (error) throw new Error(error.message);
+}
+
+// p_logo_path is a Storage path (from uploadFamilyMedia), or "" to clear it —
+// the RPC itself turns an empty string into a real null.
+export async function updateFamilyLogo(familyId, logoPath) {
+  const db = requireClient();
+  const { error } = await db.rpc("update_family_logo", { p_family_id: familyId, p_logo_path: logoPath });
   if (error) throw new Error(error.message);
 }
 

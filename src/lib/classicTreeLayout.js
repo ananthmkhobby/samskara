@@ -22,8 +22,20 @@ export function computeClassicLayout(people) {
     byGen[g].forEach((p) => {
       if (consumed.has(p.id)) return;
       const spouse = p.spouse && people.find((x) => x.id === p.spouse);
+      // Pairing requires BOTH sides to agree (p.spouse === spouse.id AND
+      // spouse.spouse === p.id), not just a one-directional lookup. Without
+      // this, a stale/one-sided spouse pointer elsewhere in the data (e.g. a
+      // second marriage reference on one person that was never cleared on
+      // the other side) could let an unrelated third person "steal" this
+      // pairing purely by coming first in sort_index — leaving the true
+      // partner as a lone unit, positioned by their own subtree, potentially
+      // far from the person they're actually married to. Every place this
+      // app writes `.spouse` (linkExistingSpouses, the +Add spouse flow,
+      // deletePerson's cleanup) already sets it symmetrically, so this only
+      // ever changes behavior for data that was already inconsistent.
+      const mutual = spouse && spouse.spouse === p.id;
       let members;
-      if (spouse && !consumed.has(spouse.id)) {
+      if (mutual && !consumed.has(spouse.id)) {
         members = [p, spouse];
         consumed.add(spouse.id);
       } else {

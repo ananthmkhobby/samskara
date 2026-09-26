@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabaseClient";
 import { batchResolveMediaUrls, resolveMediaUrl } from "../lib/mediaUpload";
-import { fetchFamilyData, fetchFamilyName, fetchMyFamilies, fetchActiveFamilyId, fetchLibraryData, fetchPracticeLogs, mapContributionRow, insertPerson as dbInsertPerson, insertMarriage as dbInsertMarriage, insertBook as dbInsertBook, bumpFamilyFlame, fetchMyPersonLink, hasAcceptedPolicy } from "./familyDb";
+import { fetchFamilyData, fetchFamilyDetails, fetchMyFamilies, fetchActiveFamilyId, fetchLibraryData, fetchPracticeLogs, mapContributionRow, insertPerson as dbInsertPerson, insertMarriage as dbInsertMarriage, insertBook as dbInsertBook, bumpFamilyFlame, fetchMyPersonLink, hasAcceptedPolicy } from "./familyDb";
 import { setSession, DEMO_FAMILY_ID, CURRENT_FAMILY_ID } from "./session";
 import { POLICY_VERSION } from "../lib/policy";
 
@@ -114,9 +114,9 @@ export async function initDataLayer() {
 
   const familyId = resolved.familyId;
 
-  const [{ people, marriages, contributions, experienceEntries }, familyName, libraryData, practiceLogs, flameStreak, myPersonId, needsConsent] = await Promise.all([
+  const [{ people, marriages, contributions, experienceEntries }, familyDetails, libraryData, practiceLogs, flameStreak, myPersonId, needsConsent] = await Promise.all([
     fetchFamilyData(familyId),
-    fetchFamilyName(familyId),
+    fetchFamilyDetails(familyId),
     fetchLibraryData(familyId),
     fetchPracticeLogs(familyId),
     // Non-critical — a failed flame bump should never block the whole app
@@ -149,8 +149,10 @@ export async function initDataLayer() {
   const allPaths = [
     ...mappedPeople.map((p) => p.photoPath), ...mappedExperience.map((e) => e.mediaPath), ...contributionMediaPaths,
     ...libraryData.books.map((b) => b.coverPath), ...libraryData.books.map((b) => b.filePath),
+    familyDetails.logoPath,
   ];
   const urlMap = await batchResolveMediaUrls(allPaths);
+  const familyLogoUrl = familyDetails.logoPath ? urlMap[familyDetails.logoPath] || null : null;
   for (const p of mappedPeople) if (p.photoPath) p.photoUrl = urlMap[p.photoPath] || null;
   for (const e of mappedExperience) if (e.mediaPath) e.mediaUrl = urlMap[e.mediaPath] || null;
   for (const c of mappedContributions) {
@@ -182,7 +184,9 @@ export async function initDataLayer() {
   setSession({
     userId: resolved.userId,
     familyId,
-    familyName: familyName || null,
+    familyName: familyDetails.name || null,
+    familyTagline: familyDetails.tagline || null,
+    familyLogoUrl,
     role: resolved.role,
     isDemo: resolved.isDemo,
     needsFamily: resolved.needsFamily,

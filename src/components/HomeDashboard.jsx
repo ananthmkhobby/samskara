@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { PEOPLE, CHALLENGES, PRACTICE_LOGS } from "../data/people";
-import { familyTotal, todayTotal } from "../lib/japa";
-import { IS_DEMO, CURRENT_FAMILY_NAME, FAMILY_FLAME_STREAK } from "../data/session";
+import { PEOPLE, CHALLENGES } from "../data/people";
+import { IS_DEMO, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL, FAMILY_FLAME_STREAK } from "../data/session";
 import { useCountUp } from "../hooks/useCountUp";
 import { parseParamparaContent } from "../lib/parampara";
 import { personIdsWithRooms } from "../lib/chitrashale";
@@ -14,6 +13,7 @@ import HeritageIntro, { FamilyBondIcon } from "./HeritageIntro";
 import FamilyFlame from "./FamilyFlame";
 import PersonAvatar from "./PersonAvatar";
 import IllustratedTree from "./IllustratedTree";
+import PhotoLightbox from "./PhotoLightbox";
 import { SHOW_CHITRASHALE } from "./FolioModal";
 
 // A small, fixed-size preview — just the top 2 generation rows from the
@@ -144,8 +144,9 @@ function timelineMilestones(people) {
   return picks;
 }
 
-export default function HomeDashboard({ contributions, onNav, onContribute, onParamparaContribute, onSelectPerson, onOpenRoom, onLogCount }) {
+export default function HomeDashboard({ contributions, onNav, onContribute, onParamparaContribute, onSelectPerson, onOpenRoom }) {
   const [quoteExpanded, setQuoteExpanded] = useState(false);
+  const [logoLightboxOpen, setLogoLightboxOpen] = useState(false);
   const gens = new Set(PEOPLE.map((p) => p.gen));
   const verifiedStories = contributions.filter((c) => c.status === "Verified" && c.type !== "edit" && c.type !== "parampara").length;
   const lessons = PEOPLE.filter((p) => p.lifeLesson).length;
@@ -169,9 +170,15 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
     <section className="wrap home-dashboard" style={{ paddingTop: 0 }}>
       <HeritageIntro icon={<FamilyBondIcon />} />
       <div className="home-hero cover-enter" style={{ "--enter-delay": "0s" }}>
+        {CURRENT_FAMILY_LOGO_URL && (
+          <button type="button" className="home-family-logo-btn" onClick={() => setLogoLightboxOpen(true)} aria-label="View family logo full screen">
+            <img src={CURRENT_FAMILY_LOGO_URL} alt="" className="home-family-logo" />
+          </button>
+        )}
         <span className="eyebrow">Namaskara</span>
         <h1>Welcome Home</h1>
         <p className="lede">{familyLabel}'s living record — every birth, marriage, memory, and hard-won lesson, kept in one place.</p>
+        {CURRENT_FAMILY_TAGLINE && <p className="home-tagline">{CURRENT_FAMILY_TAGLINE}</p>}
         {featuredParampara && (
           <div className="home-quote-card">
             <p>
@@ -185,7 +192,7 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
                 </button>
               )}
             </p>
-            <button type="button" className="home-quote-source" onClick={() => onNav("parampara")}>— Our Parampara</button>
+            <button type="button" className="home-quote-source" onClick={() => onNav("parampara")}>— Our Parampare</button>
           </div>
         )}
       </div>
@@ -250,19 +257,9 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
 
       <FamilyFlame streak={FAMILY_FLAME_STREAK} onContinue={() => onContribute({ type: "memory" })} />
 
-      <div className="card japa-quick-card cover-enter" style={{ "--enter-delay": "0.05s" }}>
-        <div className="japa-quick-head">
-          <span className="eyebrow">🪔 Japa &amp; Chanting</span>
-          <button type="button" className="home-section-link" onClick={() => onNav("japa")}>See all →</button>
-        </div>
-        <div className="japa-quick-body">
-          <div>
-            <b className="tnum japa-quick-total">{familyTotal(PRACTICE_LOGS).toLocaleString("en-IN")}</b>
-            <span className="japa-quick-label">counted by the family{todayTotal(PRACTICE_LOGS) > 0 ? ` · ${todayTotal(PRACTICE_LOGS)} today` : ""}</span>
-          </div>
-          <button type="button" className="btn primary small" onClick={onLogCount}>Log a count</button>
-        </div>
-      </div>
+      {/* The Japa & Chanting quick-card used to live here — removed from Home
+          specifically (per request); the feature itself is unchanged and
+          still fully reachable via More → Japa & Chanting. */}
 
       <div className="cover-enter" style={{ "--enter-delay": "0.06s", marginTop: 24 }}>
         <InstallAppCard dismissible />
@@ -335,6 +332,10 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
         <div className="cover-enter" style={{ "--enter-delay": "0.7s" }}>
           <AuthPanel />
         </div>
+      )}
+
+      {logoLightboxOpen && (
+        <PhotoLightbox src={CURRENT_FAMILY_LOGO_URL} alt={`${familyLabel}'s logo`} onClose={() => setLogoLightboxOpen(false)} />
       )}
     </section>
   );

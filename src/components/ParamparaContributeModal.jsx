@@ -93,11 +93,11 @@ export default function ParamparaContributeModal({ editEntry, existingPhotoUrl, 
       <div className="modal-panel">
         <button className="modal-close on-paper" onClick={onCancel} aria-label="Close">✕</button>
         <div className="modal-body">
-          <span className="eyebrow">Parampara</span>
+          <span className="eyebrow">Parampare</span>
           <h2 style={{ fontSize: 20, marginTop: 6 }}>{editEntry ? "Edit this entry" : "Add to your family's heritage"}</h2>
           <form onSubmit={submit}>
             <div className="form-row">
-              <label>What kind of Parampara is this?</label>
+              <label>What kind of Parampare is this?</label>
               <div className="type-grid">
                 {CATEGORY_CHOICES.map((c) => (
                   <button type="button" key={c.key} className={category === c.key ? "active" : ""} onClick={() => setCategory(c.key)}>

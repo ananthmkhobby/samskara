@@ -91,10 +91,10 @@ export default function HelpView() {
       </div>
 
       <div className="card" style={{ marginBottom: 18, padding: 20 }}>
-        <h4 style={{ fontSize: 15, marginBottom: 10 }}>Parampara — your family's heritage</h4>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>Parampare — your family's heritage</h4>
         <p className="folio-summary">
           A family-level section (its own tab, not tied to one person) for the things that survived because of your
-          family — traditions, your kula devata's story, veda lineage, family slokas, how festivals were celebrated
+          family — traditions, your kula devathe's (family deity's) story, veda lineage, family slokas, how festivals were celebrated
           across generations, family dharma, ancestor wisdom, skills that are fading, and living memories worth
           keeping. Anyone can add an entry; it goes through the same review queue as everything else before it's
           visible. A daily-rotating quote from it is featured on the Cover page too.

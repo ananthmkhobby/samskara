@@ -10,6 +10,20 @@ export function byId(id) {
   return PEOPLE.find((p) => p.id === id);
 }
 
+// A person's spouse, but only when both sides actually agree — every write
+// path in this app (linkExistingSpouses, the +Add spouse flow,
+// deletePerson's cleanup) sets `.spouse` symmetrically, so a one-directional
+// pointer only ever means stale or inconsistent data (e.g. a second-marriage
+// reference that was never cleared on the other side). Trusting it anyway
+// for display is exactly what let the tree layout strand a couple far
+// apart — same fix, applied everywhere a spouse is read for display rather
+// than just in the tree's own layout math.
+export function mutualSpouse(p) {
+  if (!p?.spouse) return null;
+  const spouse = byId(p.spouse);
+  return spouse && spouse.spouse === p.id ? spouse : null;
+}
+
 export function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -56,11 +70,11 @@ function climbToRoot(person) {
 export function relationshipCaption(p) {
   if (p.gen === MIN_GEN) return "";
   if (!p.parents || !p.parents.length) {
-    const spouse = p.spouse && byId(p.spouse);
+    const spouse = mutualSpouse(p);
     return spouse ? `Spouse of ${spouse.name}` : "";
   }
   const root = climbToRoot(p);
-  const rootSpouse = root.spouse && byId(root.spouse);
+  const rootSpouse = mutualSpouse(root);
   const rootLabel = rootSpouse ? `${root.name.split(" ")[0]} & ${rootSpouse.name.split(" ")[0]}` : root.name;
   const distance = p.gen - MIN_GEN;
   const term = DESCENT_TERMS[distance - 1] || `${distance}th-generation descendant`;
@@ -74,7 +88,7 @@ export function relationshipCaption(p) {
 // the same gender-data gap noted above.
 export function widowedLabel(p) {
   if (p.died || p.diedUnknown) return "";
-  const spouse = p.spouse && byId(p.spouse);
+  const spouse = mutualSpouse(p);
   return spouse?.died || spouse?.diedUnknown ? "Widowed" : "";
 }
 
