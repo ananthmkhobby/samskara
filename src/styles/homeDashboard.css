@@ -6,6 +6,7 @@
 .home-hero { padding: 40px 22px 16px; text-align: center; max-width: 640px; margin: 0 auto; }
 .home-hero .eyebrow { display: block; margin-bottom: 8px; }
 .home-hero h1 { font-family: var(--font-display); font-size: clamp(28px, 6vw, 40px); color: var(--maroon-deep); line-height: 1.15; }
+.home-family-name { font-family: var(--font-display); font-size: clamp(19px, 4.6vw, 26px); font-weight: 700; color: var(--gold-deep); margin-top: 6px; }
 .home-hero p.lede { margin-top: 12px; color: var(--ink-soft); font-size: 15px; max-width: 480px; margin-left: auto; margin-right: auto; }
 .home-family-logo-btn {
   display: block; margin: 0 auto 14px; padding: 8px; border-radius: 18px; border: 1px solid var(--line-strong);

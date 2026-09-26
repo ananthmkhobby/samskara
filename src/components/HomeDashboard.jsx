@@ -177,6 +177,7 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
         )}
         <span className="eyebrow">Namaskara</span>
         <h1>Welcome Home</h1>
+        <h2 className="home-family-name">{familyLabel}</h2>
         <p className="lede">{familyLabel}'s living record — every birth, marriage, memory, and hard-won lesson, kept in one place.</p>
         {CURRENT_FAMILY_TAGLINE && <p className="home-tagline">{CURRENT_FAMILY_TAGLINE}</p>}
         {featuredParampara && (
