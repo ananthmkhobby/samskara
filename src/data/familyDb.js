@@ -370,6 +370,33 @@ export async function revokeInvite(inviteId) {
   if (error) throw new Error(error.message);
 }
 
+// ---- Cross-family content sharing (Parampare) -------------------------------
+
+// Snapshots one of this family's own Parampara entries into a redeemable
+// code another family's Head/Admin can pull a copy from — mediaPath is
+// stripped from the copied content since it points at this family's own
+// private Storage bucket, which the receiving family has no access to.
+export async function createContentShare(familyId, userId, entry) {
+  const db = requireClient();
+  const parsed = (() => { try { return JSON.parse(entry.content) || {}; } catch { return { description: entry.content || "" }; } })();
+  const { mediaPath, ...rest } = parsed;
+  const { data, error } = await db.from("content_shares").insert({
+    source_family_id: familyId, created_by: userId,
+    field: entry.field, title: entry.title || null, content: JSON.stringify(rest),
+  }).select().single();
+  if (error) throw new Error(error.message);
+  return data.code;
+}
+
+// Copies the shared entry into the caller's own family as a new, already-
+// verified Parampare contribution — same as any other moderator-added entry.
+export async function redeemContentShare(code) {
+  const db = requireClient();
+  const { data, error } = await db.rpc("redeem_content_share", { p_code: code });
+  if (error) throw new Error(error.message);
+  return data?.[0]?.title || null;
+}
+
 // ---- Family Library ---------------------------------------------------------
 
 function mapBookRow(row) {

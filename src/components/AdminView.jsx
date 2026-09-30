@@ -5,6 +5,7 @@ import {
   createInvite, fetchFamilyMembers, updateMemberRole, setMemberPersonLink,
   updateMemberDisplayName, fetchInvites, revokeInvite, fetchMemberEmail,
   createMemberLogin, resetMemberPassword, updateFamilyName, updateFamilyTagline, updateFamilyLogo,
+  redeemContentShare,
 } from "../data/familyDb";
 import { categoryFor } from "../lib/parampara";
 import { libraryCategoryFor } from "../lib/library";
@@ -561,6 +562,53 @@ function FamilyTaglineLogoCard() {
   );
 }
 
+// Brings in one Parampare entry another family's Head/Admin shared as a
+// code — a one-time copy, not an ongoing link to their archive (which stays
+// exactly as invisible to us as ours is to them; nothing here reveals which
+// family a code came from).
+function ImportSharedStoryCard() {
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [importedTitle, setImportedTitle] = useState("");
+
+  async function submit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    setImportedTitle("");
+    try {
+      const title = await redeemContentShare(code.trim());
+      setImportedTitle(title || "that story");
+      setCode("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ marginBottom: 18, padding: 16 }}>
+      <h4 style={{ marginTop: 0 }}>Import a shared story</h4>
+      <p className="form-hint" style={{ marginTop: 0 }}>
+        Got a code from another family — in-laws, a cousin's branch — sharing one of their Parampare entries? Enter it
+        here to add a copy to your own family's Parampare.
+      </p>
+      <form onSubmit={submit} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <input
+          type="text" required placeholder="e.g. a14543cc61" value={code}
+          onChange={(e) => { setCode(e.target.value); setImportedTitle(""); }}
+          style={{ flex: "1 1 200px", minWidth: 0 }}
+        />
+        <button type="submit" className="btn small primary" disabled={busy || !code.trim()}>{busy ? "Adding…" : "Add to our Parampare"}</button>
+      </form>
+      {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+      {importedTitle && <p className="form-hint">Added "{importedTitle}" — it's live on your Parampare page now.</p>}
+    </div>
+  );
+}
+
 function MembersPage() {
   const [invitesRefreshKey, setInvitesRefreshKey] = useState(0);
   const [membersRefreshKey, setMembersRefreshKey] = useState(0);
@@ -572,6 +620,7 @@ function MembersPage() {
       <InvitesList refreshKey={invitesRefreshKey} />
       <CreateLoginCard onCreated={() => setMembersRefreshKey((k) => k + 1)} />
       <RosterCard key={membersRefreshKey} />
+      <ImportSharedStoryCard />
       {/* Placed last — this is an occasional bulk action, not something a
           Head/Admin needs on every visit to the Members page. */}
       <AddPeopleCard />
