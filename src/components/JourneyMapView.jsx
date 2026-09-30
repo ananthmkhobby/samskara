@@ -65,13 +65,22 @@ function AnimatedRoute({ positions }) {
 
 export default function JourneyMapView({ onSelectPerson }) {
   const [genFilter, setGenFilter] = useState(null);
+  const [personFilter, setPersonFilter] = useState(null);
   // A fresh array reference each render — PEOPLE is mutated in place after
   // edits, so the useMemo calls below (keyed on `people`) need a new
   // reference to notice anything changed.
   const people = [...PEOPLE];
   const gens = useMemo(() => Array.from(new Set(people.map((p) => p.gen))).sort((a, b) => a - b), [people]);
   const minGen = gens[0], maxGen = gens[gens.length - 1];
-  const visiblePeople = useMemo(() => (genFilter === null ? people : people.filter((p) => p.gen === genFilter)), [people, genFilter]);
+  const genPeople = useMemo(
+    () => (genFilter === null ? [] : people.filter((p) => p.gen === genFilter).sort((a, b) => a.name.localeCompare(b.name))),
+    [people, genFilter]
+  );
+  const selectGen = (g) => { setGenFilter(g); setPersonFilter(null); };
+  const visiblePeople = useMemo(() => {
+    if (personFilter) return people.filter((p) => p.id === personFilter);
+    return genFilter === null ? people : people.filter((p) => p.gen === genFilter);
+  }, [people, genFilter, personFilter]);
   const markers = useMemo(() => computeMapMarkers(visiblePeople), [visiblePeople]);
   const routes = useMemo(() => computeRoutes(visiblePeople), [visiblePeople]);
   const origins = useMemo(() => computeOriginMarkers(visiblePeople), [visiblePeople]);
@@ -84,14 +93,23 @@ export default function JourneyMapView({ onSelectPerson }) {
     <section className="wrap">
       <div className="section-head">
         <h2>The family's journey</h2>
-        <p>Where each generation was born, and where they settled — a real map of the coast the whole story sits on. Filter by generation to watch the family spread; tap a pin to open that person's folio.</p>
+        <p>Where each generation was born, and where they settled — a real map of the coast the whole story sits on. Filter by generation, then pick one person to trace their exact path; tap a pin to open that person's folio.</p>
       </div>
       <div className="map-gen-filters">
         {gens.map((g) => (
-          <button key={g} className={`chip${genFilter === g ? " active" : ""}`} onClick={() => setGenFilter(g)}>Gen {g}</button>
+          <button key={g} className={`chip${genFilter === g ? " active" : ""}`} onClick={() => selectGen(g)}>Gen {g}</button>
         ))}
-        <button className={`chip${genFilter === null ? " active" : ""}`} onClick={() => setGenFilter(null)}>All generations</button>
+        <button className={`chip${genFilter === null ? " active" : ""}`} onClick={() => selectGen(null)}>All generations</button>
       </div>
+      {genFilter !== null && (
+        <div className="form-row map-person-filter">
+          <label htmlFor="journey-person-select">Then a person</label>
+          <select id="journey-person-select" value={personFilter ?? ""} onChange={(e) => setPersonFilter(e.target.value || null)}>
+            <option value="">Everyone in Gen {genFilter}</option>
+            {genPeople.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </div>
+      )}
       <div className="map-canvas-wrap">
         <MapContainer center={[14.5, 75.2]} zoom={7} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
           {/* Plain OpenStreetMap tiles (CARTO's free anonymous basemaps now
@@ -105,7 +123,7 @@ export default function JourneyMapView({ onSelectPerson }) {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <FitBounds points={boundsPoints} />
-          {routes.map((r) => <AnimatedRoute key={`${r.id}-${genFilter}`} positions={r.positions} />)}
+          {routes.map((r) => <AnimatedRoute key={`${r.id}-${genFilter}-${personFilter}`} positions={r.positions} />)}
           {origins.map((o, i) => (
             <CircleMarker key={i} center={[o.lat, o.lng]} radius={5} pathOptions={{ color: "#9C7A42", weight: 2, fillColor: "#F8F0DA", fillOpacity: 1, dashArray: "3,3" }}>
               <Tooltip direction="top" offset={[0, -6]} className="journey-tooltip">{o.place} · origin</Tooltip>
