@@ -11,7 +11,10 @@ export function computeMapMarkers(people) {
     group.forEach((p, i) => {
       const angle = (i / Math.max(n, 1)) * Math.PI * 2;
       const r = n > 1 ? 0.05 : 0;
-      markers.push({ id: p.id, name: p.name, gen: p.gen, lat: base.lat + Math.sin(angle) * r, lng: base.lng + Math.cos(angle) * r });
+      markers.push({
+        id: p.id, name: p.name, gen: p.gen, photoUrl: p.photoUrl, died: p.died, diedUnknown: p.diedUnknown,
+        lat: base.lat + Math.sin(angle) * r, lng: base.lng + Math.cos(angle) * r,
+      });
     });
   });
   return markers;

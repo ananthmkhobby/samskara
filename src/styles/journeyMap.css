@@ -15,9 +15,58 @@
   position: relative; z-index: 1; height: min(66vh, 600px); min-height: 360px; overflow: hidden; border-radius: var(--radius); border: 1px solid var(--line);
   box-shadow: var(--shadow-1);
 }
-.map-canvas-wrap .leaflet-container { font-family: var(--font-body); background: #dfe6e0; }
-.map-canvas-wrap .leaflet-tooltip { font-family: var(--font-body); font-weight: 700; font-size: 12px; color: var(--ink); border-color: var(--line-strong); }
-.map-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 14px; font-size: 12px; color: var(--ink-soft); align-items: center; }
+.map-canvas-wrap .leaflet-container { font-family: var(--font-body); background: #EDE6D6; }
+
+/* Plain OpenStreetMap tiles are colorful and fairly busy by default (green
+   parks, yellow/orange roads, red buildings) — this desaturates and warms
+   them hard toward the app's own parchment/sepia palette so the basemap
+   reads as a quiet backdrop for the pins, not competing visual noise, and
+   sits on the same palette as the rest of the archive instead of looking
+   like a generic map widget bolted on. */
+.map-canvas-wrap .leaflet-tile-pane { filter: grayscale(0.5) sepia(0.55) saturate(0.75) hue-rotate(-12deg) brightness(1.08) contrast(0.92); }
+
+.map-canvas-wrap .leaflet-tooltip.journey-tooltip {
+  font-family: var(--font-body); font-weight: 700; font-size: 12.5px; color: var(--ink);
+  background: var(--parchment-paper); border: 1px solid var(--line-strong); border-radius: 8px;
+  padding: 5px 10px; box-shadow: var(--shadow-1);
+}
+.map-canvas-wrap .leaflet-tooltip.journey-tooltip::before { border-top-color: var(--line-strong); }
+
+/* Leaflet's default zoom control is a plain gray square pair — restyled to
+   match the circular maroon controls the Tree view's own zoom buttons use,
+   so the two map-like features in the app share one visual language. */
+.map-canvas-wrap .leaflet-control-zoom { border: none; box-shadow: none; display: flex; flex-direction: column; gap: 8px; }
+.map-canvas-wrap .leaflet-control-zoom a {
+  width: 34px; height: 34px; line-height: 34px; border-radius: 50%; border: 1px solid var(--maroon-deep);
+  background: var(--maroon-deep); color: #F8ECE4; font-size: 17px; font-weight: 600; box-shadow: var(--shadow-1);
+}
+.map-canvas-wrap .leaflet-control-zoom a:hover { background: var(--maroon); color: #F8ECE4; }
+.map-canvas-wrap .leaflet-control-attribution {
+  background: color-mix(in srgb, var(--parchment-paper) 85%, transparent); color: var(--ink-faint); font-size: 10px;
+}
+
+/* The person markers themselves — a small circular portrait/initials badge
+   (same visual language as PersonAvatar elsewhere: Tree, Search, Folio)
+   instead of a plain dot, so a pin reads as *that* person at a glance. */
+.journey-pin-wrap { background: none; border: none; }
+.journey-pin {
+  width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--pin-color, var(--maroon-deep)); color: #fff; font-family: var(--font-display); font-weight: 700; font-size: 13px;
+  border: 2.5px solid var(--parchment-paper); box-shadow: 0 2px 6px rgba(30,18,8,.35), 0 0 0 1px rgba(30,18,8,.08);
+  cursor: pointer; transition: transform .15s ease;
+}
+.journey-pin:hover { transform: scale(1.12); }
+.journey-pin.is-deceased { filter: grayscale(45%); opacity: .88; }
+.journey-pin img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+
+/* The legend reads as a small card/key now, not a loose row of inline
+   text — a "map key" is expected UI grammar and makes the whole feature
+   look considered rather than incidental. */
+.map-legend {
+  display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 14px; padding: 12px 16px;
+  font-size: 12px; color: var(--ink-soft); align-items: center;
+  background: var(--parchment-paper); border: 1px solid var(--line); border-radius: var(--radius);
+}
 .map-legend span { display: flex; align-items: center; gap: 6px; }
-.map-legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-.map-legend-line { width: 18px; height: 0; border-top: 2px solid #8A2222; display: inline-block; opacity: .8; }
+.map-legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 1.5px var(--parchment-paper), 0 0 0 2.5px var(--line-strong); }
+.map-legend-line { width: 18px; height: 0; border-top: 2.5px solid #8A4A2A; display: inline-block; opacity: .8; border-radius: 2px; }

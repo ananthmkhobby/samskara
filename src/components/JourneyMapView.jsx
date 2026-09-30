@@ -1,13 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, TileLayer, CircleMarker, Polyline, Tooltip, useMap } from "react-leaflet";
+import L from "leaflet";
+import { MapContainer, TileLayer, CircleMarker, Marker, Polyline, Tooltip, useMap } from "react-leaflet";
 import { PEOPLE } from "../data/people";
 import { computeMapMarkers, computeRoutes, computeOriginMarkers } from "../lib/journeyMapData";
+import { GEN_COLOR_STOPS, genColor, initialsOf } from "./PersonAvatar";
 
-const GEN_COLOR_STOPS = ["#5C1414", "#8A2222", "#7A5714", "#26381F", "#3D5A34"];
-function genColor(gen, minGen, maxGen) {
-  if (maxGen === minGen) return GEN_COLOR_STOPS[0];
-  const t = (gen - minGen) / (maxGen - minGen);
-  return GEN_COLOR_STOPS[Math.round(t * (GEN_COLOR_STOPS.length - 1))];
+// A small circular portrait/initials marker — the same visual language as
+// PersonAvatar everywhere else in the app (Tree, Search, Folio) — rather
+// than Leaflet's plain dot, so a person on the map still reads as *that*
+// person, not just a location. Built as a divIcon (raw HTML) since Leaflet
+// markers render outside React's own tree.
+function personDivIcon(m, minGen, maxGen) {
+  const color = genColor(m.gen, minGen, maxGen);
+  const deceased = m.died || m.diedUnknown;
+  const inner = m.photoUrl
+    ? `<img src="${m.photoUrl}" alt="" />`
+    : `<span>${initialsOf(m.name)}</span>`;
+  return L.divIcon({
+    className: "journey-pin-wrap",
+    html: `<div class="journey-pin${deceased ? " is-deceased" : ""}" style="--pin-color:${color}">${inner}</div>`,
+    iconSize: [38, 38],
+    iconAnchor: [19, 19],
+    tooltipAnchor: [0, -17],
+  });
 }
 
 function FitBounds({ points }) {
@@ -22,7 +37,7 @@ function FitBounds({ points }) {
     // around the actual points). invalidateSize() forces a fresh
     // measurement immediately before the fit.
     map.invalidateSize();
-    map.fitBounds(points, { padding: [36, 36] });
+    map.fitBounds(points, { padding: [44, 44] });
   }, [points, map]);
   return null;
 }
@@ -45,7 +60,7 @@ function AnimatedRoute({ positions }) {
       requestAnimationFrame(() => { el.style.strokeDashoffset = "0"; });
     }
   }, [positions]);
-  return <Polyline ref={ref} positions={positions} pathOptions={{ color: "#8A2222", weight: 2.5, opacity: 0.8 }} />;
+  return <Polyline ref={ref} positions={positions} pathOptions={{ color: "#8A4A2A", weight: 3, opacity: 0.75, lineCap: "round" }} />;
 }
 
 export default function JourneyMapView({ onSelectPerson }) {
@@ -79,22 +94,30 @@ export default function JourneyMapView({ onSelectPerson }) {
       </div>
       <div className="map-canvas-wrap">
         <MapContainer center={[14.5, 75.2]} zoom={7} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
-          <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          {/* Plain OpenStreetMap tiles (CARTO's free anonymous basemaps now
+              require an API key — confirmed by fetching one directly, it
+              returns a placeholder tile, not map data) — warmed and
+              desaturated heavily below so the normally quite busy/colorful
+              OSM style reads as a muted, parchment-toned backdrop instead
+              of a generic web map dropped into a heritage archive. */}
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
           <FitBounds points={boundsPoints} />
           {routes.map((r) => <AnimatedRoute key={`${r.id}-${genFilter}`} positions={r.positions} />)}
           {origins.map((o, i) => (
-            <CircleMarker key={i} center={[o.lat, o.lng]} radius={5} pathOptions={{ color: "#9C8058", weight: 1.5, fillColor: "#F8F0DA", fillOpacity: 1, dashArray: "2,2" }}>
-              <Tooltip direction="top" offset={[0, -6]}>{o.place} (origin)</Tooltip>
+            <CircleMarker key={i} center={[o.lat, o.lng]} radius={5} pathOptions={{ color: "#9C7A42", weight: 2, fillColor: "#F8F0DA", fillOpacity: 1, dashArray: "3,3" }}>
+              <Tooltip direction="top" offset={[0, -6]} className="journey-tooltip">{o.place} · origin</Tooltip>
             </CircleMarker>
           ))}
           {markers.map((m) => (
-            <CircleMarker
-              key={m.id} center={[m.lat, m.lng]} radius={9}
-              pathOptions={{ color: "#fff", weight: 2, fillColor: genColor(m.gen, minGen, maxGen), fillOpacity: 1 }}
+            <Marker
+              key={m.id} position={[m.lat, m.lng]} icon={personDivIcon(m, minGen, maxGen)}
               eventHandlers={{ click: () => onSelectPerson(m.id) }}
             >
-              <Tooltip direction="top" offset={[0, -10]}>{m.name}</Tooltip>
-            </CircleMarker>
+              <Tooltip direction="top" className="journey-tooltip">{m.name}</Tooltip>
+            </Marker>
           ))}
         </MapContainer>
       </div>
