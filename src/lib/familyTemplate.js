@@ -15,6 +15,7 @@ export const TEMPLATE_COLUMNS = [
   { key: "died", header: "Died (blank if living, \"deceased\" if date unknown)", width: 30 },
   { key: "rashi", header: "Rashi", width: 14 },
   { key: "gotra", header: "Gotra", width: 16 },
+  { key: "originCities", header: "Origin Cities (separate with ;, oldest first)", width: 44 },
   { key: "city", header: "Current City", width: 18 },
   { key: "places", header: "Places (separate with ;)", width: 40 },
   { key: "lifeLesson", header: "Life Lesson", width: 40 },
@@ -25,7 +26,7 @@ export const TEMPLATE_COLUMNS = [
 const EXAMPLE_ROWS = [
   { personId: "example-grandpa", name: "Example Grandfather", spouseId: "example-grandma", born: "1930", died: "2005", rashi: "Simha", gotra: "Bharadwaja", places: "Born in Example Village", lifeLesson: "Hard work never goes to waste.", lifeLessonValues: "Discipline, Resilience", summary: "Delete these 3 example rows before adding your own family." },
   { personId: "example-grandma", name: "Example Grandmother", spouseId: "example-grandpa", born: "1935", city: "Mangalore" },
-  { personId: "example-child", name: "Example Child", parent1Id: "example-grandpa", parent2Id: "example-grandma", born: "1960", city: "Bangalore" },
+  { personId: "example-child", name: "Example Child", parent1Id: "example-grandpa", parent2Id: "example-grandma", born: "1960", originCities: "Mysore; Bangalore; Charlotte, US; Toronto", city: "Bangalore" },
 ];
 
 const INSTRUCTIONS_ROWS = [
@@ -47,6 +48,7 @@ const INSTRUCTIONS_ROWS = [
   ["Born", "A date (YYYY-MM-DD) or just a year.", "1902 or 1902-03-11"],
   ["Died", "Leave blank if living. Know they've passed but not when? Just write \"deceased\" — it'll be recorded that way instead of guessing a date.", "1978-09-02, or \"deceased\""],
   ["Rashi / Gotra", "Optional heritage details.", "Simha / Bharadwaja"],
+  ["Origin Cities", "Everywhere they lived before their current city, oldest first, separated by a semicolon (;) — draws the migration line on the Journey map. Leave blank if they've only ever lived in their current city.", "Mysore; Bangalore; Charlotte, US; Toronto"],
   ["Current City", "Where they live now — places them on the family's Journey map.", "Mangalore"],
   ["Places", "Separate multiple places with a semicolon (;).", "Born in Kundapura; Settled in Mangalore, 1934"],
   ["Life Lesson", "A quote or piece of advice remembered from them.", "Never let a regular customer leave without credit if they need it."],
@@ -333,12 +335,19 @@ export async function parseTemplateWorkbook(arrayBuffer, existingPeople = []) {
 
   rows.forEach((row) => {
     row._places = String(row.places ?? "").split(";").map((s) => s.trim()).filter(Boolean);
+    row._originCities = String(row.originCities ?? "").split(";").map((s) => s.trim()).filter(Boolean);
   });
 
   // Geocode distinct cities sequentially, respecting Nominatim's ~1 req/sec
-  // usage policy, rather than firing them all in parallel.
+  // usage policy, rather than firing them all in parallel. One shared cache
+  // covers both Current City and Origin Cities, since the same place name
+  // (e.g. "Bangalore" as both a stop and someone else's current city) would
+  // otherwise be looked up twice.
   const cityToGeo = new Map();
-  const uniqueCities = [...new Set(rows.map((r) => String(r.city ?? "").trim()).filter(Boolean))];
+  const uniqueCities = [...new Set([
+    ...rows.map((r) => String(r.city ?? "").trim()),
+    ...rows.flatMap((r) => r._originCities),
+  ].filter(Boolean))];
   for (const city of uniqueCities) {
     try {
       cityToGeo.set(city, await geocodePlace(city));
@@ -363,6 +372,7 @@ export async function parseTemplateWorkbook(arrayBuffer, existingPeople = []) {
     gotra: String(row.gotra ?? "").trim() || undefined,
     trust: "approx",
     geo: cityToGeo.get(String(row.city ?? "").trim()) || undefined,
+    geoStops: row._originCities.map((c) => cityToGeo.get(c)).filter(Boolean),
     summary: String(row.summary ?? "").trim() || undefined,
     places: row._places.length ? row._places : undefined,
     lifeLesson: (String(row.lifeLesson ?? "").trim() || row._values.length)

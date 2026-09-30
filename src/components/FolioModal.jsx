@@ -157,6 +157,36 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
             {person.geo ? <p className="folio-summary">{person.geo.place}</p> : <p className="form-hint" style={{ marginTop: 0 }}>No city on record yet — add one to show them on the family's Journey map.</p>}
           </div>
           <div className="folio-section">
+            <div className="folio-section-head"><h4>Migration path</h4></div>
+            {person.geoStops?.length ? (
+              <div className="tag-row" style={{ marginBottom: 10 }}>
+                {person.geoStops.map((s, i) => (
+                  <span key={i} className="tag" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    {s.place}
+                    <button
+                      type="button" aria-label={`Remove ${s.place} from their migration path`}
+                      style={{ background: "none", border: 0, padding: 0, cursor: "pointer", color: "inherit", font: "inherit", lineHeight: 1 }}
+                      onClick={() => onEdit({ field: "geoStops", fieldLabel: `Remove ${s.place} from their migration path`, stops: person.geoStops, removeIndex: i })}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="form-hint" style={{ marginTop: 0 }}>
+                No earlier stops on record — add each place they lived before their current city, oldest first, to
+                draw their migration route on the family's Journey map.
+              </p>
+            )}
+            <button
+              type="button" className="btn small ghost"
+              onClick={() => onEdit({ field: "geoStops", fieldLabel: "Add a stop to their migration path", stops: person.geoStops || [] })}
+            >
+              + Add a stop
+            </button>
+          </div>
+          <div className="folio-section">
             <div className="folio-section-head"><h4>Family</h4></div>
             {/* Shows who's already linked before offering to add more — without
                 this, there was no way to tell from a person's own Folio which

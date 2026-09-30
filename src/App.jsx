@@ -681,6 +681,12 @@ export default function App() {
           person.geo = geo;
           updatePersonFields(familyId, c.personId, { geo }).catch((err) => console.error(err.message));
         } catch { /* malformed content, skip */ }
+      } else if (c.field === "geoStops") {
+        try {
+          const geoStops = JSON.parse(c.content);
+          person.geoStops = geoStops;
+          updatePersonFields(familyId, c.personId, { geo_stops: geoStops }).catch((err) => console.error(err.message));
+        } catch { /* malformed content, skip */ }
       } else if (c.field?.startsWith("chapter:")) {
         const idx = +c.field.split(":")[1];
         const chapters = getBiographyChapters(person).map((ch, i) => (i === idx ? { ...ch, text: c.content } : ch));

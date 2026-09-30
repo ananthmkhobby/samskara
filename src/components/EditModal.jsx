@@ -6,6 +6,8 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
   const isHeritage = request.field === "heritage";
   const isLifeLesson = request.field === "lifeLesson";
   const isGeo = request.field === "geo";
+  const isGeoStops = request.field === "geoStops";
+  const isGeoStopsRemove = isGeoStops && request.removeIndex !== undefined;
   const isDayInLife = request.field === "dayInLife";
   const isBorn = request.field === "born";
   const isDied = request.field === "died";
@@ -79,14 +81,25 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
       onSubmit({ field: request.field, fieldLabel: request.fieldLabel, content: trustChoice, contributor: contributor.trim() || "Anonymous" });
       return;
     }
-    if (isGeo) {
+    if (isGeoStopsRemove) {
+      // No lookup needed — removing is just the existing list minus one
+      // entry, submitted straight away like every other quick action.
+      const nextStops = request.stops.filter((_, i) => i !== request.removeIndex);
+      onSubmit({ field: request.field, fieldLabel: request.fieldLabel, content: JSON.stringify(nextStops), contributor: contributor.trim() || "Anonymous" });
+      return;
+    }
+    if (isGeo || isGeoStops) {
       // Second step: a result is already on screen for confirmation — this
       // submit finalizes whichever candidate is currently selected, rather
       // than re-running the lookup.
       if (geoResult) {
         const chosen = geoResult.candidates[geoCandidateIdx] || geoResult;
-        const geo = { place: value.trim(), lat: chosen.lat, lng: chosen.lng, resolvedName: chosen.resolvedName };
-        onSubmit({ field: request.field, fieldLabel: request.fieldLabel, content: JSON.stringify(geo), contributor: contributor.trim() || "Anonymous" });
+        const stop = { place: value.trim(), lat: chosen.lat, lng: chosen.lng, resolvedName: chosen.resolvedName };
+        // Adding a stop appends to whatever's already on record (append-only
+        // — order is "the order they were added in", so add them oldest
+        // first); editing the current city replaces the one value outright.
+        const content = isGeoStops ? JSON.stringify([...(request.stops || []), stop]) : JSON.stringify(stop);
+        onSubmit({ field: request.field, fieldLabel: request.fieldLabel, content, contributor: contributor.trim() || "Anonymous" });
         return;
       }
       // First step: look up, then show what actually got matched instead of
@@ -212,9 +225,23 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
                   </div>
                 </div>
               </>
-            ) : isGeo ? (
+            ) : isGeoStopsRemove ? (
               <div className="form-row">
-                <label>City / place</label>
+                <p className="form-hint" style={{ marginTop: 0 }}>
+                  Removes <b>{request.stops[request.removeIndex]?.place}</b> from their migration path. Their current
+                  city and every other stop stay exactly as they are.
+                </p>
+              </div>
+            ) : isGeo || isGeoStops ? (
+              <div className="form-row">
+                {isGeoStops && (
+                  <p className="form-hint" style={{ marginTop: 0 }}>
+                    {request.stops?.length
+                      ? <>Already on their path, oldest first: <b>{request.stops.map((s) => s.place).join(" → ")}</b>. This adds one more stop after those.</>
+                      : "Nothing recorded yet — this adds the first stop. Add them in order, oldest first; their current city (set separately, under Location) is always the last stop."}
+                  </p>
+                )}
+                <label>{isGeoStops ? "City they lived in" : "City / place"}</label>
                 <input
                   type="text" placeholder="e.g. Kathriguppe, Bangalore" value={value}
                   onChange={(e) => { setValue(e.target.value); setGeoResult(null); setGeoError(""); }}
@@ -279,8 +306,14 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
               <input type="text" placeholder="e.g. Kavya Reddy" value={contributor} onChange={(e) => setContributor(e.target.value)} />
             </div>
             <div className="folio-actions">
-              <button type="submit" className="btn primary" disabled={busy || (isGeo && !value.trim())}>
-                {busy ? "Looking up…" : isGeo && !geoResult ? "Look this up" : canModerate ? "Apply now" : "Submit for review"}
+              <button type="submit" className="btn primary" disabled={busy || ((isGeo || isGeoStops) && !isGeoStopsRemove && !value.trim())}>
+                {busy
+                  ? "Looking up…"
+                  : (isGeo || isGeoStops) && !isGeoStopsRemove && !geoResult
+                    ? "Look this up"
+                    : canModerate
+                      ? (isGeoStopsRemove ? "Remove" : "Apply now")
+                      : "Submit for review"}
               </button>
               <button type="button" className="btn ghost" onClick={onCancel}>Cancel</button>
             </div>

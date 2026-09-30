@@ -20,22 +20,40 @@ export function computeMapMarkers(people) {
   return markers;
 }
 
+// A person's full path before their current city — geo_stops in the order
+// they were added (Mysore -> Bangalore -> Charlotte, US -> Toronto, say),
+// falling back to the older single geoOrigin for any row that predates
+// geo_stops existing (defensive only: production data was checked before
+// this shipped, and every real row already came through the migration's
+// own backfill — this just means a future direct DB write can't silently
+// go unrendered).
+function stopsOf(p) {
+  if (p.geoStops && p.geoStops.length) return p.geoStops;
+  return p.geoOrigin ? [p.geoOrigin] : [];
+}
+
 export function computeRoutes(people) {
-  return people.filter((p) => p.geoOrigin).map((p) => ({
-    id: p.id,
-    label: `${p.name}: ${p.geoOrigin.place} → ${p.geo.place}`,
-    positions: [[p.geoOrigin.lat, p.geoOrigin.lng], [p.geo.lat, p.geo.lng]]
-  }));
+  return people.filter((p) => p.geo && stopsOf(p).length).map((p) => {
+    const stops = stopsOf(p);
+    const path = [...stops, p.geo];
+    return {
+      id: p.id,
+      label: `${p.name}: ${path.map((s) => s.place).join(" → ")}`,
+      positions: path.map((s) => [s.lat, s.lng]),
+    };
+  });
 }
 
 export function computeOriginMarkers(people) {
   const seen = new Set();
   const markers = [];
   people.forEach((p) => {
-    if (p.geoOrigin && !seen.has(p.geoOrigin.place)) {
-      seen.add(p.geoOrigin.place);
-      markers.push({ place: p.geoOrigin.place, lat: p.geoOrigin.lat, lng: p.geoOrigin.lng });
-    }
+    stopsOf(p).forEach((s) => {
+      if (!seen.has(s.place)) {
+        seen.add(s.place);
+        markers.push({ place: s.place, lat: s.lat, lng: s.lng });
+      }
+    });
   });
   return markers;
 }
