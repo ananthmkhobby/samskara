@@ -1,0 +1,16 @@
+-- Per-family feature gating for monetization — a family's "plan" is which
+-- modules are turned on, configured once at onboarding (see
+-- api/provision-family.js, src/components/SuperAdminView.jsx).
+--
+-- Empty object means "everything enabled" — a flag is only ever set to
+-- `false` to disable something. This is deliberate: every existing family
+-- gets this column defaulted to '{}', so nothing anyone already has access
+-- to changes. A family's entitlement for module `key` is
+-- `module_flags[key] !== false` (see isModuleEnabled() in
+-- src/data/session.js), never an explicit allow-list.
+--
+-- Invites/contributor count is deliberately NOT gated here or anywhere —
+-- see memory samskara-monetisation-plan: capping invites would kill the
+-- only real growth channel (every invited relative is a future paying
+-- Admin of their own branch).
+alter table families add column module_flags jsonb not null default '{}'::jsonb;

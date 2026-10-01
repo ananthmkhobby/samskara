@@ -45,7 +45,7 @@ import ConsentGate from "./components/ConsentGate";
 import { PEOPLE, INITIAL_CONTRIBUTIONS, BOOKS, BOOK_OWNERSHIP, BOOK_READERS, PRACTICE_LOGS, addPerson, addBook, makeUniquePersonId } from "./data/people";
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
 import { verifiedObjectsBySpot, hasAnyRoomObjects } from "./lib/chitrashale";
-import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, NEEDS_LOGIN, NEEDS_CONSENT, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL } from "./data/session";
+import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, NEEDS_LOGIN, NEEDS_CONSENT, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL, isModuleEnabled } from "./data/session";
 import { insertContribution, updateContribution, updateContributionStatus, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus, insertPracticeLog } from "./data/familyDb";
 import { resolveMediaUrl, uploadFamilyMedia } from "./lib/mediaUpload";
 import { parseParamparaContent } from "./lib/parampara";
@@ -64,6 +64,12 @@ async function withMediaUrl(contribution) {
 
 const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
+// Maps a view to its families.module_flags entitlement key — a view with no
+// entry here (Tree, Folios, Search, Gallery, Activity, Admin, ...) is never
+// gated, matching the monetization plan's "never gate what's already
+// there." The real enforcement is this render gate (blocks direct URL
+// navigation, not just hidden nav); MoreMenu.jsx also hides disabled items.
+const VIEW_GATE_KEYS = { parampara: "parampara", library: "library", treasury: "treasury", map: "journey", japa: "japa", vault: "vault" };
 const pathForView = (v) => VIEW_PATHS[v] || "/";
 const viewForPath = (p) => PATH_TO_VIEW[p] || "cover";
 
@@ -874,6 +880,9 @@ export default function App() {
     );
   }
 
+  const viewGateKey = VIEW_GATE_KEYS[view];
+  const moduleBlocked = viewGateKey && !isModuleEnabled(viewGateKey);
+
   return (
     <div id="app">
       <TopBar view={view} onNav={goTo} pendingCount={pendingCount} unseenCount={unseenCount} onJoinAnother={() => openJoinFamily({})} onContribute={openContribute} />
@@ -885,21 +894,29 @@ export default function App() {
           />
         )}
         {view === "tree" && <TreeView contributions={contributions} onSelectPerson={selectPerson} onNav={goTo} />}
-        {view === "parampara" && <ParamparaView contributions={contributions} canModerate={canModerate} onContribute={() => openParamparaContribute()} onEdit={openParamparaContribute} />}
-        {view === "library" && <LibraryView onOpenBook={openBook} onAddBook={openAddBook} />}
-        {view === "treasury" && <TreasuryView contributions={contributions} onSelectPerson={selectPerson} initialTab="Wisdom" />}
+        {moduleBlocked && (
+          <section className="wrap">
+            <div className="section-head">
+              <h2>Not included in your family's plan</h2>
+              <p>This feature isn't part of your family's current plan. Contact Samskara to add it.</p>
+            </div>
+          </section>
+        )}
+        {view === "parampara" && !moduleBlocked && <ParamparaView contributions={contributions} canModerate={canModerate} onContribute={() => openParamparaContribute()} onEdit={openParamparaContribute} />}
+        {view === "library" && !moduleBlocked && <LibraryView onOpenBook={openBook} onAddBook={openAddBook} />}
+        {view === "treasury" && !moduleBlocked && <TreasuryView contributions={contributions} onSelectPerson={selectPerson} initialTab="Wisdom" />}
         {view === "gallery" && <TreasuryView contributions={contributions} onSelectPerson={selectPerson} initialTab="Gallery" />}
         {view === "search" && <SearchView onSelectPerson={selectPerson} />}
         {view === "more" && <MoreMenu onNav={goTo} canModerate={canModerate} />}
-        {view === "vault" && <VaultView contributions={contributions} />}
-        {view === "map" && <JourneyMapView onSelectPerson={selectPerson} />}
+        {view === "vault" && !moduleBlocked && <VaultView contributions={contributions} />}
+        {view === "map" && !moduleBlocked && <JourneyMapView onSelectPerson={selectPerson} />}
         {view === "activity" && (
           <ActivityView
             contributions={contributions} canModerate={canModerate}
             onSelectPerson={selectPerson} onNav={goTo} familyId={CURRENT_FAMILY_ID}
           />
         )}
-        {view === "japa" && <JapaView onLogCount={() => commit({ japaLogOpen: true })} onSelectPerson={selectPerson} />}
+        {view === "japa" && !moduleBlocked && <JapaView onLogCount={() => commit({ japaLogOpen: true })} onSelectPerson={selectPerson} />}
         {view === "admin" && <AdminView contributions={contributions} onApprove={approveContribution} onReject={rejectContribution} canModerate={canModerate} />}
         {view === "builder" && <FamilyBuilderView onNav={goTo} />}
         {view === "superadmin" && <SuperAdminView />}

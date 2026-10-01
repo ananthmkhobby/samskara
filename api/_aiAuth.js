@@ -36,10 +36,19 @@ export async function allowAiRequest(req) {
     const { data: { user } } = await supabase.auth.getUser(token);
     if (user) {
       // A real account still has to belong to a family — an account with no
-      // membership has no reason to be drafting biographies.
+      // membership has no reason to be drafting biographies. Embeds the
+      // family's module_flags in the same round trip to check the
+      // per-family AI entitlement (see src/data/session.js's
+      // isModuleEnabled) — server-side, not just a hidden client button,
+      // since these endpoints spend real OpenAI credit.
       const { data: member } = await supabase
-        .from("family_members").select("id").eq("user_id", user.id).limit(1).maybeSingle();
-      if (member) return;
+        .from("family_members").select("id, families(module_flags)").eq("user_id", user.id).limit(1).maybeSingle();
+      if (member) {
+        if (member.families?.module_flags?.aiFeatures === false) {
+          throw new Error("AI features aren't included in your family's current plan.");
+        }
+        return;
+      }
     }
     // A present-but-invalid/expired token falls through to the anonymous
     // path rather than erroring, so a stale session doesn't hard-break the

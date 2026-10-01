@@ -3,15 +3,37 @@ import { callApi } from "../lib/apiFetch";
 
 const SECRET_SESSION_KEY = "vamsha.superadminSecret";
 
+// Mirrors the gatable-module list in src/data/session.js's isModuleEnabled()
+// / the `families.module_flags` column — kept here as the one place that
+// turns a flag key into a human label for this onboarding form.
+const GATABLE_MODULES = [
+  { key: "parampara", label: "Parampare" },
+  { key: "library", label: "Family Library" },
+  { key: "treasury", label: "Treasury of Wisdom" },
+  { key: "journey", label: "Journey (map)" },
+  { key: "japa", label: "Japa & Chanting" },
+  { key: "vault", label: "Vault" },
+  { key: "aiFeatures", label: "AI features (interview, photo-scan, translate)" },
+];
+
 export default function SuperAdminView() {
   const [adminSecret, setAdminSecret] = useState(() => sessionStorage.getItem(SECRET_SESSION_KEY) || "");
   const [familyName, setFamilyName] = useState("");
   const [headEmail, setHeadEmail] = useState("");
   const [headName, setHeadName] = useState("");
+  // Everything on by default (premium) — unchecking a box disables that
+  // module for this family from day one. Only the unchecked ones are ever
+  // sent as explicit `false`s; module_flags stays an empty object (meaning
+  // "everything enabled") when nothing's been unchecked.
+  const [enabledModules, setEnabledModules] = useState(() => Object.fromEntries(GATABLE_MODULES.map((m) => [m.key, true])));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
   const [copied, setCopied] = useState("");
+
+  function toggleModule(key) {
+    setEnabledModules((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -19,12 +41,16 @@ export default function SuperAdminView() {
     setError("");
     setResult(null);
     try {
-      const data = await callApi("/api/provision-family", { adminSecret, familyName, headEmail, headName });
+      const moduleFlags = Object.fromEntries(
+        Object.entries(enabledModules).filter(([, enabled]) => !enabled).map(([key]) => [key, false])
+      );
+      const data = await callApi("/api/provision-family", { adminSecret, familyName, headEmail, headName, moduleFlags });
       setResult(data);
       sessionStorage.setItem(SECRET_SESSION_KEY, adminSecret);
       setFamilyName("");
       setHeadEmail("");
       setHeadName("");
+      setEnabledModules(Object.fromEntries(GATABLE_MODULES.map((m) => [m.key, true])));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -62,6 +88,16 @@ export default function SuperAdminView() {
         <div className="form-row">
           <label>Head's name (optional)</label>
           <input type="text" placeholder="e.g. Kavya Reddy" value={headName} onChange={(e) => setHeadName(e.target.value)} />
+        </div>
+        <div className="form-row">
+          <label>Modules included in this family's plan</label>
+          <p className="form-hint" style={{ marginTop: 0 }}>All on = full/premium access. Uncheck anything not included in a lesser package — can be changed later by editing the family directly.</p>
+          {GATABLE_MODULES.map(({ key, label }) => (
+            <label key={key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 400, textTransform: "none", padding: "4px 0" }}>
+              <input type="checkbox" checked={enabledModules[key]} onChange={() => toggleModule(key)} />
+              {label}
+            </label>
+          ))}
         </div>
         {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
         <button type="submit" className="btn primary" disabled={busy} style={{ marginTop: 8 }}>{busy ? "Creating…" : "Create family"}</button>

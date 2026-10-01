@@ -16,6 +16,11 @@ export let CURRENT_FAMILY_TAGLINE = null;
 export let CURRENT_FAMILY_LOGO_URL = null;
 export let CURRENT_ROLE = null; // 'head' | 'admin' | 'member' | null (null in demo mode)
 export let IS_DEMO = true;
+// Per-family monetization entitlements (see families.module_flags) — an
+// empty object means every module is enabled; a key is only ever set to
+// `false` to disable something, never used as an allow-list. Configured
+// once at onboarding via /superadmin, not self-serve.
+export let MODULE_FLAGS = {};
 // Every family the logged-in account belongs to — [{familyId, familyName,
 // role}] — length 1 for the common case, more once someone's joined a
 // second family (e.g. both their dad's and mom's trees). Powers the
@@ -44,6 +49,13 @@ export let MY_PERSON_ID = null;
 // no account to record consent against.
 export let NEEDS_CONSENT = false;
 
+// The demo family always shows everything (matches IS_DEMO's existing role
+// in `canModerate`) — a module is otherwise enabled unless explicitly
+// disabled, never via an allow-list.
+export function isModuleEnabled(key) {
+  return IS_DEMO || MODULE_FLAGS[key] !== false;
+}
+
 export function setSession(next) {
   CURRENT_USER_ID = next.userId ?? null;
   CURRENT_FAMILY_ID = next.familyId ?? DEMO_FAMILY_ID;
@@ -52,6 +64,7 @@ export function setSession(next) {
   CURRENT_FAMILY_LOGO_URL = next.familyLogoUrl ?? null;
   CURRENT_ROLE = next.role ?? null;
   IS_DEMO = next.isDemo ?? true;
+  MODULE_FLAGS = next.moduleFlags ?? {};
   ACCOUNT_NEEDS_FAMILY = next.needsFamily ?? false;
   NEEDS_LOGIN = next.needsLogin ?? false;
   MY_FAMILIES = next.myFamilies ?? [];

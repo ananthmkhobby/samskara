@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { adminSecret, familyName, headEmail, headName } = req.body || {};
+  const { adminSecret, familyName, headEmail, headName, moduleFlags } = req.body || {};
   if (adminSecret !== secret) {
     res.status(401).json({ error: "Incorrect admin secret." });
     return;
@@ -43,9 +43,12 @@ export default async function handler(req, res) {
     });
     if (userError) throw new Error(`Creating account failed: ${userError.message}`);
 
+    // moduleFlags is only ever a set of explicit `false`s (disabled) —
+    // omitting a key, or the whole object, means that module stays
+    // enabled. See src/data/session.js's isModuleEnabled().
     const { data: family, error: familyError } = await supabase
       .from("families")
-      .insert({ name: familyName.trim() })
+      .insert({ name: familyName.trim(), module_flags: moduleFlags || {} })
       .select()
       .single();
     if (familyError) throw new Error(`Creating family failed: ${familyError.message}`);

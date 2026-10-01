@@ -1,17 +1,20 @@
 import { ParamparaIcon, LibraryIcon, TreasuryIcon, MapIcon, JapaIcon, AdminIcon } from "./NavIcons";
-import { IS_DEMO } from "../data/session";
+import { IS_DEMO, isModuleEnabled } from "../data/session";
 
 // Redesign v2 — everything that doesn't fit in the six-item bottom nav
 // anymore lives here instead. One extra tap instead of permanent crowding.
+// `gateKey` ties an item to its families.module_flags entry — omitted for
+// anything that should never be gated.
 const ITEMS = [
-  { key: "parampara", label: "Parampare", sub: "Family traditions, sayings, and heritage", Icon: ParamparaIcon },
-  { key: "library", label: "Family Library", sub: "Books the family has kept and passed down", Icon: LibraryIcon },
-  { key: "treasury", label: "Treasury of Wisdom", sub: "One life lesson from each storyteller", Icon: TreasuryIcon },
-  { key: "map", label: "Journey", sub: "Where the family has lived, on a map", Icon: MapIcon },
-  { key: "japa", label: "Japa & Chanting", sub: "Every mala round and recitation, counted", Icon: JapaIcon },
+  { key: "parampara", gateKey: "parampara", label: "Parampare", sub: "Family traditions, sayings, and heritage", Icon: ParamparaIcon },
+  { key: "library", gateKey: "library", label: "Family Library", sub: "Books the family has kept and passed down", Icon: LibraryIcon },
+  { key: "treasury", gateKey: "treasury", label: "Treasury of Wisdom", sub: "One life lesson from each storyteller", Icon: TreasuryIcon },
+  { key: "map", gateKey: "journey", label: "Journey", sub: "Where the family has lived, on a map", Icon: MapIcon },
+  { key: "japa", gateKey: "japa", label: "Japa & Chanting", sub: "Every mala round and recitation, counted", Icon: JapaIcon },
 ];
 
 export default function MoreMenu({ onNav, canModerate }) {
+  const visibleItems = ITEMS.filter((item) => isModuleEnabled(item.gateKey));
   return (
     <section className="wrap">
       <div className="section-head">
@@ -19,7 +22,7 @@ export default function MoreMenu({ onNav, canModerate }) {
         <p>Everything else the archive holds.</p>
       </div>
       <div className="more-menu-grid">
-        {ITEMS.map(({ key, label, sub, Icon }) => (
+        {visibleItems.map(({ key, label, sub, Icon }) => (
           <button key={key} type="button" className="card more-menu-item" onClick={() => onNav(key)}>
             <span className="more-menu-icon"><Icon /></span>
             <span className="more-menu-text">
