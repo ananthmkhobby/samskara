@@ -161,7 +161,15 @@ export default async function handler(req, res) {
       // same placeholder the in-app ContributeModal already uses for media
       // about someone not yet (or never) linked to a tree entry.
       mediaPath = await storeMedia(supabase, identity.familyId, "unassigned", buffer, ext, mediaContentType);
-      mediaKind = kind;
+      // _whatsappMedia.js classifies images as "image" (matching
+      // whatsapp_messages.message_type's DB check constraint), but the
+      // conversation engine and contributions.type both speak "photo"
+      // (matching the rest of the app — ContributeModal etc. use "photo").
+      // Translated here, once, at the boundary — found as a real bug during
+      // testing: without it every photo flow silently skipped the story
+      // step and the photo itself was never included in the final save,
+      // only whatever text happened to be typed along the way.
+      mediaKind = kind === "image" ? "photo" : kind;
       log("MEDIA_STORED", { phone: maskPhone(phoneNumber), kind, ms: Date.now() - requestStarted });
     }
 
