@@ -4,11 +4,29 @@
 import { createClient } from "@supabase/supabase-js";
 import twilio from "twilio";
 
+// Found during local testing: an individual Supabase REST call occasionally
+// hangs indefinitely — neither resolving nor rejecting — rather than
+// failing fast, which left the webhook stuck forever with no log line at
+// all (confirmed via per-stage timing checkpoints: the stuck call moved
+// around between runs, so this isn't one specific query, it's generic
+// local-network flakiness that can hit any outbound call). supabase-js
+// doesn't impose a request timeout of its own, so every call made through
+// this client gets one via a custom fetch — any single stuck call now
+// fails after 8s instead of hanging the whole request.
+function fetchWithTimeout(input, init = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 export function serviceClient() {
   const url = process.env.VITE_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) throw new Error("Not configured on this deployment — missing SUPABASE_SERVICE_ROLE_KEY.");
-  return createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
+  return createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { fetch: fetchWithTimeout },
+  });
 }
 
 // Twilio signs every webhook request with the account's auth token. The URL

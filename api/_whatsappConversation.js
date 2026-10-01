@@ -102,7 +102,12 @@ export async function advanceConversation({ supabase, familyId, conversation, in
       ctx = { mediaKind: inbound.mediaKind, mediaPath: inbound.mediaPath, originalFilename: inbound.originalFilename || null };
       return { reply: MEDIA_PROMPT[inbound.mediaKind], nextState: "WAITING_FOR_PERSON", pendingPersonId: null, context: ctx, contributions: [] };
     }
-    if (text) {
+    // A bare yes/no/ok with nothing else in flight is almost always a stray
+    // reply to something that already finished (e.g. confirming a save a
+    // second time out of habit) rather than someone actually trying to
+    // start a new memory titled "Yes" — treat it the same as empty text
+    // instead of silently creating a nonsense draft.
+    if (text && !YES.test(text) && !NO.test(text)) {
       ctx = { mediaKind: null, memoryText: text };
       return { reply: "Got it — who is this memory about? Tell me a name.", nextState: "WAITING_FOR_PERSON", pendingPersonId: null, context: ctx, contributions: [] };
     }

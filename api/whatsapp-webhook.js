@@ -30,17 +30,33 @@ function log(event, fields = {}) {
   console.log(JSON.stringify({ event, ...fields }));
 }
 
+// Temporary fine-grained tracing while chasing an intermittent hang during
+// local testing: some requests stall completely between two awaits with
+// neither a resolved value nor a thrown error, and the coarser per-stage
+// logs above weren't enough to tell which specific call it was. Safe to
+// remove once the Sandbox has run cleanly for a while.
+function checkpoint(name, startedAt) {
+  console.log(JSON.stringify({ event: "CHECKPOINT", name, ms: Date.now() - startedAt }));
+}
+
 // A failed outbound send is a separate problem from the inbound webhook
 // itself (which Twilio has already successfully delivered) — logged, not
 // thrown, so it never turns into a webhook retry that re-processes a
-// message we already handled.
+// message we already handled. The explicit timeout exists because this
+// call was observed, during local testing, to sometimes hang indefinitely
+// with neither a resolve nor a reject — silent, with nothing logged at
+// all — rather than failing fast; this guarantees a log line either way.
 async function reply(phoneNumber, message) {
   if (!message) return;
+  const started = Date.now();
   try {
-    await sendWhatsAppMessage(phoneNumber, message);
-    log("REPLY_SENT", { phone: maskPhone(phoneNumber) });
+    await Promise.race([
+      sendWhatsAppMessage(phoneNumber, message),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("TIMEOUT_10S")), 10000)),
+    ]);
+    log("REPLY_SENT", { phone: maskPhone(phoneNumber), ms: Date.now() - started });
   } catch (err) {
-    log("PROCESSING_FAILED", { reason: `reply_send_failed: ${err.message}`, phone: maskPhone(phoneNumber) });
+    log("PROCESSING_FAILED", { reason: `reply_send_failed: ${err.message}`, phone: maskPhone(phoneNumber), ms: Date.now() - started });
   }
 }
 
@@ -49,6 +65,7 @@ function ack(res) {
 }
 
 export default async function handler(req, res) {
+  const requestStarted = Date.now();
   if (req.method !== "POST") {
     res.status(405).send("Method not allowed");
     return;
@@ -112,7 +129,7 @@ export default async function handler(req, res) {
 
   try {
     const identity = await resolveIdentity(supabase, phoneNumber);
-    log("WHATSAPP_USER_IDENTIFIED", { phone: maskPhone(phoneNumber), known: !!identity });
+    log("WHATSAPP_USER_IDENTIFIED", { phone: maskPhone(phoneNumber), known: !!identity, ms: Date.now() - requestStarted });
 
     if (!identity) {
       const { data: token, error: tokenErr } = await supabase
@@ -126,6 +143,7 @@ export default async function handler(req, res) {
     }
 
     await finishMessage({ user_id: identity.userId, family_id: identity.familyId });
+    checkpoint("after_finishMessage_identity", requestStarted);
 
     // Unsupported attachment — fail clearly rather than silently dropping it
     // or feeding an unknown type into the conversation engine.
@@ -144,11 +162,12 @@ export default async function handler(req, res) {
       // about someone not yet (or never) linked to a tree entry.
       mediaPath = await storeMedia(supabase, identity.familyId, "unassigned", buffer, ext, mediaContentType);
       mediaKind = kind;
-      log("MEDIA_STORED", { phone: maskPhone(phoneNumber), kind });
+      log("MEDIA_STORED", { phone: maskPhone(phoneNumber), kind, ms: Date.now() - requestStarted });
     }
 
     const { data: conversation } = await supabase
       .from("whatsapp_conversations").select("*").eq("phone_number", phoneNumber).maybeSingle();
+    checkpoint("after_conversation_select", requestStarted);
 
     // An abandoned conversation older than a day starts fresh rather than
     // trapping the next message in a stale flow.
@@ -160,6 +179,7 @@ export default async function handler(req, res) {
       conversation: effectiveConversation,
       inbound: { textBody, mediaKind, mediaPath, originalFilename: null },
     });
+    checkpoint("after_advanceConversation", requestStarted);
 
     if (result.contributions.length) {
       log("PERSON_MATCHED", { phone: maskPhone(phoneNumber), matched: !!result.personId });
