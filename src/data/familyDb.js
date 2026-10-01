@@ -399,6 +399,33 @@ export async function redeemContentShare(code) {
   return data?.[0]?.title || null;
 }
 
+// ---- WhatsApp -------------------------------------------------------------
+
+// Links the signed-in account to the phone number a WhatsApp link-token was
+// issued for (the webhook created the token from the real inbound message —
+// the client only ever supplies the one-time code, never the number itself).
+export async function redeemWhatsAppLink(code) {
+  const db = requireClient();
+  const { data, error } = await db.rpc("redeem_whatsapp_link", { p_code: code });
+  if (error) throw new Error(error.message);
+  return data?.[0]?.phone_number || null;
+}
+
+// Powers the Admin "WhatsApp" debug tab — recent inbound message log for the
+// caller's own family (RLS already scopes this to a moderator of that
+// family; see "moderator can read own family whatsapp messages").
+export async function fetchWhatsAppMessages(familyId, limit = 50) {
+  const db = requireClient();
+  const { data, error } = await db
+    .from("whatsapp_messages").select("*").eq("family_id", familyId)
+    .order("created_at", { ascending: false }).limit(limit);
+  if (error) throw new Error(error.message);
+  return data.map((r) => ({
+    id: r.id, phoneNumber: r.phone_number, messageType: r.message_type, textBody: r.text_body,
+    processingStatus: r.processing_status, errorMessage: r.error_message, createdAt: r.created_at,
+  }));
+}
+
 // ---- Family Library ---------------------------------------------------------
 
 function mapBookRow(row) {

@@ -1,0 +1,206 @@
+// Vercel serverless function — Twilio posts every inbound WhatsApp message
+// here as application/x-www-form-urlencoded. Twilio parses this the same
+// way it parses a normal POST body (api/scan-family-tree.js already relies
+// on req.body being pre-parsed for JSON; the Node runtime does the same for
+// form-encoded bodies).
+//
+// Flow: validate signature -> idempotency check -> resolve who's texting ->
+// (first time: send them a one-time account-linking link) -> advance their
+// conversation -> store any media -> save any resulting memory as ordinary
+// `contributions` rows -> reply with TwiML.
+import { serviceClient, validateTwilioSignature, normalizePhoneNumber, resolveIdentity } from "./_whatsappAuth.js";
+import { classifyMediaType, fetchTwilioMedia, storeMedia } from "./_whatsappMedia.js";
+import { advanceConversation } from "./_whatsappConversation.js";
+
+function twiml(message) {
+  const body = message ? `<Message>${escapeXml(message)}</Message>` : "";
+  return `<?xml version="1.0" encoding="UTF-8"?><Response>${body}</Response>`;
+}
+
+function escapeXml(s) {
+  return String(s).replace(/[<>&'"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" }[c]));
+}
+
+function maskPhone(p) {
+  const s = String(p || "");
+  return s.length > 4 ? `${"*".repeat(s.length - 4)}${s.slice(-4)}` : s;
+}
+
+function log(event, fields = {}) {
+  // Structured, and deliberately never includes message text or media
+  // content — only safe metadata, per the integration spec's logging rule.
+  console.log(JSON.stringify({ event, ...fields }));
+}
+
+function sendTwiml(res, message) {
+  res.setHeader("Content-Type", "text/xml");
+  res.status(200).send(twiml(message));
+}
+
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    res.status(405).send("Method not allowed");
+    return;
+  }
+
+  let valid;
+  try {
+    valid = validateTwilioSignature(req);
+  } catch (err) {
+    res.status(500).send(err.message);
+    return;
+  }
+  if (!valid) {
+    res.status(403).send("Invalid signature");
+    return;
+  }
+
+  const supabase = serviceClient();
+  const body = req.body || {};
+  const phoneNumber = normalizePhoneNumber(body.From);
+  const messageSid = body.MessageSid;
+  const textBody = body.Body || "";
+  const numMedia = parseInt(body.NumMedia || "0", 10);
+  const mediaUrl = numMedia > 0 ? body.MediaUrl0 : null;
+  const mediaContentType = numMedia > 0 ? body.MediaContentType0 : null;
+
+  log("WHATSAPP_MESSAGE_RECEIVED", { phone: maskPhone(phoneNumber), hasMedia: numMedia > 0, mediaContentType });
+
+  if (!phoneNumber || !messageSid) {
+    sendTwiml(res, null);
+    return;
+  }
+
+  // Idempotency: Twilio retries on anything but a prompt 200, so the same
+  // message can arrive more than once. The unique constraint on
+  // twilio_message_sid is the actual guard — this insert either claims the
+  // message or tells us someone already has.
+  const { error: insertMsgErr } = await supabase.from("whatsapp_messages").insert({
+    twilio_message_sid: messageSid,
+    phone_number: phoneNumber,
+    message_type: numMedia > 0 ? (classifyMediaType(mediaContentType) || "unknown") : "text",
+    text_body: textBody || null,
+    media_content_type: mediaContentType,
+    processing_status: "processing",
+  });
+  if (insertMsgErr) {
+    if (insertMsgErr.code === "23505") {
+      log("PROCESSING_FAILED", { reason: "duplicate", messageSid });
+      sendTwiml(res, null);
+      return;
+    }
+    log("PROCESSING_FAILED", { reason: "message_log_insert_failed", messageSid });
+    sendTwiml(res, "I couldn't process that right now. Please try sending it again.");
+    return;
+  }
+
+  async function finishMessage(fields) {
+    await supabase.from("whatsapp_messages").update({ ...fields, processed_at: new Date().toISOString() }).eq("twilio_message_sid", messageSid);
+  }
+
+  try {
+    const identity = await resolveIdentity(supabase, phoneNumber);
+    log("WHATSAPP_USER_IDENTIFIED", { phone: maskPhone(phoneNumber), known: !!identity });
+
+    if (!identity) {
+      const { data: token, error: tokenErr } = await supabase
+        .from("whatsapp_link_tokens").insert({ phone_number: phoneNumber }).select("code").single();
+      if (tokenErr) throw new Error(tokenErr.message);
+      const link = `${process.env.APP_URL}/connect-whatsapp?token=${token.code}`;
+      await finishMessage({ processing_status: "completed" });
+      sendTwiml(res, `Welcome to Samskara 👋\nTo protect your family's memories, I need to connect this WhatsApp number with your Samskara account.\n\nOpen this secure link:\n${link}\n\nIt expires in 15 minutes.`);
+      return;
+    }
+
+    await finishMessage({ user_id: identity.userId, family_id: identity.familyId });
+
+    // Unsupported attachment — fail clearly rather than silently dropping it
+    // or feeding an unknown type into the conversation engine.
+    if (numMedia > 0 && !classifyMediaType(mediaContentType)) {
+      await finishMessage({ processing_status: "failed", error_message: "unsupported media type" });
+      sendTwiml(res, "I'm not able to preserve this file type yet. Please send a photo, PDF, text, or voice note.");
+      return;
+    }
+
+    let mediaKind = null, mediaPath = null;
+    if (numMedia > 0) {
+      const { buffer, ext, kind } = await fetchTwilioMedia(mediaUrl, mediaContentType);
+      // The person isn't resolved yet at upload time — "unassigned" is the
+      // same placeholder the in-app ContributeModal already uses for media
+      // about someone not yet (or never) linked to a tree entry.
+      mediaPath = await storeMedia(supabase, identity.familyId, "unassigned", buffer, ext, mediaContentType);
+      mediaKind = kind;
+      log("MEDIA_STORED", { phone: maskPhone(phoneNumber), kind });
+    }
+
+    const { data: conversation } = await supabase
+      .from("whatsapp_conversations").select("*").eq("phone_number", phoneNumber).maybeSingle();
+
+    // An abandoned conversation older than a day starts fresh rather than
+    // trapping the next message in a stale flow.
+    const isStale = conversation && Date.now() - new Date(conversation.last_interaction_at).getTime() > 24 * 60 * 60 * 1000;
+    const effectiveConversation = isStale ? null : conversation;
+
+    const result = await advanceConversation({
+      supabase, familyId: identity.familyId,
+      conversation: effectiveConversation,
+      inbound: { textBody, mediaKind, mediaPath, originalFilename: null },
+    });
+
+    if (result.contributions.length) {
+      log("PERSON_MATCHED", { phone: maskPhone(phoneNumber), matched: !!result.personId });
+      const status = identity.role === "head" || identity.role === "admin" ? "Verified" : "Pending";
+      const rows = result.contributions.map((c) => ({
+        family_id: identity.familyId,
+        person_id: result.personId || null,
+        type: c.type,
+        content: c.content,
+        title: c.title,
+        contributor: identity.displayName,
+        contributor_user_id: identity.userId,
+        status,
+        source: "whatsapp",
+        source_message_id: messageSid,
+      }));
+      const { error: contribErr } = await supabase.from("contributions").insert(rows);
+      if (contribErr) {
+        // Nothing lost — keep the draft in place so a retry of YES works,
+        // rather than clearing the conversation on a failed save.
+        await supabase.from("whatsapp_conversations").upsert({
+          phone_number: phoneNumber, user_id: identity.userId, family_id: identity.familyId,
+          state: "WAITING_FOR_CONFIRMATION", pending_person_id: result.personId || null,
+          context: conversation?.context || {}, last_interaction_at: new Date().toISOString(),
+        });
+        await finishMessage({ processing_status: "failed", error_message: "contribution insert failed" });
+        log("PROCESSING_FAILED", { reason: "contribution_insert", phone: maskPhone(phoneNumber) });
+        sendTwiml(res, "I couldn't save this memory right now. Nothing has been lost. Please try sending it again.");
+        return;
+      }
+      log("MEMORY_CREATED", { phone: maskPhone(phoneNumber), count: rows.length, status });
+      const whoText = result.personName ? `${result.personName}'s memories` : "your family's memories";
+      const reply = status === "Verified"
+        ? `Saved ❤️\nI added this to ${whoText}.`
+        : `Saved — sent to your family's review queue for ${whoText}. A Head or Admin will confirm it shortly.`;
+      await supabase.from("whatsapp_conversations").upsert({
+        phone_number: phoneNumber, user_id: identity.userId, family_id: identity.familyId,
+        state: "IDLE", pending_person_id: null, context: {}, last_interaction_at: new Date().toISOString(),
+      });
+      await finishMessage({ processing_status: "completed", stored_media_path: mediaPath });
+      sendTwiml(res, reply);
+      return;
+    }
+
+    await supabase.from("whatsapp_conversations").upsert({
+      phone_number: phoneNumber, user_id: identity.userId, family_id: identity.familyId,
+      state: result.nextState, pending_person_id: result.pendingPersonId || null,
+      context: result.context, last_interaction_at: new Date().toISOString(),
+    });
+    await finishMessage({ processing_status: "completed", stored_media_path: mediaPath });
+    log("REPLY_SENT", { phone: maskPhone(phoneNumber), state: result.nextState });
+    sendTwiml(res, result.reply);
+  } catch (err) {
+    log("PROCESSING_FAILED", { reason: err.message, messageSid });
+    await finishMessage({ processing_status: "failed", error_message: err.message }).catch(() => {});
+    sendTwiml(res, "I couldn't save this memory right now. Nothing has been lost. Please try sending it again.");
+  }
+}

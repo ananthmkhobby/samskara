@@ -26,6 +26,7 @@ import TermsOfServiceView from "./components/TermsOfServiceView";
 import PrivacyPolicyStandalone from "./components/PrivacyPolicyStandalone";
 import TermsOfServiceStandalone from "./components/TermsOfServiceStandalone";
 import JoinFamilyModal from "./components/JoinFamilyModal";
+import ConnectWhatsAppView from "./components/ConnectWhatsAppView";
 import ParamparaView from "./components/ParamparaView";
 import ParamparaContributeModal from "./components/ParamparaContributeModal";
 import LibraryView from "./components/LibraryView";
@@ -61,7 +62,7 @@ async function withMediaUrl(contribution) {
   return { ...contribution, mediaUrl };
 }
 
-const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms" };
+const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
 const pathForView = (v) => VIEW_PATHS[v] || "/";
 const viewForPath = (p) => PATH_TO_VIEW[p] || "cover";
@@ -78,6 +79,9 @@ const FORCE_INTRO = typeof window !== "undefined" && new URLSearchParams(window.
 // families); this one is for someone who opens a second family's invite
 // link while already signed in and a member elsewhere.
 const INVITE_CODE_FROM_URL = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("code") : null;
+// Same "read once at module load" reasoning — a WhatsApp connect link's
+// `?token=` needs to survive to the first render, same as the invite code.
+const WHATSAPP_LINK_TOKEN_FROM_URL = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("token") : null;
 
 export default function App() {
   const [view, setView] = useState(() => viewForPath(window.location.pathname));
@@ -884,6 +888,7 @@ export default function App() {
         {view === "help" && <HelpView />}
         {view === "privacy" && <PrivacyPolicyView />}
         {view === "terms" && <TermsOfServiceView />}
+        {view === "connectWhatsapp" && <ConnectWhatsAppView token={WHATSAPP_LINK_TOKEN_FROM_URL} onDone={() => goTo("cover")} />}
       </main>
       <BottomBar view={view} onNav={goTo} pendingCount={pendingCount} onContribute={openContribute} />
 

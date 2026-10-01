@@ -16,10 +16,10 @@ import { BOOKS, PEOPLE } from "../data/people";
 import PersonAvatar from "./PersonAvatar";
 import PhotoLightbox from "./PhotoLightbox";
 import AddPeopleCard from "./AddPeopleCard";
+import WhatsAppAdminTab from "./WhatsAppAdminTab";
 import { EXP_LABELS } from "./Icons";
 
 const TABS = ["Pending", "Verified", "Rejected", "All"];
-const ADMIN_TABS = ["Members", "Review queue"];
 const ROLE_LABELS = { head: "Family Head", admin: "Admin", member: "Member" };
 
 function RosterCard() {
@@ -630,6 +630,8 @@ function MembersPage() {
 
 export default function AdminView({ contributions, onApprove, onReject, canModerate }) {
   const showMembersTab = !IS_DEMO && canModerate;
+  const showWhatsAppTab = !IS_DEMO && canModerate;
+  const adminTabs = [...(showMembersTab ? ["Members"] : []), "Review queue", ...(showWhatsAppTab ? ["WhatsApp"] : [])];
   const [adminTab, setAdminTab] = useState(showMembersTab ? "Members" : "Review queue");
   const [tab, setTab] = useState("Pending");
   const [lightboxSrc, setLightboxSrc] = useState(null);
@@ -729,22 +731,24 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
   return (
     <section className="wrap">
       <div className="section-head">
-        <h2>{adminTab === "Members" ? "Manage members" : "Review queue"}</h2>
+        <h2>{adminTab === "Members" ? "Manage members" : adminTab === "WhatsApp" ? "WhatsApp activity" : "Review queue"}</h2>
         <p>
           {adminTab === "Members"
             ? "Invite people, see who's joined, fix a name, or set which person in the tree someone is — for themselves or, if they never got around to it, for anyone."
+            : adminTab === "WhatsApp"
+            ? "Recent messages Samskara has received on WhatsApp for this family, and what happened with each one — for debugging the integration, not for everyday use."
             : "Everything the family has submitted or proposed to edit, waiting for a second pair of eyes before it changes the archive."}
         </p>
-        {adminTab !== "Members" && !canModerate && <p className="form-hint" style={{ marginTop: 6 }}>You can see what's pending, but only Admins or the Family Head can approve or reject.</p>}
+        {adminTab === "Review queue" && !canModerate && <p className="form-hint" style={{ marginTop: 6 }}>You can see what's pending, but only Admins or the Family Head can approve or reject.</p>}
       </div>
-      {showMembersTab && (
+      {(showMembersTab || showWhatsAppTab) && (
         <div className="admin-tabs">
-          {ADMIN_TABS.map((t) => (
+          {adminTabs.map((t) => (
             <button key={t} className={`chip${adminTab === t ? " active" : ""}`} onClick={() => setAdminTab(t)}>{t}</button>
           ))}
         </div>
       )}
-      {adminTab === "Members" ? <MembersPage /> : (
+      {adminTab === "Members" ? <MembersPage /> : adminTab === "WhatsApp" ? <WhatsAppAdminTab /> : (
       <>
       <div className="admin-tabs">
         {TABS.map((t) => (
