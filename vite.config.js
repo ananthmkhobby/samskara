@@ -11,7 +11,7 @@ export default defineConfig({
   // DNS-rebinding protection. Only affects `vite`/`vercel dev`; the
   // production build (`vite build`) runs no dev server at all.
   server: {
-    allowedHosts: ['.loca.lt'],
+    allowedHosts: ['.loca.lt', '.trycloudflare.com'],
     // `vercel dev` emulates the serverless functions in api/*.js — running
     // on its own port here rather than fronting this whole dev server,
     // because vercel dev's own router also applies vercel.json's SPA
@@ -20,7 +20,12 @@ export default defineConfig({
     // (/src/main.jsx, /@vite/client, ...), corrupting them. Proxying just
     // /api from Vite avoids that entirely.
     proxy: {
-      '/api': 'http://localhost:3001',
+      // An uncommon port, deliberately — 3000/3001 turned out to already be
+      // in use by an unrelated project's dev server on this machine, which
+      // silently split requests between the two (both ended up listening on
+      // "localhost:3001" on different interfaces), causing some webhook
+      // calls to hang against the wrong server entirely.
+      '/api': 'http://localhost:3099',
     },
   },
   // `vite preview` (serves the production dist/ build) needs the same two
@@ -29,9 +34,9 @@ export default defineConfig({
   // trip localtunnel's free-tier rate limit on load; a production build is
   // 1-2 files and loads fine through the tunnel.
   preview: {
-    allowedHosts: ['.loca.lt'],
+    allowedHosts: ['.loca.lt', '.trycloudflare.com'],
     proxy: {
-      '/api': 'http://localhost:3001',
+      '/api': 'http://localhost:3099',
     },
   },
   plugins: [
