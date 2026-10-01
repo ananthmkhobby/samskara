@@ -15,7 +15,15 @@ export default function ConnectWhatsAppView({ token, onDone }) {
     let cancelled = false;
     redeemWhatsAppLink(token)
       .then(() => { if (!cancelled) setStatus("done"); })
-      .catch((err) => { if (!cancelled) { setError(err.message); setStatus("error"); } });
+      .catch((err) => { if (!cancelled) { setError(err.message); setStatus("error"); } })
+      .finally(() => {
+        // App.jsx stashes the token here so it survives the login page's
+        // full reload (by then the URL's own ?token= has already been
+        // stripped) — cleared once this attempt is done, successful or
+        // not, so a later unrelated visit to this page doesn't silently
+        // retry a stale or already-used code.
+        try { localStorage.removeItem("vamsha.whatsappLinkToken"); } catch { /* storage unavailable */ }
+      });
     return () => { cancelled = true; };
   }, [token]);
 

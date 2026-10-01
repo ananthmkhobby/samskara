@@ -79,9 +79,27 @@ const FORCE_INTRO = typeof window !== "undefined" && new URLSearchParams(window.
 // families); this one is for someone who opens a second family's invite
 // link while already signed in and a member elsewhere.
 const INVITE_CODE_FROM_URL = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("code") : null;
-// Same "read once at module load" reasoning — a WhatsApp connect link's
-// `?token=` needs to survive to the first render, same as the invite code.
-const WHATSAPP_LINK_TOKEN_FROM_URL = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("token") : null;
+// Same "read once at module load" reasoning as FORCE_INTRO/INVITE_CODE_FROM_URL
+// — but this one needs to survive even longer: an unauthenticated visitor
+// hits NEEDS_LOGIN, logs in, and AuthPanel does a full window.location.reload()
+// to pick up the new session. By the time that reload happens, the URL has
+// long since been stripped to just the path (see the mount effect's
+// replaceState a bit further down) — the module-level "read once" trick
+// alone isn't enough here because the whole module reloads too. Stashing it
+// in localStorage (not sessionStorage — a link tapped from WhatsApp on
+// mobile can open in a fresh tab/webview that doesn't share sessionStorage
+// with whatever reloads next) lets the post-login reload recover a token
+// the address bar no longer shows. Harmless to leave lingering: the token
+// is single-use and expires in 15 minutes either way.
+const WHATSAPP_LINK_TOKEN_FROM_URL = (() => {
+  if (typeof window === "undefined") return null;
+  const fromUrl = new URLSearchParams(window.location.search).get("token");
+  if (fromUrl) {
+    try { localStorage.setItem("vamsha.whatsappLinkToken", fromUrl); } catch { /* storage unavailable */ }
+    return fromUrl;
+  }
+  try { return localStorage.getItem("vamsha.whatsappLinkToken"); } catch { return null; }
+})();
 
 export default function App() {
   const [view, setView] = useState(() => viewForPath(window.location.pathname));

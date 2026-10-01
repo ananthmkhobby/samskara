@@ -4,6 +4,36 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Lets the dev server respond when reached through a tunnel hostname
+  // (e.g. `vercel dev` + localtunnel, used to give Twilio's WhatsApp
+  // webhook a public HTTPS URL during local testing) — Vite's dev server
+  // otherwise rejects any request whose Host header isn't localhost, as a
+  // DNS-rebinding protection. Only affects `vite`/`vercel dev`; the
+  // production build (`vite build`) runs no dev server at all.
+  server: {
+    allowedHosts: ['.loca.lt'],
+    // `vercel dev` emulates the serverless functions in api/*.js — running
+    // on its own port here rather than fronting this whole dev server,
+    // because vercel dev's own router also applies vercel.json's SPA
+    // rewrite (needed in production so deep links serve index.html) to
+    // every non-/api path, including Vite's own internal asset requests
+    // (/src/main.jsx, /@vite/client, ...), corrupting them. Proxying just
+    // /api from Vite avoids that entirely.
+    proxy: {
+      '/api': 'http://localhost:3001',
+    },
+  },
+  // `vite preview` (serves the production dist/ build) needs the same two
+  // settings as `server` above — used instead of the dev server when
+  // tunneling, since dev mode's dozens of unbundled module/CSS requests
+  // trip localtunnel's free-tier rate limit on load; a production build is
+  // 1-2 files and loads fine through the tunnel.
+  preview: {
+    allowedHosts: ['.loca.lt'],
+    proxy: {
+      '/api': 'http://localhost:3001',
+    },
+  },
   plugins: [
     react(),
     VitePWA({
