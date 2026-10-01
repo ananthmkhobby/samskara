@@ -31,6 +31,27 @@ export function normalizePhoneNumber(whatsappFrom) {
   return String(whatsappFrom || "").replace(/^whatsapp:/, "").trim();
 }
 
+let restClient = null;
+function twilioRestClient() {
+  if (!restClient) restClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  return restClient;
+}
+
+// Replies are sent via Twilio's REST API rather than returned as inline
+// TwiML from the webhook response — a trial account's "Try out WhatsApp"
+// flow (what a brand-new Twilio account gets today in place of the old
+// Sandbox) doesn't support direct TwiML in the response at all, while the
+// REST API send works identically across trial, Sandbox, and a full paid
+// account. One code path, no WHATSAPP_ENV branching needed.
+export async function sendWhatsAppMessage(phoneNumber, body) {
+  if (!body) return;
+  await twilioRestClient().messages.create({
+    from: process.env.TWILIO_WHATSAPP_FROM,
+    to: `whatsapp:${phoneNumber}`,
+    body,
+  });
+}
+
 // Resolves a phone number to its linked Samskara user + family + role, or
 // null if the number has never been linked. One family per user is already
 // enforced at the schema level (family_members.user_id is unique), so this

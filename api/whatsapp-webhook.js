@@ -7,19 +7,17 @@
 // Flow: validate signature -> idempotency check -> resolve who's texting ->
 // (first time: send them a one-time account-linking link) -> advance their
 // conversation -> store any media -> save any resulting memory as ordinary
-// `contributions` rows -> reply with TwiML.
-import { serviceClient, validateTwilioSignature, normalizePhoneNumber, resolveIdentity } from "./_whatsappAuth.js";
+// `contributions` rows -> reply via the Twilio REST API.
+//
+// Replies are NOT returned as inline TwiML from this response — a trial
+// Twilio account's "Try out WhatsApp" flow doesn't support that at all
+// ("Direct TwiML XML is not supported during response", per Twilio's own
+// trial docs), while a REST API send works the same way across trial,
+// Sandbox, and a full paid account. This endpoint always just acks Twilio
+// with a bare 200 once the inbound message has been durably recorded.
+import { serviceClient, validateTwilioSignature, normalizePhoneNumber, resolveIdentity, sendWhatsAppMessage } from "./_whatsappAuth.js";
 import { classifyMediaType, fetchTwilioMedia, storeMedia } from "./_whatsappMedia.js";
 import { advanceConversation } from "./_whatsappConversation.js";
-
-function twiml(message) {
-  const body = message ? `<Message>${escapeXml(message)}</Message>` : "";
-  return `<?xml version="1.0" encoding="UTF-8"?><Response>${body}</Response>`;
-}
-
-function escapeXml(s) {
-  return String(s).replace(/[<>&'"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" }[c]));
-}
 
 function maskPhone(p) {
   const s = String(p || "");
@@ -32,9 +30,22 @@ function log(event, fields = {}) {
   console.log(JSON.stringify({ event, ...fields }));
 }
 
-function sendTwiml(res, message) {
-  res.setHeader("Content-Type", "text/xml");
-  res.status(200).send(twiml(message));
+// A failed outbound send is a separate problem from the inbound webhook
+// itself (which Twilio has already successfully delivered) — logged, not
+// thrown, so it never turns into a webhook retry that re-processes a
+// message we already handled.
+async function reply(phoneNumber, message) {
+  if (!message) return;
+  try {
+    await sendWhatsAppMessage(phoneNumber, message);
+    log("REPLY_SENT", { phone: maskPhone(phoneNumber) });
+  } catch (err) {
+    log("PROCESSING_FAILED", { reason: `reply_send_failed: ${err.message}`, phone: maskPhone(phoneNumber) });
+  }
+}
+
+function ack(res) {
+  res.status(200).send("");
 }
 
 export default async function handler(req, res) {
@@ -67,7 +78,7 @@ export default async function handler(req, res) {
   log("WHATSAPP_MESSAGE_RECEIVED", { phone: maskPhone(phoneNumber), hasMedia: numMedia > 0, mediaContentType });
 
   if (!phoneNumber || !messageSid) {
-    sendTwiml(res, null);
+    ack(res);
     return;
   }
 
@@ -86,11 +97,12 @@ export default async function handler(req, res) {
   if (insertMsgErr) {
     if (insertMsgErr.code === "23505") {
       log("PROCESSING_FAILED", { reason: "duplicate", messageSid });
-      sendTwiml(res, null);
+      ack(res);
       return;
     }
     log("PROCESSING_FAILED", { reason: "message_log_insert_failed", messageSid });
-    sendTwiml(res, "I couldn't process that right now. Please try sending it again.");
+    await reply(phoneNumber, "I couldn't process that right now. Please try sending it again.");
+    ack(res);
     return;
   }
 
@@ -108,7 +120,8 @@ export default async function handler(req, res) {
       if (tokenErr) throw new Error(tokenErr.message);
       const link = `${process.env.APP_URL}/connect-whatsapp?token=${token.code}`;
       await finishMessage({ processing_status: "completed" });
-      sendTwiml(res, `Welcome to Samskara 👋\nTo protect your family's memories, I need to connect this WhatsApp number with your Samskara account.\n\nOpen this secure link:\n${link}\n\nIt expires in 15 minutes.`);
+      await reply(phoneNumber, `Welcome to Samskara 👋\nTo protect your family's memories, I need to connect this WhatsApp number with your Samskara account.\n\nOpen this secure link:\n${link}\n\nIt expires in 15 minutes.`);
+      ack(res);
       return;
     }
 
@@ -118,7 +131,8 @@ export default async function handler(req, res) {
     // or feeding an unknown type into the conversation engine.
     if (numMedia > 0 && !classifyMediaType(mediaContentType)) {
       await finishMessage({ processing_status: "failed", error_message: "unsupported media type" });
-      sendTwiml(res, "I'm not able to preserve this file type yet. Please send a photo, PDF, text, or voice note.");
+      await reply(phoneNumber, "I'm not able to preserve this file type yet. Please send a photo, PDF, text, or voice note.");
+      ack(res);
       return;
     }
 
@@ -173,12 +187,13 @@ export default async function handler(req, res) {
         });
         await finishMessage({ processing_status: "failed", error_message: "contribution insert failed" });
         log("PROCESSING_FAILED", { reason: "contribution_insert", phone: maskPhone(phoneNumber) });
-        sendTwiml(res, "I couldn't save this memory right now. Nothing has been lost. Please try sending it again.");
+        await reply(phoneNumber, "I couldn't save this memory right now. Nothing has been lost. Please try sending it again.");
+        ack(res);
         return;
       }
       log("MEMORY_CREATED", { phone: maskPhone(phoneNumber), count: rows.length, status });
       const whoText = result.personName ? `${result.personName}'s memories` : "your family's memories";
-      const reply = status === "Verified"
+      const replyText = status === "Verified"
         ? `Saved ❤️\nI added this to ${whoText}.`
         : `Saved — sent to your family's review queue for ${whoText}. A Head or Admin will confirm it shortly.`;
       await supabase.from("whatsapp_conversations").upsert({
@@ -186,7 +201,8 @@ export default async function handler(req, res) {
         state: "IDLE", pending_person_id: null, context: {}, last_interaction_at: new Date().toISOString(),
       });
       await finishMessage({ processing_status: "completed", stored_media_path: mediaPath });
-      sendTwiml(res, reply);
+      await reply(phoneNumber, replyText);
+      ack(res);
       return;
     }
 
@@ -196,11 +212,12 @@ export default async function handler(req, res) {
       context: result.context, last_interaction_at: new Date().toISOString(),
     });
     await finishMessage({ processing_status: "completed", stored_media_path: mediaPath });
-    log("REPLY_SENT", { phone: maskPhone(phoneNumber), state: result.nextState });
-    sendTwiml(res, result.reply);
+    await reply(phoneNumber, result.reply);
+    ack(res);
   } catch (err) {
     log("PROCESSING_FAILED", { reason: err.message, messageSid });
     await finishMessage({ processing_status: "failed", error_message: err.message }).catch(() => {});
-    sendTwiml(res, "I couldn't save this memory right now. Nothing has been lost. Please try sending it again.");
+    await reply(phoneNumber, "I couldn't save this memory right now. Nothing has been lost. Please try sending it again.");
+    ack(res);
   }
 }
