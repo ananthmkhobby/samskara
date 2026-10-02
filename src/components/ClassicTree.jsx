@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { computeClassicLayout, NODE_R, SIDE_PAD, LABEL_CLEARANCE, LABEL_W } from "../lib/classicTreeLayout";
-import { yearsLabel, roleTag } from "../data/helpers";
+import { yearsLabel, roleTag, formatName } from "../data/helpers";
 import { usePanZoom } from "../hooks/usePanZoom";
 import { MY_PERSON_ID } from "../data/session";
 import PersonAvatar from "./PersonAvatar";
@@ -118,7 +118,7 @@ export default function ClassicTree({ people, contributions, valueFilter, onSele
               {p.id === MY_PERSON_ID && <span className="me-badge">You</span>}
               <PersonAvatar person={p} size={64} minGen={minGen} maxGen={maxGen} className="avatar" />
               <div className="label">
-                <div className="p-name">{p.name}</div>
+                <div className="p-name">{formatName(p)}</div>
                 <div className="p-role">{role || " "}</div>
                 <div className="p-years tnum">{yearsLabel(p)}</div>
               </div>

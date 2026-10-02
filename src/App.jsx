@@ -729,10 +729,11 @@ export default function App() {
         }
       } else if (c.field === "heritage") {
         try {
-          const { rashi, gotra } = JSON.parse(c.content);
+          const { rashi, gotra, birthGotra } = JSON.parse(c.content);
           person.rashi = rashi || undefined;
           person.gotra = gotra || undefined;
-          updatePersonFields(familyId, c.personId, { rashi: rashi || null, gotra: gotra || null }).catch((err) => console.error(err.message));
+          person.birthGotra = birthGotra || undefined;
+          updatePersonFields(familyId, c.personId, { rashi: rashi || null, gotra: gotra || null, birth_gotra: birthGotra || null }).catch((err) => console.error(err.message));
         } catch { /* malformed content, skip */ }
       } else if (c.field === "dayInLife") {
         try {

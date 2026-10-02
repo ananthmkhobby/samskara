@@ -19,6 +19,7 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
   const [bornError, setBornError] = useState("");
   const [rashi, setRashi] = useState(request.rashi || "");
   const [gotra, setGotra] = useState(request.gotra || "");
+  const [birthGotra, setBirthGotra] = useState(request.birthGotra || "");
   const [dayYear, setDayYear] = useState(request.dayYear || "");
   const [dayItems, setDayItems] = useState(request.dayItems || "");
   const [selectedValues, setSelectedValues] = useState(request.values || []);
@@ -120,7 +121,7 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
       return;
     }
     const content = isHeritage
-      ? JSON.stringify({ rashi: rashi.trim(), gotra: gotra.trim() })
+      ? JSON.stringify({ rashi: rashi.trim(), gotra: gotra.trim(), birthGotra: birthGotra.trim() })
       : isLifeLesson
         ? JSON.stringify({ quote: value.trim(), values: selectedValues })
         : isDayInLife
@@ -208,6 +209,13 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
                 <div className="form-row">
                   <label>Gotra (optional)</label>
                   <input type="text" placeholder="e.g. Bharadwaja" value={gotra} onChange={(e) => setGotra(e.target.value)} />
+                </div>
+                <div className="form-row">
+                  <label>Birth gotra (optional)</label>
+                  <p className="form-hint" style={{ marginTop: 0, marginBottom: 6 }}>
+                    Only needed if this differs from the gotra above — e.g. a married-in daughter-in-law's gotra by birth, kept alongside her gotra by marriage.
+                  </p>
+                  <input type="text" placeholder="e.g. Kashyapa" value={birthGotra} onChange={(e) => setBirthGotra(e.target.value)} />
                 </div>
               </>
             ) : isLifeLesson ? (

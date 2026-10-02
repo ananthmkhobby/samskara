@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { byId, yearsLabel, relationshipCaption, mutualSpouse, MIN_GEN, MAX_GEN } from "../data/helpers";
+import { byId, yearsLabel, relationshipCaption, mutualSpouse, formatName, MIN_GEN, MAX_GEN } from "../data/helpers";
 import { MY_PERSON_ID } from "../data/session";
 import PersonAvatar from "./PersonAvatar";
 
@@ -21,7 +21,7 @@ function RelativeCard({ person, onGoTo, onOpenFolio, size = 60 }) {
     <div className="focus-kin-card">
       <button type="button" className="focus-kin-main" onClick={() => onGoTo(person.id)} aria-label={`View ${person.name} in focus`}>
         <PersonAvatar person={person} size={size} minGen={MIN_GEN} maxGen={MAX_GEN} className="focus-kin-avatar" />
-        <span className="focus-kin-name">{person.name}</span>
+        <span className="focus-kin-name">{formatName(person)}</span>
         <span className="focus-kin-years tnum">{yearsLabel(person)}</span>
       </button>
       <button type="button" className="focus-kin-hint" onClick={() => onOpenFolio(person.id)}>Open folio →</button>
@@ -57,7 +57,7 @@ export default function FocusTreeView({ people, onSelectPerson }) {
   const spouse = mutualSpouse(person);
   const children = people.filter((p) => p.parents?.includes(person.id));
   const relationship = relationshipCaption(person);
-  const crumbNames = history.map((id) => byId(id)?.name || "?");
+  const crumbNames = history.map((id) => { const p = byId(id); return p ? formatName(p) : "?"; });
   const atStart = history.length <= 1;
   // The very first screen you land on, with a spouse and no parents of
   // their own recorded — the actual founding couple of the tree. Shown
@@ -106,14 +106,14 @@ export default function FocusTreeView({ people, onSelectPerson }) {
       ) : (
         <div className="focus-person">
           <PersonAvatar person={person} size={104} minGen={MIN_GEN} maxGen={MAX_GEN} className="focus-avatar" />
-          <p className="focus-name">{person.name}</p>
+          <p className="focus-name">{formatName(person)}</p>
           <p className="focus-years tnum">{yearsLabel(person)}</p>
           {relationship && <p className="focus-relation">{relationship}</p>}
           {spouse && (
             <div className="focus-spouse-row">
               <button type="button" className="focus-spouse-pill" onClick={() => goTo(spouse.id)} aria-label={`View ${spouse.name} in focus`}>
                 <PersonAvatar person={spouse} size={34} minGen={MIN_GEN} maxGen={MAX_GEN} className="focus-kin-avatar" />
-                <span className="focus-spouse-text"><span className="focus-spouse-label">Married to</span><b>{spouse.name}</b></span>
+                <span className="focus-spouse-text"><span className="focus-spouse-label">Married to</span><b>{formatName(spouse)}</b></span>
               </button>
               <button type="button" className="focus-spouse-folio-btn" aria-label={`Open ${spouse.name}'s folio`} title="Open folio" onClick={() => onSelectPerson(spouse.id)}>→</button>
             </div>

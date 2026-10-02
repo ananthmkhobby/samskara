@@ -28,6 +28,24 @@ export function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// The one check for "has this person passed away" — several call sites used
+// to test `p.died` alone and silently missed `diedUnknown` (passed away, but
+// no date on record). Centralized here so formatName and every other caller
+// stay in sync with each other instead of drifting.
+export function isDeceased(p) {
+  return !!(p?.died || p?.diedUnknown);
+}
+
+// "Late " prefix for anyone who has passed — the gentle grayscale-avatar cue
+// (PersonAvatar) already marks this visually, but a name read aloud or
+// skimmed in a list carries no such cue, and this is the traditional honorific
+// for it. Applied only where a person's name is DISPLAYED, never where it's
+// being edited (an edit field must show the raw name to correct it).
+export function formatName(p) {
+  if (!p?.name) return p?.name ?? "";
+  return isDeceased(p) ? `Late ${p.name}` : p.name;
+}
+
 export function yearsLabel(p) {
   const by = p.born ? p.born.slice(0, 4) : "?";
   if (p.died) return `${by}–${p.died.slice(0, 4)}`;

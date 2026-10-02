@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { PEOPLE } from "../data/people";
-import { yearsLabel, relationshipCaption, MIN_GEN, MAX_GEN } from "../data/helpers";
+import { yearsLabel, relationshipCaption, formatName, MIN_GEN, MAX_GEN } from "../data/helpers";
 import PersonAvatar from "./PersonAvatar";
 
 export default function SearchView({ onSelectPerson }) {
@@ -27,7 +27,7 @@ export default function SearchView({ onSelectPerson }) {
               <button key={p.id} type="button" className="card search-result-row" onClick={() => onSelectPerson(p.id)}>
                 <PersonAvatar person={p} size={44} minGen={MIN_GEN} maxGen={MAX_GEN} className="avatar" />
                 <span className="search-result-text">
-                  <b>{p.name}</b>
+                  <b>{formatName(p)}</b>
                   <span>{[relationshipCaption(p), yearsLabel(p)].filter(Boolean).join(" · ")}</span>
                 </span>
               </button>

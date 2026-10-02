@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { byId, yearsLabel, trustLabel, contributionsFor, verifiedMediaFor, personHasContent, roleTag, relationshipCaption, widowedLabel, mutualSpouse, MIN_GEN, MAX_GEN } from "../data/helpers";
+import { byId, yearsLabel, trustLabel, contributionsFor, verifiedMediaFor, personHasContent, roleTag, relationshipCaption, widowedLabel, mutualSpouse, formatName, MIN_GEN, MAX_GEN } from "../data/helpers";
 import { MEDIA_ICONS, EXP_LABELS, ExpIcon, AUDIO_EXP_TYPES, EditPencilIcon } from "./Icons";
 import PersonAvatar from "./PersonAvatar";
 import PhotoLightbox from "./PhotoLightbox";
@@ -60,7 +60,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
           </div>
           <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoFile} />
           <h2 className="folio-name-line">
-            {person.name}
+            {formatName(person)}
             <button
               type="button" className="folio-name-edit"
               aria-label={`Edit ${person.name}'s name`}
@@ -69,7 +69,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
               <EditPencilIcon />
             </button>
           </h2>
-          <div className="role">{role || (spouse ? `m. ${spouse.name}` : "")} — {yearsLabel(person)}</div>
+          <div className="role">{role || (spouse ? `m. ${formatName(spouse)}` : "")} — {yearsLabel(person)}</div>
           {(relationship || widowed) && (
             <div className="relationship">{[relationship, widowed].filter(Boolean).join(" · ")}</div>
           )}
@@ -140,12 +140,13 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
           <div className="folio-section">
             <div className="folio-section-head">
               <h4>Heritage details</h4>
-              <button className="icon-only" aria-label="Edit heritage details" onClick={() => onEdit({ field: "heritage", fieldLabel: "Rashi & gotra", rashi: person.rashi || "", gotra: person.gotra || "" })}><EditPencilIcon /></button>
+              <button className="icon-only" aria-label="Edit heritage details" onClick={() => onEdit({ field: "heritage", fieldLabel: "Rashi & gotra", rashi: person.rashi || "", gotra: person.gotra || "", birthGotra: person.birthGotra || "" })}><EditPencilIcon /></button>
             </div>
-            {person.rashi || person.gotra ? (
+            {person.rashi || person.gotra || person.birthGotra ? (
               <div className="tag-row">
                 {person.rashi && <span className="tag">Rashi: {person.rashi}</span>}
                 {person.gotra && <span className="tag">Gotra: {person.gotra}</span>}
+                {person.birthGotra && <span className="tag">Birth gotra: {person.birthGotra}</span>}
               </div>
             ) : <p className="form-hint" style={{ marginTop: 0 }}>Rashi and gotra haven't been added yet — optional, but nice to have on record.</p>}
           </div>
@@ -200,13 +201,13 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
                   if (!parent) return null;
                   return (
                     <button key={pid} type="button" className="tag" style={{ font: "inherit", cursor: "pointer" }} onClick={() => onSelectPerson?.(pid)}>
-                      Parent: {parent.name}
+                      Parent: {formatName(parent)}
                     </button>
                   );
                 })}
                 {spouse && (
                   <button type="button" className="tag" style={{ font: "inherit", cursor: "pointer" }} onClick={() => onSelectPerson?.(spouse.id)}>
-                    Spouse: {spouse.name}
+                    Spouse: {formatName(spouse)}
                   </button>
                 )}
               </div>
@@ -376,7 +377,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
           ) : (
             <div className="folio-section unwritten">
               <span className="eyebrow">Unwritten leaf</span>
-              <p style={{ marginTop: 10 }}>{person.name}'s story hasn't been told yet. Be the first to add a memory, photo, or date.</p>
+              <p style={{ marginTop: 10 }}>{formatName(person)}'s story hasn't been told yet. Be the first to add a memory, photo, or date.</p>
               <button className="btn primary small" onClick={() => onShare(person.id)}>Share what you know</button>
             </div>
           )}

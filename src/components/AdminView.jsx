@@ -5,7 +5,7 @@ import {
   createInvite, fetchFamilyMembers, updateMemberRole, setMemberPersonLink,
   updateMemberDisplayName, fetchInvites, revokeInvite, fetchMemberEmail,
   createMemberLogin, resetMemberPassword, updateFamilyName, updateFamilyTagline, updateFamilyLogo,
-  redeemContentShare,
+  redeemContentShare, reassignParents,
 } from "../data/familyDb";
 import { categoryFor } from "../lib/parampara";
 import { libraryCategoryFor } from "../lib/library";
@@ -609,6 +609,93 @@ function ImportSharedStoryCard() {
   );
 }
 
+// Corrects who someone's `parents` are on record — the only write path onto
+// that field used to be "+ Add parent" (appends, and hides itself once
+// someone already has one), so a person wired to the wrong branch of the
+// tree (e.g. attached to their own parent's parents instead of their actual
+// parent) had no fix short of a direct database edit. Goes through the
+// reassign_parents() RPC, which validates (no self-parent, no cycle, max 2
+// parents) and cascades `gen` down through the person's own descendants —
+// a page reload afterward is the same resync-from-server pattern
+// AddPeopleCard's bulk import already uses, since the cascade can touch
+// people far from this form's own state.
+function EditRelationshipsCard() {
+  const [personId, setPersonId] = useState("");
+  const [parent1, setParent1] = useState("");
+  const [parent2, setParent2] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const sorted = [...PEOPLE].sort((a, b) => a.name.localeCompare(b.name));
+  const person = personId ? byId(personId) : null;
+
+  function selectPerson(id) {
+    setPersonId(id);
+    setError("");
+    const p = id ? byId(id) : null;
+    setParent1(p?.parents?.[0] || "");
+    setParent2(p?.parents?.[1] || "");
+  }
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!personId) return;
+    const ids = [parent1, parent2].filter(Boolean);
+    if (new Set(ids).size !== ids.length) { setError("Parent 1 and Parent 2 can't be the same person."); return; }
+    setBusy(true);
+    setError("");
+    try {
+      await reassignParents(CURRENT_FAMILY_ID, personId, ids);
+      window.location.reload();
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ padding: 20, marginBottom: 18 }}>
+      <h4 style={{ marginTop: 0 }}>Fix a relationship</h4>
+      <p className="form-hint" style={{ marginTop: 0 }}>
+        Corrects who someone's parents are on record — for when a person was wired to the wrong branch of the
+        tree. Updates their generation, and cascades down to their own children if they have any.
+      </p>
+      <form onSubmit={submit}>
+        <div className="form-row">
+          <label>Person to fix</label>
+          <select value={personId} onChange={(e) => selectPerson(e.target.value)}>
+            <option value="">— choose someone —</option>
+            {sorted.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </div>
+        {person && (
+          <>
+            <p className="form-hint" style={{ marginTop: -4, marginBottom: 12 }}>
+              Currently recorded as child of: {person.parents?.length ? person.parents.map((id) => byId(id)?.name || id).join(" & ") : "no one on record"}.
+            </p>
+            <div className="form-row">
+              <label>Parent 1</label>
+              <select value={parent1} onChange={(e) => setParent1(e.target.value)}>
+                <option value="">— none —</option>
+                {sorted.filter((p) => p.id !== personId).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div className="form-row">
+              <label>Parent 2 (optional)</label>
+              <select value={parent2} onChange={(e) => setParent2(e.target.value)}>
+                <option value="">— none —</option>
+                {sorted.filter((p) => p.id !== personId).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+            <button type="submit" className="btn primary" disabled={busy}>{busy ? "Saving…" : "Save"}</button>
+          </>
+        )}
+      </form>
+    </div>
+  );
+}
+
 function MembersPage() {
   const [invitesRefreshKey, setInvitesRefreshKey] = useState(0);
   const [membersRefreshKey, setMembersRefreshKey] = useState(0);
@@ -620,6 +707,7 @@ function MembersPage() {
       <InvitesList refreshKey={invitesRefreshKey} />
       <CreateLoginCard onCreated={() => setMembersRefreshKey((k) => k + 1)} />
       <RosterCard key={membersRefreshKey} />
+      <EditRelationshipsCard />
       <ImportSharedStoryCard />
       {/* Placed last — this is an occasional bulk action, not something a
           Head/Admin needs on every visit to the Members page. */}
@@ -674,8 +762,8 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
     }
     if (c.field === "heritage") {
       try {
-        const { rashi, gotra } = JSON.parse(c.content);
-        return `✎ Proposed heritage details: ${[rashi && `Rashi: ${rashi}`, gotra && `Gotra: ${gotra}`].filter(Boolean).join(", ") || "(cleared)"}`;
+        const { rashi, gotra, birthGotra } = JSON.parse(c.content);
+        return `✎ Proposed heritage details: ${[rashi && `Rashi: ${rashi}`, gotra && `Gotra: ${gotra}`, birthGotra && `Birth gotra: ${birthGotra}`].filter(Boolean).join(", ") || "(cleared)"}`;
       } catch { return "✎ Proposed heritage details"; }
     }
     if (c.type === "edit") return `✎ Proposed ${c.fieldLabel}: "${c.content.slice(0, 90)}${c.content.length > 90 ? "…" : ""}"`;

@@ -4,7 +4,7 @@ import { IS_DEMO, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LO
 import { useCountUp } from "../hooks/useCountUp";
 import { parseParamparaContent } from "../lib/parampara";
 import { personIdsWithRooms } from "../lib/chitrashale";
-import { yearsLabel, byId, MIN_GEN, MAX_GEN } from "../data/helpers";
+import { yearsLabel, byId, isDeceased, formatName, MIN_GEN, MAX_GEN } from "../data/helpers";
 import { DateIcon } from "./Icons";
 import { TreeIcon } from "./NavIcons";
 import AuthPanel from "./AuthPanel";
@@ -112,7 +112,7 @@ function nextUpcomingBirthday(people) {
   const now = new Date();
   let best = null, bestDiff = Infinity;
   for (const p of people) {
-    if (p.died || !p.born || p.bornYearOnly) continue;
+    if (isDeceased(p) || !p.born || p.bornYearOnly) continue;
     const md = monthDayOf(p.born);
     if (!md) continue;
     let next = new Date(now.getFullYear(), md.m - 1, md.d);
@@ -207,13 +207,13 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
           {birthdays.map((p) => (
             <button key={p.id} type="button" className="today-row" onClick={() => onSelectPerson(p.id)}>
               <PersonAvatar person={p} size={40} minGen={MIN_GEN} maxGen={MAX_GEN} className="avatar" />
-              <span><b className="today-tag today-tag-birthday">Birthday</b>{p.name} · {yearsLabel(p)}</span>
+              <span><b className="today-tag today-tag-birthday">Birthday</b>{formatName(p)} · {yearsLabel(p)}</span>
             </button>
           ))}
           {remembrances.map((p) => (
             <button key={p.id} type="button" className="today-row" onClick={() => onSelectPerson(p.id)}>
               <PersonAvatar person={p} size={40} minGen={MIN_GEN} maxGen={MAX_GEN} className="avatar" />
-              <span><b className="today-tag today-tag-remembrance">Remembrance</b>{p.name} · {yearsLabel(p)}</span>
+              <span><b className="today-tag today-tag-remembrance">Remembrance</b>{formatName(p)} · {yearsLabel(p)}</span>
             </button>
           ))}
           {upcoming && (
@@ -312,7 +312,7 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
                 <button key={p.id} type="button" className="timeline-stop" onClick={() => onSelectPerson(p.id)}>
                   <PersonAvatar person={p} size={56} minGen={MIN_GEN} maxGen={MAX_GEN} className="avatar" />
                   <b className="tnum">{year}</b>
-                  <span>{p.name}</span>
+                  <span>{formatName(p)}</span>
                 </button>
               ))}
             </div>

@@ -152,6 +152,7 @@ export async function insertPerson(familyId, p, sortIndex) {
     parents: p.parents ?? [],
     rashi: p.rashi ?? null,
     gotra: p.gotra ?? null,
+    birth_gotra: p.birthGotra ?? null,
     trust: p.trust ?? "approx",
     geo: p.geo ?? null,
     geo_origin: p.geoOrigin ?? null,
@@ -282,6 +283,7 @@ export async function bulkInsertFamily(familyId, people, marriages, startIndex =
     parents: p.parents ?? [],
     rashi: p.rashi ?? null,
     gotra: p.gotra ?? null,
+    birth_gotra: p.birthGotra ?? null,
     trust: p.trust ?? "approx",
     geo: p.geo ?? null,
     geo_stops: p.geoStops ?? [],
@@ -336,6 +338,16 @@ export async function linkExistingSpouses(familyId, spouseLinks) {
 export async function deletePerson(familyId, personId) {
   const db = requireClient();
   const { error } = await db.rpc("delete_person", { p_family_id: familyId, p_person_id: personId });
+  if (error) throw new Error(error.message);
+}
+
+// Admin/Head-only correction tool — wraps the reassign_parents() RPC, which
+// validates (no self-parent, no cycle, max 2 parents) and cascades `gen`
+// down through every descendant server-side. See its migration for why this
+// can't just be a plain updatePersonFields({ parents }) call.
+export async function reassignParents(familyId, personId, parentIds) {
+  const db = requireClient();
+  const { error } = await db.rpc("reassign_parents", { p_family_id: familyId, p_person_id: personId, p_parent_ids: parentIds });
   if (error) throw new Error(error.message);
 }
 

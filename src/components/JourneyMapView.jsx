@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, CircleMarker, Marker, Polyline, Tooltip, useMa
 import { PEOPLE } from "../data/people";
 import { computeMapMarkers, computeRoutes, computeOriginMarkers } from "../lib/journeyMapData";
 import { GEN_COLOR_STOPS, genColor, initialsOf } from "./PersonAvatar";
+import { formatName } from "../data/helpers";
 
 // A small circular portrait/initials marker — the same visual language as
 // PersonAvatar everywhere else in the app (Tree, Search, Folio) — rather
@@ -106,7 +107,7 @@ export default function JourneyMapView({ onSelectPerson }) {
           <label htmlFor="journey-person-select">Then a person</label>
           <select id="journey-person-select" value={personFilter ?? ""} onChange={(e) => setPersonFilter(e.target.value || null)}>
             <option value="">Everyone in Gen {genFilter}</option>
-            {genPeople.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {genPeople.map((p) => <option key={p.id} value={p.id}>{formatName(p)}</option>)}
           </select>
         </div>
       )}
@@ -134,7 +135,7 @@ export default function JourneyMapView({ onSelectPerson }) {
               key={m.id} position={[m.lat, m.lng]} icon={personDivIcon(m, minGen, maxGen)}
               eventHandlers={{ click: () => onSelectPerson(m.id) }}
             >
-              <Tooltip direction="top" className="journey-tooltip">{m.name}</Tooltip>
+              <Tooltip direction="top" className="journey-tooltip">{formatName(m)}</Tooltip>
             </Marker>
           ))}
         </MapContainer>

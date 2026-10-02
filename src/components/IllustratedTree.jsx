@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { computeClassicLayout, NODE_R, SIDE_PAD, LABEL_CLEARANCE } from "../lib/classicTreeLayout";
-import { yearsLabel } from "../data/helpers";
+import { yearsLabel, formatName } from "../data/helpers";
 import PersonAvatar from "./PersonAvatar";
 
 // A small leaf, seeded off the branch it's decorating so it doesn't jitter
@@ -128,7 +128,7 @@ export default function IllustratedTree({ people, onSelectPerson, interactive = 
           >
             <PersonAvatar person={p} size={avatarSize} minGen={minGen} maxGen={maxGen} className="illustrated-avatar" />
             <div className="illustrated-label">
-              <div className="illustrated-name">{p.name}</div>
+              <div className="illustrated-name">{formatName(p)}</div>
               <div className="illustrated-years tnum">{yearsLabel(p)}</div>
             </div>
           </Wrap>

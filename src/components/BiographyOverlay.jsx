@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { yearsLabel, MIN_GEN, MAX_GEN } from "../data/helpers";
+import { yearsLabel, formatName, MIN_GEN, MAX_GEN } from "../data/helpers";
 import { EditPencilIcon } from "./Icons";
 import PersonAvatar from "./PersonAvatar";
 
@@ -92,7 +92,7 @@ export default function BiographyOverlay({ person, onClose, onEditChapter, canMo
   return (
     <div className="bio-overlay">
       <div className="bio-topbar">
-        <b>{person.name} — Full biography</b>
+        <b>{formatName(person)} — Full biography</b>
         <div style={{ display: "flex", gap: 8 }}>
           <button className="btn small" onClick={() => window.print()}>Download PDF</button>
           <button className="btn small ghost" onClick={onClose}>Close</button>
@@ -103,7 +103,7 @@ export default function BiographyOverlay({ person, onClose, onEditChapter, canMo
           <div className="book-left">
             <div className="book-left-band">
               <PersonAvatar person={person} size={84} minGen={MIN_GEN} maxGen={MAX_GEN} variant="band" className="avatar" />
-              <h2>{person.name}</h2>
+              <h2>{formatName(person)}</h2>
               <div className="years tnum">{yearsLabel(person)}</div>
             </div>
             <div className="toc">
