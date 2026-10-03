@@ -186,8 +186,17 @@ export default async function handler(req, res) {
       supabase, familyId: identity.familyId,
       conversation: effectiveConversation,
       inbound: { textBody, mediaKind, mediaPath, originalFilename: null },
+      memberships: identity.memberships,
     });
     checkpoint("after_advanceConversation", requestStarted);
+
+    // Changes the same `active_family_id` pointer the in-app family switcher
+    // uses (current_family_id()), so switching here and switching in the app
+    // are the same action, not two parallel states to keep in sync.
+    if (result.switchToFamilyId) {
+      await supabase.from("user_preferences").upsert({ user_id: identity.userId, active_family_id: result.switchToFamilyId });
+      log("FAMILY_SWITCHED", { phone: maskPhone(phoneNumber), familyId: result.switchToFamilyId });
+    }
 
     if (result.contributions.length) {
       log("PERSON_MATCHED", { phone: maskPhone(phoneNumber), matched: !!result.personId });

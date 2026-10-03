@@ -70,25 +70,42 @@ export async function sendWhatsAppMessage(phoneNumber, body) {
   });
 }
 
-// Resolves a phone number to its linked Samskara user + family + role, or
-// null if the number has never been linked. One family per user is already
-// enforced at the schema level (family_members.user_id is unique), so this
-// never has to disambiguate between multiple families for one person.
+// Resolves a phone number to its linked Samskara user + active family +
+// role, or null if the number has never been linked. A login can belong to
+// more than one family (married-in members, multi_family_membership
+// migration) — this picks whichever family matches the user's stored
+// `active_family_id` preference, the exact same precedence the app's own
+// current_family_id() SQL function uses, falling back to their earliest
+// membership. The previous version assumed one-login-one-family (true when
+// it was written, but stale the moment multi-family membership shipped
+// earlier) and broke outright for anyone in two: `.maybeSingle()` on
+// family_members throws once more than one row comes back. Also returns
+// every membership, so the conversation engine can offer "which family
+// should this go to" when there's more than one.
 export async function resolveIdentity(supabase, phoneNumber) {
   const { data: connection, error: connErr } = await supabase
     .from("whatsapp_connections").select("user_id").eq("phone_number", phoneNumber).maybeSingle();
   if (connErr) throw new Error(connErr.message);
   if (!connection) return null;
 
-  const { data: member, error: memberErr } = await supabase
-    .from("family_members").select("family_id, role, display_name").eq("user_id", connection.user_id).maybeSingle();
+  const { data: memberRows, error: memberErr } = await supabase
+    .from("family_members")
+    .select("family_id, role, display_name, created_at, families(name)")
+    .eq("user_id", connection.user_id)
+    .order("created_at", { ascending: true });
   if (memberErr) throw new Error(memberErr.message);
-  if (!member) return null;
+  if (!memberRows?.length) return null;
+
+  const { data: prefs } = await supabase
+    .from("user_preferences").select("active_family_id").eq("user_id", connection.user_id).maybeSingle();
+
+  const active = (prefs?.active_family_id && memberRows.find((m) => m.family_id === prefs.active_family_id)) || memberRows[0];
 
   return {
     userId: connection.user_id,
-    familyId: member.family_id,
-    role: member.role,
-    displayName: member.display_name || "A family member",
+    familyId: active.family_id,
+    role: active.role,
+    displayName: active.display_name || "A family member",
+    memberships: memberRows.map((m) => ({ familyId: m.family_id, familyName: m.families?.name || "Family", role: m.role })),
   };
 }

@@ -16,6 +16,7 @@ const YES = /^(y|yes|yep|yeah|ok|okay)$/i;
 const NO = /^(n|no|nope)$/i;
 const SKIP = /^skip$/i;
 const CANCEL = /^cancel$/i;
+const FAMILY_COMMAND = /^(family|families|switch family|switch)$/i;
 
 const MEDIA_PROMPT = {
   photo: "Beautiful memory ❤️\nWho is in this photo?",
@@ -38,6 +39,24 @@ async function searchPeople(supabase, familyId, term) {
 
 function personPromptAfterSkip() {
   return "No problem — who is it? Tell me their name, or reply SKIP to save this without linking it to a person.";
+}
+
+// Only meaningful for someone in more than one family (married-in members
+// linked to both their own and their spouse's tree) — a single-family
+// account just gets told so and stays IDLE, since there's nothing to pick.
+function buildFamilySwitchPrompt(memberships) {
+  if (!memberships || memberships.length <= 1) {
+    const name = memberships?.[0]?.familyName || "your family";
+    return { reply: `You're only connected to one family on Samskara right now: ${name}.`, nextState: "IDLE", pendingPersonId: null, context: {}, contributions: [] };
+  }
+  const list = memberships.map((m, i) => `${i + 1}. ${m.familyName}`).join("\n");
+  return {
+    reply: `Which family should I save things to from now on?\n${list}\n\nReply with the number.`,
+    nextState: "WAITING_FOR_FAMILY_SWITCH",
+    pendingPersonId: null,
+    context: { familyOptions: memberships.map((m) => ({ id: m.familyId, name: m.familyName })) },
+    contributions: [],
+  };
 }
 
 // Builds the final contribution rows for a resolved memory. Mirrors exactly
@@ -81,7 +100,7 @@ function advanceWithPerson({ ctx: base, personId, personName }) {
   return { reply: confirmationSummary(next, personName), nextState: "WAITING_FOR_CONFIRMATION", pendingPersonId: personId, context: next, contributions: [] };
 }
 
-export async function advanceConversation({ supabase, familyId, conversation, inbound }) {
+export async function advanceConversation({ supabase, familyId, conversation, inbound, memberships }) {
   const state = conversation?.state || "IDLE";
   let ctx = { ...(conversation?.context || {}) };
   const text = (inbound.textBody || "").trim();
@@ -102,6 +121,9 @@ export async function advanceConversation({ supabase, familyId, conversation, in
       ctx = { mediaKind: inbound.mediaKind, mediaPath: inbound.mediaPath, originalFilename: inbound.originalFilename || null };
       return { reply: MEDIA_PROMPT[inbound.mediaKind], nextState: "WAITING_FOR_PERSON", pendingPersonId: null, context: ctx, contributions: [] };
     }
+    if (FAMILY_COMMAND.test(text)) {
+      return buildFamilySwitchPrompt(memberships);
+    }
     // A bare yes/no/ok with nothing else in flight is almost always a stray
     // reply to something that already finished (e.g. confirming a save a
     // second time out of habit) rather than someone actually trying to
@@ -111,7 +133,9 @@ export async function advanceConversation({ supabase, familyId, conversation, in
       ctx = { mediaKind: null, memoryText: text };
       return { reply: "Got it — who is this memory about? Tell me a name.", nextState: "WAITING_FOR_PERSON", pendingPersonId: null, context: ctx, contributions: [] };
     }
-    return { reply: "Send me a photo, voice note, document, or tell me about a memory, and I'll help preserve it for your family.", nextState: "IDLE", pendingPersonId: null, context: {}, contributions: [] };
+    const help = "Send me a photo, voice note, document, or tell me about a memory, and I'll help preserve it for your family."
+      + (memberships && memberships.length > 1 ? "\n\n(Reply FAMILY to switch which family I save things to — you're connected to more than one.)" : "");
+    return { reply: help, nextState: "IDLE", pendingPersonId: null, context: {}, contributions: [] };
   }
 
   // ---- Waiting for a name (first attempt, a retry, a number pick, or SKIP) ----
@@ -167,6 +191,20 @@ export async function advanceConversation({ supabase, familyId, conversation, in
     if (!text) return { reply: STORY_PROMPT[ctx.mediaKind] || "Tell me anything you remember about this.", nextState: "WAITING_FOR_STORY", pendingPersonId: ctx.personId || null, context: ctx, contributions: [] };
     const next = { ...ctx, story: text };
     return { reply: confirmationSummary(next, ctx.personName), nextState: "WAITING_FOR_CONFIRMATION", pendingPersonId: ctx.personId || null, context: next, contributions: [] };
+  }
+
+  // ---- Picking which family to switch to ---------------------------------
+  if (state === "WAITING_FOR_FAMILY_SWITCH") {
+    const idx = /^\d+$/.test(text) ? parseInt(text, 10) - 1 : -1;
+    const picked = ctx.familyOptions?.[idx];
+    if (!picked) {
+      return { reply: `Please reply with a number between 1 and ${ctx.familyOptions?.length || 1}.`, nextState: "WAITING_FOR_FAMILY_SWITCH", pendingPersonId: null, context: ctx, contributions: [] };
+    }
+    return {
+      reply: `Switched — I'll save things to ${picked.name} from now on. This also switches it in the app.`,
+      nextState: "IDLE", pendingPersonId: null, context: {}, contributions: [],
+      switchToFamilyId: picked.id,
+    };
   }
 
   // ---- Final save confirmation -------------------------------------------
