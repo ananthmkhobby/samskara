@@ -3,6 +3,7 @@ import { useSpeechToText } from "../hooks/useSpeechToText";
 import { speakQuestion, hasVoiceFor } from "../lib/speech";
 import { AudioIcon, CloseIcon } from "./Icons";
 import { callApi } from "../lib/apiFetch";
+import { useModalA11y } from "../hooks/useModalA11y";
 
 const MAX_ROUNDS = 4;
 const SPEECH_LANGS = [
@@ -36,6 +37,7 @@ export default function AIInterviewModal({ request, onCancel, onSubmit }) {
   const [speechLang, setSpeechLang] = useState("en-IN");
   const [voiceAvailable, setVoiceAvailable] = useState(true);
   const { listening, supported: speechSupported, start: startSpeech, stop: stopSpeech } = useSpeechToText();
+  const modalA11y = useModalA11y(onCancel);
 
   const roundsDone = history.length;
   const atMax = roundsDone >= MAX_ROUNDS;
@@ -107,7 +109,7 @@ export default function AIInterviewModal({ request, onCancel, onSubmit }) {
   if (!started) {
     return (
       <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-        <div className="modal-panel">
+        <div className="modal-panel" {...modalA11y}>
           <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
           <div className="modal-body">
             <span className="eyebrow">AI-guided interview</span>
@@ -137,7 +139,7 @@ export default function AIInterviewModal({ request, onCancel, onSubmit }) {
   if (draft) {
     return (
       <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-        <div className="modal-panel">
+        <div className="modal-panel" {...modalA11y}>
           <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
           <div className="modal-body">
             <span className="eyebrow">Drafted from your interview</span>
@@ -167,7 +169,7 @@ export default function AIInterviewModal({ request, onCancel, onSubmit }) {
 
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div className="modal-panel">
+      <div className="modal-panel" {...modalA11y}>
         <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">AI-guided interview · {request.name}</span>

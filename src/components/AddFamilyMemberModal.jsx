@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { geocodePlace } from "../lib/geocode";
 import { CloseIcon } from "./Icons";
+import { useModalA11y } from "../hooks/useModalA11y";
 
 export default function AddFamilyMemberModal({ request, onCancel, onSubmit, canModerate }) {
+  const modalA11y = useModalA11y(onCancel);
   const isSpouse = request.relation === "spouse";
   const isParent = request.relation === "parent";
   const [name, setName] = useState("");
@@ -33,7 +35,7 @@ export default function AddFamilyMemberModal({ request, onCancel, onSubmit, canM
 
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div className="modal-panel">
+      <div className="modal-panel" {...modalA11y}>
         <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">Add to the tree</span>

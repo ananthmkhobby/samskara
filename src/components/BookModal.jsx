@@ -5,6 +5,7 @@ import { libraryCategoryFor, ownershipActionLabel } from "../lib/library";
 import { EditPencilIcon, CloseIcon } from "./Icons";
 import { isGrandfathersShelf } from "./LibraryView";
 import PhotoLightbox from "./PhotoLightbox";
+import { useModalA11y } from "../hooks/useModalA11y";
 
 const TABS = ["Story", "Readers", "Wisdom", "Memories", "Discussions"];
 const FIELD_FOR_TAB = { Wisdom: "wisdom", Memories: "memory", Discussions: "discussion" };
@@ -156,13 +157,14 @@ function EntryTab({ entries, kind, onAdd, locked }) {
           <p className="folio-summary">{e.content}</p>
           <p className="who">— {e.contributor}</p>
         </div>
-      )) : <p className="form-hint">Nothing here yet.</p>}
+      )) : <div className="empty-state">Nothing here yet.</div>}
       {!locked && <button type="button" className="btn small" onClick={onAdd}>+ Add</button>}
     </div>
   );
 }
 
 export default function BookModal({ book, contributions, onClose, canModerate, onSaveStory, onAddOwnership, onSetReaderStatus, onAddEntry, onUploadFile }) {
+  const modalA11y = useModalA11y(onClose);
   const [tab, setTab] = useState("Story");
   const [addingOwnership, setAddingOwnership] = useState(false);
   const [editingStory, setEditingStory] = useState(false);
@@ -174,7 +176,7 @@ export default function BookModal({ book, contributions, onClose, canModerate, o
 
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal-panel">
+      <div className="modal-panel" {...modalA11y}>
         <button className="modal-close on-paper" onClick={onClose} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>

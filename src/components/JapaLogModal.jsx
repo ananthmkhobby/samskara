@@ -5,6 +5,7 @@ import { PRACTICES, CUSTOM_PRACTICE_KEY, QUICK_COUNTS } from "../lib/japa";
 import { CloseIcon } from "./Icons";
 import { JapaIcon } from "./NavIcons";
 import { yearsLabel, todayStr } from "../data/helpers";
+import { useModalA11y } from "../hooks/useModalA11y";
 
 // Standalone overlay, not anchored to a Folio (unlike EditModal) — this is
 // reachable from the Home dashboard card with no person already in
@@ -13,6 +14,7 @@ import { yearsLabel, todayStr } from "../data/helpers";
 // own count is the common case; still freely switchable to log on behalf
 // of an elder relative who doesn't use the app themselves.
 export default function JapaLogModal({ onCancel, onSubmit }) {
+  const modalA11y = useModalA11y(onCancel);
   const [personId, setPersonId] = useState(MY_PERSON_ID || "");
   const [practiceKey, setPracticeKey] = useState(PRACTICES[0].key);
   const [customLabel, setCustomLabel] = useState("");
@@ -46,7 +48,7 @@ export default function JapaLogModal({ onCancel, onSubmit }) {
 
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div className="modal-panel">
+      <div className="modal-panel" {...modalA11y}>
         <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow"><span className="eyebrow-icon"><JapaIcon /></span>Japa & Chanting</span>

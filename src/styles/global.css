@@ -121,20 +121,30 @@ main { flex: 1; width: 100%; }
 .btn {
   display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: 999px; border: 1px solid var(--line-strong);
   background: var(--parchment-paper); color: var(--ink); font-weight: 600; font-size: var(--text-base); cursor: pointer; text-decoration: none;
+  transition: transform .14s ease, box-shadow .14s ease, background .14s ease;
 }
 .btn svg { width: 15px; height: 15px; flex: none; }
 .btn.primary { background: var(--maroon-deep); border-color: var(--maroon-deep); color: #F8ECE4; }
 .btn.ghost { background: none; }
 .btn.small { padding: 7px 13px; font-size: var(--text-sm); }
 .btn:disabled { opacity: .4; cursor: not-allowed; }
-.icon-only { width: 28px; height: 28px; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line-strong); background: var(--parchment-paper); cursor: pointer; color: var(--ink-soft); flex: none; }
+.btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: var(--shadow-1); }
+.btn:not(:disabled):active { transform: translateY(0); box-shadow: none; }
+.icon-only {
+  width: 28px; height: 28px; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line-strong); background: var(--parchment-paper); cursor: pointer; color: var(--ink-soft); flex: none;
+  transition: color .14s ease, border-color .14s ease, transform .14s ease;
+}
 .icon-only svg { width: 13px; height: 13px; }
 .icon-only:hover { color: var(--maroon-deep); border-color: var(--maroon-deep); }
+.icon-only:active { transform: scale(.92); }
 .chip {
+  transition: background .14s ease, border-color .14s ease, transform .14s ease;
   display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--gold-deep);
   background: var(--parchment-paper); font-size: var(--text-sm); font-weight: 600; color: var(--ink-soft); cursor: pointer;
 }
 .chip.active { background: var(--gold); border-color: var(--gold); color: #2A1C05; }
+.chip:active { transform: scale(.96); }
 .card { background: var(--parchment-paper); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-1); }
 
 .install-card {
@@ -176,6 +186,13 @@ button.trust { border: 0; font-family: inherit; cursor: pointer; }
 .tag-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .tag { font-size: var(--text-2xs); font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--parchment-paper); color: var(--gold-deep); border: 1px solid var(--gold-deep); }
 .empty-state { padding: 40px 20px; text-align: center; color: var(--ink-faint); border: 1px dashed var(--line-strong); border-radius: var(--radius); }
+
+.skeleton {
+  display: inline-block; background: linear-gradient(90deg, var(--line) 25%, var(--line-strong) 37%, var(--line) 63%);
+  background-size: 400% 100%; animation: skeletonShimmer 1.4s ease infinite;
+}
+@keyframes skeletonShimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; background: var(--line); } }
 
 .toast {
   position: fixed; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(20px); z-index: 90;

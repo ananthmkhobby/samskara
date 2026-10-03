@@ -4,6 +4,7 @@ import { resizeImage } from "../lib/imageResize";
 import { uploadFamilyMedia } from "../lib/mediaUpload";
 import { CloseIcon } from "./Icons";
 import { CURRENT_FAMILY_ID } from "../data/session";
+import { useModalA11y } from "../hooks/useModalA11y";
 
 const CATEGORY_CHOICES = [...PARAMPARA_CATEGORIES, LINEAGE_CATEGORY];
 
@@ -12,6 +13,7 @@ const CATEGORY_CHOICES = [...PARAMPARA_CATEGORIES, LINEAGE_CATEGORY];
 // content and, on submit, carries the entry's id through so App.jsx knows
 // to update the row instead of inserting one.
 export default function ParamparaContributeModal({ editEntry, existingPhotoUrl, onCancel, onSubmit, canModerate }) {
+  const modalA11y = useModalA11y(onCancel);
   const editedContent = editEntry ? parseParamparaContent(editEntry.content) : {};
   const [category, setCategory] = useState(editEntry?.field || PARAMPARA_CATEGORIES[0].key);
   const [title, setTitle] = useState(editEntry?.title || "");
@@ -91,7 +93,7 @@ export default function ParamparaContributeModal({ editEntry, existingPhotoUrl, 
 
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div className="modal-panel">
+      <div className="modal-panel" {...modalA11y}>
         <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">Parampare</span>

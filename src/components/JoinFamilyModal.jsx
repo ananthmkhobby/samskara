@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { redeemInvite } from "../data/familyDb";
 import { CloseIcon } from "./Icons";
+import { useModalA11y } from "../hooks/useModalA11y";
 
 // The "already signed in, just redeem another invite" flow — used both
 // from the family switcher's "+ Join another family" action and when
@@ -8,6 +9,7 @@ import { CloseIcon } from "./Icons";
 // Deliberately just a code box: the account already exists, so there's
 // nothing else to fill in.
 export default function JoinFamilyModal({ initialCode = "", onClose }) {
+  const modalA11y = useModalA11y(onClose);
   const [code, setCode] = useState(initialCode);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -35,7 +37,7 @@ export default function JoinFamilyModal({ initialCode = "", onClose }) {
 
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal-panel" style={{ maxWidth: 420 }}>
+      <div className="modal-panel" style={{ maxWidth: 420 }} {...modalA11y}>
         <button className="modal-close on-paper" onClick={onClose} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">Join another family</span>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CloseIcon } from "./Icons";
+import { useModalA11y } from "../hooks/useModalA11y";
 
 const LABELS = {
   wisdom: { title: "Add a lesson", placeholder: "One lesson this book taught you…" },
@@ -8,6 +9,7 @@ const LABELS = {
 };
 
 export default function LibraryEntryModal({ bookId, kind, onCancel, onSubmit, canModerate }) {
+  const modalA11y = useModalA11y(onCancel);
   const [content, setContent] = useState("");
   const [contributor, setContributor] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -28,7 +30,7 @@ export default function LibraryEntryModal({ bookId, kind, onCancel, onSubmit, ca
 
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div className="modal-panel" style={{ maxWidth: 460 }}>
+      <div className="modal-panel" style={{ maxWidth: 460 }} {...modalA11y}>
         <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">Family Library</span>

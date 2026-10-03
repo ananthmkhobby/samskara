@@ -6,6 +6,7 @@ import { useMediaRecorder } from "../hooks/useMediaRecorder";
 import { resizeImage } from "../lib/imageResize";
 import { uploadFamilyMedia } from "../lib/mediaUpload";
 import { CURRENT_FAMILY_ID } from "../data/session";
+import { useModalA11y } from "../hooks/useModalA11y";
 
 function AudioRecorderRow({ onMediaReady }) {
   const { recording, mediaUrl, mediaBlob, error, start, stop, reset } = useMediaRecorder("audio");
@@ -34,6 +35,7 @@ function AudioRecorderRow({ onMediaReady }) {
 }
 
 export default function ChitrashaleAddModal({ person, occupiedSpots, initialSpot, onCancel, onSubmit, canModerate }) {
+  const modalA11y = useModalA11y(onCancel);
   const openSpots = ROOM_SPOTS.filter((s) => !occupiedSpots[s.key]);
   const [label, setLabel] = useState("");
   const [spotKey, setSpotKey] = useState((initialSpot && !occupiedSpots[initialSpot] ? initialSpot : openSpots[0]?.key) || "");
@@ -119,7 +121,7 @@ export default function ChitrashaleAddModal({ person, occupiedSpots, initialSpot
 
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div className="modal-panel">
+      <div className="modal-panel" {...modalA11y}>
         <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">Anubhava Chitrashale</span>

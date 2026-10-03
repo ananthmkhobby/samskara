@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { CloseIcon } from "./Icons";
+import { useModalA11y } from "../hooks/useModalA11y";
 
 // Shared full-screen viewer for any already-uploaded photo — the Folio
 // profile photo, "Their Experience" cards, the Media gallery, the family
@@ -14,10 +15,11 @@ export default function PhotoLightbox({ src, alt, onClose }) {
   // A fresh photo should always open fitted, not still zoomed from
   // whichever photo was open before it.
   useEffect(() => { setZoomed(false); }, [src]);
+  const modalA11y = useModalA11y(onClose);
 
   if (!src) return null;
   return (
-    <div className={`photo-lightbox${zoomed ? " is-zoomed" : ""}`} onClick={onClose}>
+    <div className={`photo-lightbox${zoomed ? " is-zoomed" : ""}`} onClick={onClose} {...modalA11y}>
       <button className="modal-close" onClick={onClose} aria-label="Minimise"><CloseIcon /></button>
       <img
         src={src}

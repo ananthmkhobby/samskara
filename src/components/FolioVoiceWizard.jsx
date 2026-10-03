@@ -3,6 +3,7 @@ import { useSpeechToText } from "../hooks/useSpeechToText";
 import { geocodePlace } from "../lib/geocode";
 import { speakQuestion, hasVoiceFor } from "../lib/speech";
 import { AudioIcon, CloseIcon } from "./Icons";
+import { useModalA11y } from "../hooks/useModalA11y";
 
 const SPEECH_LANGS = [
   { code: "en-IN", label: "English" },
@@ -70,6 +71,7 @@ export default function FolioVoiceWizard({ request, onSubmitField, onFinish, onO
   const [error, setError] = useState("");
   const [voiceAvailable, setVoiceAvailable] = useState(true);
   const focusedFieldRef = useRef(null);
+  const modalA11y = useModalA11y(onFinish);
   const { listening, supported: speechSupported, start: startSpeech, stop: stopSpeech } = useSpeechToText();
 
   const step = stepsToAsk[stepIndex];
@@ -139,7 +141,7 @@ export default function FolioVoiceWizard({ request, onSubmitField, onFinish, onO
   if (phase === "intro") {
     return (
       <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onFinish(); }}>
-        <div className="modal-panel">
+        <div className="modal-panel" {...modalA11y}>
           <button className="modal-close on-paper" onClick={onFinish} aria-label="Close"><CloseIcon /></button>
           <div className="modal-body">
             <span className="eyebrow">Voice walkthrough</span>
@@ -177,7 +179,7 @@ export default function FolioVoiceWizard({ request, onSubmitField, onFinish, onO
   if (phase === "done") {
     return (
       <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onFinish(); }}>
-        <div className="modal-panel">
+        <div className="modal-panel" {...modalA11y}>
           <button className="modal-close on-paper" onClick={onFinish} aria-label="Close"><CloseIcon /></button>
           <div className="modal-body">
             <span className="eyebrow">All set</span>
@@ -200,7 +202,7 @@ export default function FolioVoiceWizard({ request, onSubmitField, onFinish, onO
 
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onFinish(); }}>
-      <div className="modal-panel">
+      <div className="modal-panel" {...modalA11y}>
         <button className="modal-close on-paper" onClick={onFinish} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">Question {stepIndex + 1} of {stepsToAsk.length}</span>

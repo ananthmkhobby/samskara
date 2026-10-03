@@ -4,6 +4,7 @@ import { PhotoIcon, AudioIcon, VideoIcon, DocumentIcon, DateIcon, MemoryIcon, EX
 import { useMediaRecorder } from "../hooks/useMediaRecorder";
 import { useSpeechToText } from "../hooks/useSpeechToText";
 import { callApi } from "../lib/apiFetch";
+import { useModalA11y } from "../hooks/useModalA11y";
 import { resizeImage } from "../lib/imageResize";
 import { uploadFamilyMedia } from "../lib/mediaUpload";
 import { CURRENT_FAMILY_ID } from "../data/session";
@@ -70,6 +71,7 @@ function RecorderPanel({ kind, onMediaReady }) {
 }
 
 export default function ContributeModal({ initial, onCancel, onSubmit, canModerate }) {
+  const modalA11y = useModalA11y(onCancel);
   const [personId, setPersonId] = useState(initial.personId || "__new__");
   const [newName, setNewName] = useState("");
   const [type, setType] = useState(initial.type || "memory");
@@ -212,7 +214,7 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
 
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div className="modal-panel">
+      <div className="modal-panel" {...modalA11y}>
         <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">Share what you know</span>

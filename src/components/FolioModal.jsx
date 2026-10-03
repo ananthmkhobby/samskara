@@ -6,6 +6,7 @@ import PhotoLightbox from "./PhotoLightbox";
 import { resizeImage } from "../lib/imageResize";
 import { uploadFamilyMedia, resolveMediaUrl } from "../lib/mediaUpload";
 import { CURRENT_FAMILY_ID } from "../data/session";
+import { useModalA11y } from "../hooks/useModalA11y";
 
 // Anubhava Chitrashale ("their room") is built and working, but held back
 // from release for now — flip this back on when it's ready to ship. Kept
@@ -14,6 +15,7 @@ import { CURRENT_FAMILY_ID } from "../data/session";
 export const SHOW_CHITRASHALE = false;
 
 export default function FolioModal({ person, contributions, onClose, onEdit, onShare, onOpenBiography, onChangePhoto, onAddFamily, onOpenInterview, onOpenVoiceWizard, onOpenRoom, hasRoomObjects, playingExp, onToggleExpPlay, canModerate, onRemoveExperience, onSelectPerson }) {
+  const modalA11y = useModalA11y(onClose);
   const contribs = contributionsFor(contributions, person.id);
   const media = verifiedMediaFor(contributions, person.id);
   const hasContent = personHasContent(contributions, person);
@@ -42,7 +44,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
 
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal-panel">
+      <div className="modal-panel" {...modalA11y}>
         <button className="modal-close" onClick={onClose} aria-label="Close"><CloseIcon /></button>
         <div className="folio-band">
           <div className="avatar-wrap">
@@ -371,7 +373,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
                       {isRealVideo && <video src={c.mediaUrl} controls style={{ width: "100%", marginTop: 8, borderRadius: 8, maxHeight: 220 }} />}
                     </div>
                   );
-                }) : <p style={{ color: "var(--ink-faint)", fontSize: 13 }}>No contributions yet.</p>}
+                }) : <div className="empty-state">No contributions yet.</div>}
               </div>
             </>
           ) : (

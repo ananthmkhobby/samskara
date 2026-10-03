@@ -4,8 +4,10 @@ import { resizeImage } from "../lib/imageResize";
 import { uploadFamilyMedia } from "../lib/mediaUpload";
 import { CURRENT_FAMILY_ID } from "../data/session";
 import { CloseIcon } from "./Icons";
+import { useModalA11y } from "../hooks/useModalA11y";
 
 export default function AddBookModal({ onCancel, onSubmit, canModerate }) {
+  const modalA11y = useModalA11y(onCancel);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState(LIBRARY_CATEGORIES[0].key);
   const [story, setStory] = useState("");
@@ -72,7 +74,7 @@ export default function AddBookModal({ onCancel, onSubmit, canModerate }) {
 
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div className="modal-panel">
+      <div className="modal-panel" {...modalA11y}>
         <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">Family Library</span>

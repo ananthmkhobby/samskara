@@ -6,19 +6,21 @@ import { CURRENT_FAMILY_ID, CURRENT_USER_ID } from "../data/session";
 import PhotoLightbox from "./PhotoLightbox";
 import HeritageIntro, { DiyaIcon } from "./HeritageIntro";
 import { EditPencilIcon, CloseIcon } from "./Icons";
+import { useModalA11y } from "../hooks/useModalA11y";
 
 // A share code's whole content — title, story, since-year — travels; the
 // photo doesn't, since mediaPath points at this family's own private
 // Storage bucket, which the receiving family has no access to.
 function ShareCodeModal({ state, onClose }) {
   const [copied, setCopied] = useState(false);
+  const modalA11y = useModalA11y(onClose);
   if (!state) return null;
   async function copy() {
     try { await navigator.clipboard.writeText(state.code); setCopied(true); window.setTimeout(() => setCopied(false), 2000); } catch { /* clipboard unavailable */ }
   }
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+      <div className="modal-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }} {...modalA11y}>
         <button className="modal-close on-paper" onClick={onClose} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           {state.error ? (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CURRENT_FAMILY_ID } from "../data/session";
 import { fetchWhatsAppMessages } from "../data/familyDb";
+import Skeleton from "./Skeleton";
 
 const STATUS_LABELS = {
   received: "Received", processing: "Processing", completed: "Completed",
@@ -29,8 +30,19 @@ export default function WhatsAppAdminTab() {
         <button type="button" className="btn small ghost" onClick={load}>Refresh</button>
       </div>
       {error && <p className="form-hint" style={{ color: "var(--maroon-ink)", padding: "0 14px" }}>{error}</p>}
-      {messages === null && !error && <p className="form-hint" style={{ padding: "0 14px 14px" }}>Loading…</p>}
-      {messages && !messages.length && <p className="form-hint" style={{ padding: "0 14px 14px" }}>No WhatsApp messages received yet.</p>}
+      {messages === null && !error && (
+        <div style={{ padding: "10px 14px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} style={{ display: "flex", gap: 14, alignItems: "center" }}>
+              <Skeleton width={120} height={12} />
+              <Skeleton width={100} height={12} />
+              <Skeleton width={60} height={12} />
+              <Skeleton width={80} height={12} />
+            </div>
+          ))}
+        </div>
+      )}
+      {messages && !messages.length && <div className="empty-state" style={{ margin: "0 14px 14px" }}>No WhatsApp messages received yet.</div>}
       {messages && messages.length > 0 && (
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
