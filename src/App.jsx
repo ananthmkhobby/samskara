@@ -942,7 +942,7 @@ export default function App() {
           />
         )}
         {view === "japa" && !moduleBlocked && <JapaView onLogCount={() => commit({ japaLogOpen: true })} onSelectPerson={selectPerson} />}
-        {view === "admin" && <AdminView contributions={contributions} onApprove={approveContribution} onReject={rejectContribution} canModerate={canModerate} />}
+        {view === "admin" && <AdminView contributions={contributions} onApprove={approveContribution} onReject={rejectContribution} onDeleteContribution={deleteContribution} canModerate={canModerate} />}
         {view === "builder" && <FamilyBuilderView onNav={goTo} />}
         {view === "superadmin" && <SuperAdminView />}
         {view === "help" && <HelpView />}

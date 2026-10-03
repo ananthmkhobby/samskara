@@ -17,7 +17,7 @@ import PersonAvatar from "./PersonAvatar";
 import PhotoLightbox from "./PhotoLightbox";
 import AddPeopleCard from "./AddPeopleCard";
 import WhatsAppAdminTab from "./WhatsAppAdminTab";
-import { EXP_LABELS } from "./Icons";
+import { EXP_LABELS, CloseIcon } from "./Icons";
 
 const TABS = ["Pending", "Verified", "Rejected", "All"];
 const ROLE_LABELS = { head: "Family Head", admin: "Admin", member: "Member" };
@@ -716,7 +716,7 @@ function MembersPage() {
   );
 }
 
-export default function AdminView({ contributions, onApprove, onReject, canModerate }) {
+export default function AdminView({ contributions, onApprove, onReject, onDeleteContribution, canModerate }) {
   const showMembersTab = !IS_DEMO && canModerate;
   const showWhatsAppTab = !IS_DEMO && canModerate;
   const adminTabs = [...(showMembersTab ? ["Members"] : []), "Review queue", ...(showWhatsAppTab ? ["WhatsApp"] : [])];
@@ -859,6 +859,7 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
           const isRealVideo = c.type === "video" && !!c.mediaUrl;
           const isRealPhoto = c.type === "photo" && !!c.mediaUrl;
           const isRealDocument = c.type === "document" && !!c.mediaUrl;
+          const isFromWhatsApp = c.source === "whatsapp";
           // A proposed profile-photo change is an "edit" contribution whose
           // content is JSON, not the plain mediaUrl the other photo cases
           // use — same tap-to-fullscreen treatment once parsed, so a
@@ -884,7 +885,7 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
                       : c.type === "chitrashalaObject" ? "chitrashale · object"
                       : c.type === "chitrashalaReflection" ? "chitrashale · reflection"
                       : c.type}
-                  </span> · from {c.contributor} · {c.date}
+                  </span> · from {c.contributor}{isFromWhatsApp ? " · via WhatsApp" : ""} · {c.date}
                 </div>
                 {destinationFor(c) && <div className="queue-destination">↳ {destinationFor(c)}</div>}
                 {isRealAudio ? <audio src={c.mediaUrl} controls style={{ maxWidth: 260, marginTop: 6 }} />
@@ -915,6 +916,18 @@ export default function AdminView({ contributions, onApprove, onReject, canModer
                     </>
                   ) : <span className="status-pill Pending">Awaiting admin</span>
                 ) : <span className={`status-pill ${c.status}`}>{c.status}</span>}
+                {/* WhatsApp content specifically — same reasoning as the identical
+                    control on a person's Folio: it's the source that mixes casual
+                    sends in among formal edits, and the one an admin most needs to
+                    clean up here, even after it's already Verified or Rejected. */}
+                {canModerate && isFromWhatsApp && (
+                  <button
+                    type="button" className="icon-only" aria-label="Delete this WhatsApp contribution"
+                    onClick={() => onDeleteContribution(c)}
+                  >
+                    <CloseIcon />
+                  </button>
+                )}
               </div>
             </div>
           );

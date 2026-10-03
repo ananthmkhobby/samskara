@@ -90,7 +90,7 @@ export async function resolveIdentity(supabase, phoneNumber) {
 
   const { data: memberRows, error: memberErr } = await supabase
     .from("family_members")
-    .select("family_id, role, display_name, created_at, families(name)")
+    .select("family_id, role, display_name, person_id, created_at, families(name)")
     .eq("user_id", connection.user_id)
     .order("created_at", { ascending: true });
   if (memberErr) throw new Error(memberErr.message);
@@ -101,11 +101,23 @@ export async function resolveIdentity(supabase, phoneNumber) {
 
   const active = (prefs?.active_family_id && memberRows.find((m) => m.family_id === prefs.active_family_id)) || memberRows[0];
 
+  // display_name is set via the Admin roster ("Set display name"), which not
+  // every member gets around to — fall back to the tree name of the person
+  // they're linked to (set via "Set which person this is") before the
+  // generic placeholder, so contributions aren't attributed to "A family
+  // member" when a real name is one join away.
+  let displayName = active.display_name;
+  if (!displayName && active.person_id) {
+    const { data: person } = await supabase
+      .from("people").select("name").eq("family_id", active.family_id).eq("id", active.person_id).maybeSingle();
+    displayName = person?.name || null;
+  }
+
   return {
     userId: connection.user_id,
     familyId: active.family_id,
     role: active.role,
-    displayName: active.display_name || "A family member",
+    displayName: displayName || "A family member",
     memberships: memberRows.map((m) => ({ familyId: m.family_id, familyName: m.families?.name || "Family", role: m.role })),
   };
 }
