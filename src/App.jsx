@@ -51,7 +51,7 @@ import { PEOPLE, INITIAL_CONTRIBUTIONS, BOOKS, BOOK_OWNERSHIP, BOOK_READERS, PRA
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
 import { verifiedObjectsBySpot, hasAnyRoomObjects } from "./lib/chitrashale";
 import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, NEEDS_LOGIN, NEEDS_CONSENT, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL, isModuleEnabled } from "./data/session";
-import { insertContribution, updateContribution, updateContributionStatus, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus, insertPracticeLog } from "./data/familyDb";
+import { insertContribution, updateContribution, updateContributionStatus, deleteContribution as dbDeleteContribution, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus, insertPracticeLog } from "./data/familyDb";
 import { resolveMediaUrl, uploadFamilyMedia } from "./lib/mediaUpload";
 import { parseParamparaContent } from "./lib/parampara";
 import { supabase } from "./lib/supabaseClient";
@@ -772,6 +772,19 @@ export default function App() {
     }
   }
 
+  // Admin/Family Head only, currently only offered for WhatsApp-sourced
+  // contributions (FolioModal.jsx) — unlike approve/reject, actually
+  // removes the row (and its media, if any), not just changes its status.
+  async function deleteContribution(c) {
+    try {
+      await dbDeleteContribution(CURRENT_FAMILY_ID, c);
+      setContributions((prev) => prev.filter((x) => x.id !== c.id));
+      showToast("Deleted.");
+    } catch (err) {
+      showToast(`Couldn't delete: ${err.message}`);
+    }
+  }
+
   // Same Pending/Verified split as every other field edit (see submitEdit)
   // — this used to write straight to the person's row for anyone at all,
   // regardless of role, with no review step and no record of who changed
@@ -958,6 +971,7 @@ export default function App() {
           onToggleExpPlay={toggleExpPlay}
           canModerate={canModerate}
           onRemoveExperience={(entryId) => deleteExperienceEntry(selectedPerson.id, entryId)}
+          onDeleteContribution={deleteContribution}
         />
       )}
       {biographyPerson && (

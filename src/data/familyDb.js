@@ -100,6 +100,20 @@ export async function updateContributionStatus(id, status) {
   if (error) throw new Error(error.message);
 }
 
+// Moderator-only, and currently only exposed in the UI for WhatsApp-sourced
+// contributions (see FolioModal.jsx) — removes a contribution outright,
+// unlike approve/reject which only ever change its status. The Storage
+// delete is best-effort and never blocks the row delete: a signed URL to an
+// already-orphaned file is a smaller problem than a stuck "delete" button.
+export async function deleteContribution(familyId, contribution) {
+  const db = requireClient();
+  if (["photo", "audio", "video", "document"].includes(contribution.type) && contribution.content) {
+    await db.storage.from("family-media").remove([contribution.content]).catch(() => {});
+  }
+  const { error } = await db.from("contributions").delete().eq("id", contribution.id).eq("family_id", familyId);
+  if (error) throw new Error(error.message);
+}
+
 // Editing a Parampara entry in place — unlike a person-field "edit"
 // contribution (which layers on top of a separate people-table record),
 // a Parampara entry has no other canonical row; the contribution IS the
@@ -123,6 +137,7 @@ export function mapContributionRow(row) {
     fieldLabel: row.field_label,
     content: row.content,
     contributor: row.contributor,
+    source: row.source,
     status: row.status,
     date: row.date,
     expCategory: row.exp_category,

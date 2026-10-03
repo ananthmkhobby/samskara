@@ -14,7 +14,7 @@ import { useModalA11y } from "../hooks/useModalA11y";
 // TreeView.jsx.
 export const SHOW_CHITRASHALE = false;
 
-export default function FolioModal({ person, contributions, onClose, onEdit, onShare, onOpenBiography, onChangePhoto, onAddFamily, onOpenInterview, onOpenVoiceWizard, onOpenRoom, hasRoomObjects, playingExp, onToggleExpPlay, canModerate, onRemoveExperience, onSelectPerson }) {
+export default function FolioModal({ person, contributions, onClose, onEdit, onShare, onOpenBiography, onChangePhoto, onAddFamily, onOpenInterview, onOpenVoiceWizard, onOpenRoom, hasRoomObjects, playingExp, onToggleExpPlay, canModerate, onRemoveExperience, onDeleteContribution, onSelectPerson }) {
   const modalA11y = useModalA11y(onClose);
   const contribs = contributionsFor(contributions, person.id);
   const media = verifiedMediaFor(contributions, person.id);
@@ -26,6 +26,11 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
   const photoInputRef = useRef(null);
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [expCollapsed, setExpCollapsed] = useState(false);
+  // Starts collapsed once the list is long enough to be worth collapsing —
+  // short lists (a handful of entries) just stay open, nothing to hide.
+  // Opposite default from "Their experience" above, which starts open:
+  // that section is the point of the Folio, this one is a log.
+  const [contribsCollapsed, setContribsCollapsed] = useState(contribs.length > 4);
   const hasPhoto = !!person.photoUrl;
 
   async function handlePhotoFile(e) {
@@ -122,23 +127,31 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
               </p>
             ) : <p className="form-hint" style={{ marginTop: 0 }}>Not on record yet — add it if you know it, even just the year.</p>}
           </div>
-          {(person.died || person.diedUnknown) && (
-            <div className="folio-section">
-              <div className="folio-section-head">
-                <h4>Date of death</h4>
+          {/* Always rendered, same as Date of birth above — it used to only
+              show once died/diedUnknown was already true, which meant the
+              edit button (the only way to set either) was never reachable
+              for someone who didn't already have death info on record. The
+              edit button itself stays admin/head-only, unlike every other
+              field here: marking someone deceased (and so showing "Late"
+              everywhere) is weightier than most edits, so it's deliberately
+              not left to a Pending-review proposal from any member. */}
+          <div className="folio-section">
+            <div className="folio-section-head">
+              <h4>Date of death</h4>
+              {canModerate && (
                 <button className="icon-only" aria-label="Edit date of death" onClick={() => onEdit({ field: "died", fieldLabel: "Date of death", value: person.died || "", diedUnknown: person.diedUnknown || false })}><EditPencilIcon /></button>
-              </div>
-              {person.diedUnknown ? (
-                <p className="folio-summary">Passed away — exact date not known</p>
-              ) : (
-                <p className="folio-summary">
-                  {person.diedYearOnly
-                    ? `Known only as ${person.died.slice(0, 4)}`
-                    : new Date(`${person.died}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
-                </p>
               )}
             </div>
-          )}
+            {person.diedUnknown ? (
+              <p className="folio-summary">Passed away — exact date not known</p>
+            ) : person.died ? (
+              <p className="folio-summary">
+                {person.diedYearOnly
+                  ? `Known only as ${person.died.slice(0, 4)}`
+                  : new Date(`${person.died}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+              </p>
+            ) : <p className="form-hint" style={{ marginTop: 0 }}>Not on record yet.</p>}
+          </div>
           <div className="folio-section">
             <div className="folio-section-head">
               <h4>Heritage details</h4>
@@ -348,11 +361,21 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
                 </div>
               </div>
               <div className="folio-section">
-                <div className="folio-section-head"><h4>Contributions ({contribs.length})</h4></div>
-                {contribs.length ? contribs.map((c) => {
+                <button
+                  type="button"
+                  className="folio-section-head collapsible"
+                  onClick={() => setContribsCollapsed((c) => !c)}
+                  aria-expanded={!contribsCollapsed}
+                >
+                  <h4>Contributions ({contribs.length})</h4>
+                  <span className={`collapse-chevron${contribsCollapsed ? " collapsed" : ""}`}>▾</span>
+                </button>
+                {!contribsCollapsed && (contribs.length ? contribs.map((c) => {
                   const isRealAudio = c.type === "audio" && !!c.mediaUrl;
                   const isRealVideo = c.type === "video" && !!c.mediaUrl;
                   const isRealDocument = c.type === "document" && !!c.mediaUrl;
+                  const isRealPhoto = c.type === "photo" && !!c.mediaUrl;
+                  const isFromWhatsApp = c.source === "whatsapp";
                   return (
                     <div className="contrib-item" key={c.id} style={{ flexDirection: isRealAudio || isRealVideo ? "column" : "row", alignItems: "stretch" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
@@ -360,20 +383,37 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
                           {c.type === "edit" ? `Proposed change to ${c.fieldLabel}`
                             : isRealAudio ? "Voice recording"
                             : isRealVideo ? "Video recording"
-                            : isRealDocument
+                            : isRealPhoto
+                              ? <button type="button" className="link-btn" style={{ font: "inherit" }} onClick={() => setLightboxSrc(c.mediaUrl)}>📷 Photo</button>
+                              : isRealDocument
                               ? <a href={c.mediaUrl} target="_blank" rel="noreferrer">📄 {c.title || "Document"}</a>
                               : (c.type === "memory" || c.type === "date" ? c.content
                                 : c.type === "document" ? `📄 ${c.title || "Document"} — wasn't saved; ask them to upload it again`
+                                : c.type === "photo" ? "📷 Photo — wasn't saved; ask them to send it again"
                                 : `[${c.type}] ${c.content}`)}
-                          <span className="who">{c.contributor}</span>
+                          <span className="who">{c.contributor}{isFromWhatsApp ? " · via WhatsApp" : ""}</span>
                         </div>
-                        <span className={`status-pill ${c.status}`}>{c.status}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "none" }}>
+                          <span className={`status-pill ${c.status}`}>{c.status}</span>
+                          {/* WhatsApp content specifically — not every contribution — since
+                              that's the source that mixes casual sends in among formal edits
+                              and is the one an admin needs a quick way to clean up, even
+                              after it's already verified and showing on the folio. */}
+                          {canModerate && isFromWhatsApp && (
+                            <button
+                              type="button" className="icon-only" aria-label="Delete this WhatsApp contribution"
+                              onClick={() => onDeleteContribution(c)}
+                            >
+                              <CloseIcon />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       {isRealAudio && <audio src={c.mediaUrl} controls style={{ width: "100%", marginTop: 8 }} />}
                       {isRealVideo && <video src={c.mediaUrl} controls style={{ width: "100%", marginTop: 8, borderRadius: 8, maxHeight: 220 }} />}
                     </div>
                   );
-                }) : <div className="empty-state">No contributions yet.</div>}
+                }) : <div className="empty-state">No contributions yet.</div>)}
               </div>
             </>
           ) : (
