@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { redeemInvite } from "../data/familyDb";
+import { CloseIcon } from "./Icons";
 
 // The "already signed in, just redeem another invite" flow — used both
 // from the family switcher's "+ Join another family" action and when
@@ -35,7 +36,7 @@ export default function JoinFamilyModal({ initialCode = "", onClose }) {
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-panel" style={{ maxWidth: 420 }}>
-        <button className="modal-close on-paper" onClick={onClose} aria-label="Close">✕</button>
+        <button className="modal-close on-paper" onClick={onClose} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">Join another family</span>
           <h2 style={{ fontSize: 20, marginTop: 6 }}>Redeem an invite code</h2>

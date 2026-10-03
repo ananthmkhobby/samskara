@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSpeechToText } from "../hooks/useSpeechToText";
 import { geocodePlace } from "../lib/geocode";
 import { speakQuestion, hasVoiceFor } from "../lib/speech";
-import { AudioIcon } from "./Icons";
+import { AudioIcon, CloseIcon } from "./Icons";
 
 const SPEECH_LANGS = [
   { code: "en-IN", label: "English" },
@@ -140,7 +140,7 @@ export default function FolioVoiceWizard({ request, onSubmitField, onFinish, onO
     return (
       <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onFinish(); }}>
         <div className="modal-panel">
-          <button className="modal-close on-paper" onClick={onFinish} aria-label="Close">✕</button>
+          <button className="modal-close on-paper" onClick={onFinish} aria-label="Close"><CloseIcon /></button>
           <div className="modal-body">
             <span className="eyebrow">Voice walkthrough</span>
             <h2 style={{ fontSize: 20, marginTop: 6 }}>Fill in {request.name}'s profile by voice</h2>
@@ -178,7 +178,7 @@ export default function FolioVoiceWizard({ request, onSubmitField, onFinish, onO
     return (
       <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onFinish(); }}>
         <div className="modal-panel">
-          <button className="modal-close on-paper" onClick={onFinish} aria-label="Close">✕</button>
+          <button className="modal-close on-paper" onClick={onFinish} aria-label="Close"><CloseIcon /></button>
           <div className="modal-body">
             <span className="eyebrow">All set</span>
             <h2 style={{ fontSize: 20, marginTop: 6 }}>Thanks for filling in {request.name}'s profile</h2>
@@ -201,7 +201,7 @@ export default function FolioVoiceWizard({ request, onSubmitField, onFinish, onO
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onFinish(); }}>
       <div className="modal-panel">
-        <button className="modal-close on-paper" onClick={onFinish} aria-label="Close">✕</button>
+        <button className="modal-close on-paper" onClick={onFinish} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">Question {stepIndex + 1} of {stepsToAsk.length}</span>
           <h2 style={{ fontSize: 20, marginTop: 6 }}>{step.fieldLabel}</h2>

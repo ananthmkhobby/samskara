@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CloseIcon } from "./Icons";
 
 // Shared full-screen viewer for any already-uploaded photo — the Folio
 // profile photo, "Their Experience" cards, the Media gallery, the family
@@ -17,7 +18,7 @@ export default function PhotoLightbox({ src, alt, onClose }) {
   if (!src) return null;
   return (
     <div className={`photo-lightbox${zoomed ? " is-zoomed" : ""}`} onClick={onClose}>
-      <button className="modal-close" onClick={onClose} aria-label="Minimise">✕</button>
+      <button className="modal-close" onClick={onClose} aria-label="Minimise"><CloseIcon /></button>
       <img
         src={src}
         alt={alt || ""}

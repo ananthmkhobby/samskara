@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { PEOPLE } from "../data/people";
-import { PhotoIcon, AudioIcon, VideoIcon, DocumentIcon, DateIcon, MemoryIcon, EXP_LABELS, EXP_CATEGORIES_BY_TYPE } from "./Icons";
+import { PhotoIcon, AudioIcon, VideoIcon, DocumentIcon, DateIcon, MemoryIcon, EXP_LABELS, EXP_CATEGORIES_BY_TYPE, CloseIcon } from "./Icons";
 import { useMediaRecorder } from "../hooks/useMediaRecorder";
 import { useSpeechToText } from "../hooks/useSpeechToText";
 import { callApi } from "../lib/apiFetch";
@@ -213,7 +213,7 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
       <div className="modal-panel">
-        <button className="modal-close on-paper" onClick={onCancel} aria-label="Close">✕</button>
+        <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">Share what you know</span>
           <h2 style={{ fontSize: 20, marginTop: 6 }}>Add to the archive</h2>

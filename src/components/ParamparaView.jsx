@@ -5,7 +5,7 @@ import { createContentShare } from "../data/familyDb";
 import { CURRENT_FAMILY_ID, CURRENT_USER_ID } from "../data/session";
 import PhotoLightbox from "./PhotoLightbox";
 import HeritageIntro, { DiyaIcon } from "./HeritageIntro";
-import { EditPencilIcon } from "./Icons";
+import { EditPencilIcon, CloseIcon } from "./Icons";
 
 // A share code's whole content — title, story, since-year — travels; the
 // photo doesn't, since mediaPath points at this family's own private
@@ -19,7 +19,7 @@ function ShareCodeModal({ state, onClose }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
-        <button className="modal-close on-paper" onClick={onClose} aria-label="Close">✕</button>
+        <button className="modal-close on-paper" onClick={onClose} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           {state.error ? (
             <>

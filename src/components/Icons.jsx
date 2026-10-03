@@ -13,6 +13,20 @@ export const DocumentIcon = () => (
 export const EditPencilIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M16.5 3.5l4 4L7 21l-4.5 1L4 17.5z" /></svg>
 );
+// Replaces the literal "✕" text glyph every modal's close button used to
+// render — same stroke weight as the rest of this file, but an actual icon
+// rather than a character whose exact shape/weight varies by font.
+export const CloseIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><line x1="5" y1="5" x2="19" y2="19" /><line x1="19" y1="5" x2="5" y2="19" /></svg>
+);
+// Two-person "family" glyph — the one Quick Actions concept (Add member)
+// with no existing icon anywhere in the app; previously a 👪 emoji.
+export const PeopleIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <circle cx="9" cy="8" r="3" /><path d="M3 20c0-3.5 2.5-6 6-6s6 2.5 6 6" />
+    <circle cx="17" cy="9" r="2.4" /><path d="M14.5 14.2c2.6.4 4.5 2.4 4.5 5.8" />
+  </svg>
+);
 export const DateIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3.5" y="5" width="17" height="16" rx="2" /><line x1="3.5" y1="10" x2="20.5" y2="10" /></svg>
 );

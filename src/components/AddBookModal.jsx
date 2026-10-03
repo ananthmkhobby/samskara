@@ -3,6 +3,7 @@ import { LIBRARY_CATEGORIES } from "../lib/library";
 import { resizeImage } from "../lib/imageResize";
 import { uploadFamilyMedia } from "../lib/mediaUpload";
 import { CURRENT_FAMILY_ID } from "../data/session";
+import { CloseIcon } from "./Icons";
 
 export default function AddBookModal({ onCancel, onSubmit, canModerate }) {
   const [title, setTitle] = useState("");
@@ -72,7 +73,7 @@ export default function AddBookModal({ onCancel, onSubmit, canModerate }) {
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
       <div className="modal-panel">
-        <button className="modal-close on-paper" onClick={onCancel} aria-label="Close">✕</button>
+        <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">Family Library</span>
           <h2 style={{ fontSize: 20, marginTop: 6 }}>Add a book to the shelf</h2>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PARAMPARA_CATEGORIES, LINEAGE_CATEGORY, parseParamparaContent } from "../lib/parampara";
 import { resizeImage } from "../lib/imageResize";
 import { uploadFamilyMedia } from "../lib/mediaUpload";
+import { CloseIcon } from "./Icons";
 import { CURRENT_FAMILY_ID } from "../data/session";
 
 const CATEGORY_CHOICES = [...PARAMPARA_CATEGORIES, LINEAGE_CATEGORY];
@@ -91,7 +92,7 @@ export default function ParamparaContributeModal({ editEntry, existingPhotoUrl, 
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
       <div className="modal-panel">
-        <button className="modal-close on-paper" onClick={onCancel} aria-label="Close">✕</button>
+        <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">Parampare</span>
           <h2 style={{ fontSize: 20, marginTop: 6 }}>{editEntry ? "Edit this entry" : "Add to your family's heritage"}</h2>

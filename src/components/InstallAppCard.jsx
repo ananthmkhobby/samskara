@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { onInstallPromptChange, hasNativePrompt, triggerInstall, isStandalone, detectPlatform } from "../lib/installPrompt";
+import { CloseIcon } from "./Icons";
 
 const DISMISS_KEY = "vamsha.dismissedInstallCard";
 
@@ -36,7 +37,7 @@ export default function InstallAppCard({ dismissible = false }) {
 
   return (
     <div className="card install-card">
-      {dismissible && <button className="install-dismiss" onClick={dismiss} aria-label="Not now">✕</button>}
+      {dismissible && <button className="install-dismiss" onClick={dismiss} aria-label="Not now"><CloseIcon /></button>}
       <span className="eyebrow">Put this on your phone</span>
       <h3>No more typing the address</h3>
 

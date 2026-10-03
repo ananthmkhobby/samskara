@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSpeechToText } from "../hooks/useSpeechToText";
 import { speakQuestion, hasVoiceFor } from "../lib/speech";
-import { AudioIcon } from "./Icons";
+import { AudioIcon, CloseIcon } from "./Icons";
 import { callApi } from "../lib/apiFetch";
 
 const MAX_ROUNDS = 4;
@@ -108,7 +108,7 @@ export default function AIInterviewModal({ request, onCancel, onSubmit }) {
     return (
       <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
         <div className="modal-panel">
-          <button className="modal-close on-paper" onClick={onCancel} aria-label="Close">✕</button>
+          <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
           <div className="modal-body">
             <span className="eyebrow">AI-guided interview</span>
             <h2 style={{ fontSize: 20, marginTop: 6 }}>Record {request.name}'s story</h2>
@@ -138,7 +138,7 @@ export default function AIInterviewModal({ request, onCancel, onSubmit }) {
     return (
       <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
         <div className="modal-panel">
-          <button className="modal-close on-paper" onClick={onCancel} aria-label="Close">✕</button>
+          <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
           <div className="modal-body">
             <span className="eyebrow">Drafted from your interview</span>
             <h2 style={{ fontSize: 20, marginTop: 6 }}>Review the chapter</h2>
@@ -168,7 +168,7 @@ export default function AIInterviewModal({ request, onCancel, onSubmit }) {
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
       <div className="modal-panel">
-        <button className="modal-close on-paper" onClick={onCancel} aria-label="Close">✕</button>
+        <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">AI-guided interview · {request.name}</span>
           <h2 style={{ fontSize: 20, marginTop: 6 }}>Question {roundsDone + 1}</h2>

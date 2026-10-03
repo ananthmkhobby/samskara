@@ -2,6 +2,8 @@ import { useState } from "react";
 import { PEOPLE } from "../data/people";
 import { MY_PERSON_ID } from "../data/session";
 import { PRACTICES, CUSTOM_PRACTICE_KEY, QUICK_COUNTS } from "../lib/japa";
+import { CloseIcon } from "./Icons";
+import { JapaIcon } from "./NavIcons";
 import { yearsLabel, todayStr } from "../data/helpers";
 
 // Standalone overlay, not anchored to a Folio (unlike EditModal) — this is
@@ -45,9 +47,9 @@ export default function JapaLogModal({ onCancel, onSubmit }) {
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
       <div className="modal-panel">
-        <button className="modal-close on-paper" onClick={onCancel} aria-label="Close">✕</button>
+        <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
-          <span className="eyebrow">🪔 Japa & Chanting</span>
+          <span className="eyebrow"><span className="eyebrow-icon"><JapaIcon /></span>Japa & Chanting</span>
           <h2 style={{ fontSize: 20, marginTop: 6 }}>Log a count</h2>
           <p className="form-hint" style={{ marginTop: 6 }}>Applies right away — no review needed, same as marking a book as read.</p>
           <form onSubmit={submit}>

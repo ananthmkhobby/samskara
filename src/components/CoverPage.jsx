@@ -9,6 +9,7 @@ import InstallAppCard from "./InstallAppCard";
 import HeritageIntro, { FamilyBondIcon } from "./HeritageIntro";
 import FamilyFlame from "./FamilyFlame";
 import { SHOW_CHITRASHALE } from "./FolioModal";
+import { DiyaGlyph } from "./NavIcons";
 
 function Counter({ value, label, delay }) {
   const shown = useCountUp(value);
@@ -88,7 +89,7 @@ export default function CoverPage({ contributions, onNav, onContribute, onOpenRo
           type="button" className="parampara-highlight-card chitrashale-highlight-card cover-enter"
           style={{ "--enter-delay": "0.48s", width: "100%" }} onClick={() => onOpenRoom(featuredRoomPerson.id)}
         >
-          <span className="eyebrow">🪔 Anubhava Chitrashale</span>
+          <span className="eyebrow"><span className="eyebrow-icon"><DiyaGlyph /></span>Anubhava Chitrashale</span>
           <p className="quote">Visit {featuredRoomPerson.name.split(" ")[0]}'s room today</p>
           <p className="who">Objects the family has placed there, waiting to be touched</p>
         </button>

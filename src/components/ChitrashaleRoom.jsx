@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ROOM_SPOTS, parseChitrashaleContent, verifiedObjectsBySpot } from "../lib/chitrashale";
 import { ChitrashaleIcon } from "./ChitrashaleIcons";
+import { CloseIcon } from "./Icons";
 import { batchResolveMediaUrls } from "../lib/mediaUpload";
 import { createAmbientPlayer } from "../lib/ambientSound";
 
@@ -104,7 +105,7 @@ function ObjectSpot({ spot, entry, urlMap, onOpenObject, onMoodChange, isOpen, o
       {(revealed || revealing) && (
         <div className="chitra-reveal" style={{ left: `${spot.x}%`, top: `${spot.y}%` }}>
           {revealed && (
-            <button type="button" className="chitra-reveal-close" aria-label="Close" onClick={(e) => { e.stopPropagation(); closeSelf(); }}>✕</button>
+            <button type="button" className="chitra-reveal-close" aria-label="Close" onClick={(e) => { e.stopPropagation(); closeSelf(); }}><CloseIcon /></button>
           )}
           {revealing && <span className="chitra-reveal-hush" aria-hidden="true" />}
           {revealed && (
@@ -233,7 +234,7 @@ export default function ChitrashaleRoom({ person, contributions, onClose, onOpen
             now") rather than call requestClose again — requestClose only
             moves room -> exit, so reusing it here left the ✕ a dead click
             once already on the exit question. */}
-        <button className="modal-close on-paper" onClick={phase === "exit" ? onClose : requestClose} aria-label="Close">✕</button>
+        <button className="modal-close on-paper" onClick={phase === "exit" ? onClose : requestClose} aria-label="Close"><CloseIcon /></button>
         {phase === "room" && (
           <button
             type="button" className="chitra-mute-toggle on-paper"

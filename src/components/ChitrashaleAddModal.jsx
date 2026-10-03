@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { INTERACTION_TYPES, ROOM_SPOTS, ICON_KEYS, MOOD_KEYS, interactionTypeFor } from "../lib/chitrashale";
 import { ChitrashaleIcon } from "./ChitrashaleIcons";
+import { CloseIcon } from "./Icons";
 import { useMediaRecorder } from "../hooks/useMediaRecorder";
 import { resizeImage } from "../lib/imageResize";
 import { uploadFamilyMedia } from "../lib/mediaUpload";
@@ -119,7 +120,7 @@ export default function ChitrashaleAddModal({ person, occupiedSpots, initialSpot
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
       <div className="modal-panel">
-        <button className="modal-close on-paper" onClick={onCancel} aria-label="Close">✕</button>
+        <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">Anubhava Chitrashale</span>
           <h2 style={{ fontSize: 20, marginTop: 6 }}>Add something to {person.name.split(" ")[0]}'s room</h2>

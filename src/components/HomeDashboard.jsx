@@ -5,8 +5,8 @@ import { useCountUp } from "../hooks/useCountUp";
 import { parseParamparaContent } from "../lib/parampara";
 import { personIdsWithRooms } from "../lib/chitrashale";
 import { yearsLabel, byId, isDeceased, formatName, MIN_GEN, MAX_GEN } from "../data/helpers";
-import { DateIcon } from "./Icons";
-import { TreeIcon } from "./NavIcons";
+import { DateIcon, MemoryIcon, PhotoIcon, PeopleIcon } from "./Icons";
+import { TreeIcon, DiyaGlyph } from "./NavIcons";
 import AuthPanel from "./AuthPanel";
 import InstallAppCard from "./InstallAppCard";
 import HeritageIntro, { FamilyBondIcon } from "./HeritageIntro";
@@ -250,7 +250,7 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
           type="button" className="parampara-highlight-card chitrashale-highlight-card cover-enter"
           style={{ "--enter-delay": "0.48s", width: "100%" }} onClick={() => onOpenRoom(featuredRoomPerson.id)}
         >
-          <span className="eyebrow">🪔 Anubhava Chitrashale</span>
+          <span className="eyebrow"><span className="eyebrow-icon"><DiyaGlyph /></span>Anubhava Chitrashale</span>
           <p className="quote">Visit {featuredRoomPerson.name.split(" ")[0]}'s room today</p>
           <p className="who">Objects the family has placed there, waiting to be touched</p>
         </button>
@@ -276,19 +276,19 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
       <div className="home-section-label cover-enter" style={{ "--enter-delay": "0.38s" }}>Quick actions</div>
       <div className="quick-actions cover-enter" style={{ "--enter-delay": "0.4s" }}>
         <button type="button" onClick={() => onNav("builder")}>
-          <span className="quick-action-icon">👪</span>Add member
+          <span className="quick-action-icon"><PeopleIcon /></span>Add member
         </button>
         <button type="button" onClick={() => onContribute({ type: "date" })}>
-          <span className="quick-action-icon">📅</span>Add event
+          <span className="quick-action-icon"><DateIcon /></span>Add event
         </button>
         <button type="button" onClick={() => onContribute({ type: "memory" })}>
-          <span className="quick-action-icon">📝</span>Share story
+          <span className="quick-action-icon"><MemoryIcon /></span>Share story
         </button>
         <button type="button" className="quick-action-primary" onClick={onParamparaContribute}>
-          <span className="quick-action-icon">🪔</span>Add tradition
+          <span className="quick-action-icon"><DiyaGlyph /></span>Add tradition
         </button>
         <button type="button" onClick={() => onContribute({ type: "photo" })}>
-          <span className="quick-action-icon">🖼️</span>Upload memory
+          <span className="quick-action-icon"><PhotoIcon /></span>Upload memory
         </button>
       </div>
 
@@ -325,7 +325,7 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
       </div>
 
       <div className="home-quote-banner cover-enter" style={{ "--enter-delay": "0.64s" }}>
-        <span className="home-quote-banner-icon">🪔</span>
+        <span className="home-quote-banner-icon"><DiyaGlyph /></span>
         <p>“We do not inherit the earth from our ancestors, we borrow it from our children.”<span>— Indian Proverb</span></p>
       </div>
 

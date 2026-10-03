@@ -226,9 +226,10 @@
    something else in the room. */
 .chitra-reveal-close {
   position: absolute; top: 3px; right: 5px; width: 18px; height: 18px; border-radius: 50%; border: 0;
-  background: transparent; color: #8A7860; font-size: 11px; line-height: 1; cursor: pointer;
+  background: transparent; color: #8A7860; line-height: 1; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
+.chitra-reveal-close svg { width: 11px; height: 11px; }
 .chitra-reveal-close:hover { color: #2E2013; }
 .chitra-reveal-hush {
   display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--gold-deep);

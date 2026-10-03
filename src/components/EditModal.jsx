@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { VALUES } from "../data/people";
 import { geocodePlace } from "../lib/geocode";
+import { CloseIcon } from "./Icons";
 
 export default function EditModal({ request, onCancel, onSubmit, canModerate }) {
   const isHeritage = request.field === "heritage";
@@ -133,7 +134,7 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
       <div className="modal-panel">
-        <button className="modal-close on-paper" onClick={onCancel} aria-label="Close">✕</button>
+        <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">Propose a change</span>
           <h2 style={{ fontSize: 20, marginTop: 6 }}>Edit: {request.fieldLabel}</h2>

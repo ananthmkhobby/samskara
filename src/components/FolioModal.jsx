@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { byId, yearsLabel, trustLabel, contributionsFor, verifiedMediaFor, personHasContent, roleTag, relationshipCaption, widowedLabel, mutualSpouse, formatName, MIN_GEN, MAX_GEN } from "../data/helpers";
-import { MEDIA_ICONS, EXP_LABELS, ExpIcon, AUDIO_EXP_TYPES, EditPencilIcon } from "./Icons";
+import { MEDIA_ICONS, EXP_LABELS, ExpIcon, AUDIO_EXP_TYPES, EditPencilIcon, CloseIcon } from "./Icons";
 import PersonAvatar from "./PersonAvatar";
 import PhotoLightbox from "./PhotoLightbox";
 import { resizeImage } from "../lib/imageResize";
@@ -43,7 +43,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-panel">
-        <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
+        <button className="modal-close" onClick={onClose} aria-label="Close"><CloseIcon /></button>
         <div className="folio-band">
           <div className="avatar-wrap">
             <button
@@ -165,11 +165,11 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
                   <span key={i} className="tag" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                     {s.place}
                     <button
-                      type="button" aria-label={`Remove ${s.place} from their migration path`}
-                      style={{ background: "none", border: 0, padding: 0, cursor: "pointer", color: "inherit", font: "inherit", lineHeight: 1 }}
+                      type="button" className="tag-remove-btn" aria-label={`Remove ${s.place} from their migration path`}
+                      style={{ background: "none", border: 0, padding: 0, cursor: "pointer", color: "inherit", display: "inline-flex" }}
                       onClick={() => onEdit({ field: "geoStops", fieldLabel: `Remove ${s.place} from their migration path`, stops: person.geoStops, removeIndex: i })}
                     >
-                      ✕
+                      <CloseIcon />
                     </button>
                   </span>
                 ))}
@@ -288,7 +288,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
                           {canModerate && e.id != null && (
                             <div className="exp-mod-actions">
                               <button type="button" className="icon-only" aria-label="Propose edit to this experience" onClick={() => onEdit({ field: `experience:${e.id}`, fieldLabel: "Experience caption", value: e.caption })}><EditPencilIcon /></button>
-                              <button type="button" className="icon-only" aria-label="Remove this experience" onClick={() => onRemoveExperience(e.id)}>✕</button>
+                              <button type="button" className="icon-only" aria-label="Remove this experience" onClick={() => onRemoveExperience(e.id)}><CloseIcon /></button>
                             </div>
                           )}
                           <button

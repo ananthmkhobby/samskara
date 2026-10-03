@@ -17,6 +17,10 @@ a { color: inherit; }
 :focus-visible { outline: 2px solid var(--maroon-deep); outline-offset: 2px; }
 .tnum { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 .eyebrow { font-size: var(--text-xs); letter-spacing: .09em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
+/* Pairs a small icon with an .eyebrow label — replaces the various emoji
+   ("🪔 Anubhava Chitrashale" etc.) that used to open these captions. */
+.eyebrow-icon { display: inline-flex; vertical-align: -3px; margin-right: 5px; }
+.eyebrow-icon svg { width: 13px; height: 13px; }
 @media (prefers-reduced-motion: reduce) { * { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
 
 #app { min-height: 100vh; display: flex; flex-direction: column; }
@@ -118,6 +122,7 @@ main { flex: 1; width: 100%; }
   display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: 999px; border: 1px solid var(--line-strong);
   background: var(--parchment-paper); color: var(--ink); font-weight: 600; font-size: var(--text-base); cursor: pointer; text-decoration: none;
 }
+.btn svg { width: 15px; height: 15px; flex: none; }
 .btn.primary { background: var(--maroon-deep); border-color: var(--maroon-deep); color: #F8ECE4; }
 .btn.ghost { background: none; }
 .btn.small { padding: 7px 13px; font-size: var(--text-sm); }
@@ -144,8 +149,9 @@ main { flex: 1; width: 100%; }
 .install-dismiss {
   position: absolute; top: 14px; right: 14px; width: 28px; height: 28px; border-radius: 50%;
   border: 1px solid var(--line-strong); background: var(--parchment-paper); color: var(--ink-faint);
-  cursor: pointer; font-size: var(--text-sm); line-height: 1;
+  cursor: pointer; line-height: 1; display: flex; align-items: center; justify-content: center;
 }
+.install-dismiss svg { width: 13px; height: 13px; }
 
 .trust { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-xs); font-weight: 700; padding: 4px 10px; border-radius: 999px; }
 /* Now a <button> (tap to change), not a plain <span> — reset the native

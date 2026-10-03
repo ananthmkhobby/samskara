@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CloseIcon } from "./Icons";
 
 const LABELS = {
   wisdom: { title: "Add a lesson", placeholder: "One lesson this book taught you…" },
@@ -28,7 +29,7 @@ export default function LibraryEntryModal({ bookId, kind, onCancel, onSubmit, ca
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
       <div className="modal-panel" style={{ maxWidth: 460 }}>
-        <button className="modal-close on-paper" onClick={onCancel} aria-label="Close">✕</button>
+        <button className="modal-close on-paper" onClick={onCancel} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">Family Library</span>
           <h2 style={{ fontSize: 20, marginTop: 6 }}>{labels.title}</h2>

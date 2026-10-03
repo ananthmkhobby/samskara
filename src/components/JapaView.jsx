@@ -2,6 +2,7 @@ import { PRACTICE_LOGS } from "../data/people";
 import { byId, MIN_GEN, MAX_GEN } from "../data/helpers";
 import { familyTotal, totalsByPerson, totalsByPractice } from "../lib/japa";
 import PersonAvatar from "./PersonAvatar";
+import { JapaIcon } from "./NavIcons";
 
 export default function JapaView({ onLogCount, onSelectPerson }) {
   const total = familyTotal(PRACTICE_LOGS);
@@ -20,7 +21,7 @@ export default function JapaView({ onLogCount, onSelectPerson }) {
         <div style={{ fontFamily: "var(--font-display)", fontSize: 40, fontWeight: 700, color: "var(--maroon-deep)", margin: "6px 0" }}>
           {total.toLocaleString("en-IN")}
         </div>
-        <button type="button" className="btn primary" onClick={onLogCount}>🪔 Log a count</button>
+        <button type="button" className="btn primary" onClick={onLogCount}><JapaIcon /> Log a count</button>
       </div>
 
       {byPerson.length > 0 && (
@@ -54,7 +55,7 @@ export default function JapaView({ onLogCount, onSelectPerson }) {
       {!PRACTICE_LOGS.length && (
         <div className="card" style={{ padding: 20, textAlign: "center" }}>
           <p className="folio-summary" style={{ marginBottom: 12 }}>No counts logged yet — be the first.</p>
-          <button type="button" className="btn primary" onClick={onLogCount}>🪔 Log a count</button>
+          <button type="button" className="btn primary" onClick={onLogCount}><JapaIcon /> Log a count</button>
         </div>
       )}
     </section>

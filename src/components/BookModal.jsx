@@ -2,7 +2,7 @@ import { useState } from "react";
 import { PEOPLE, BOOK_OWNERSHIP, BOOK_READERS } from "../data/people";
 import { byId } from "../data/helpers";
 import { libraryCategoryFor, ownershipActionLabel } from "../lib/library";
-import { EditPencilIcon } from "./Icons";
+import { EditPencilIcon, CloseIcon } from "./Icons";
 import { isGrandfathersShelf } from "./LibraryView";
 import PhotoLightbox from "./PhotoLightbox";
 
@@ -175,7 +175,7 @@ export default function BookModal({ book, contributions, onClose, canModerate, o
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-panel">
-        <button className="modal-close on-paper" onClick={onClose} aria-label="Close">✕</button>
+        <button className="modal-close on-paper" onClick={onClose} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
             <button
