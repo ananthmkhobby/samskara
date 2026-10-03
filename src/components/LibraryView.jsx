@@ -1,24 +1,12 @@
 import { useState } from "react";
 import { BOOKS, BOOK_OWNERSHIP, BOOK_READERS } from "../data/people";
-import { byId } from "../data/helpers";
-import { LIBRARY_CATEGORIES, libraryCategoryFor } from "../lib/library";
+import { LIBRARY_CATEGORIES, libraryCategoryFor, isGrandfathersShelf } from "../lib/library";
 import HeritageIntro, { OpenBookIcon } from "./HeritageIntro";
 
 function isMonth(dateStr, now) {
   if (!dateStr) return false;
   const d = new Date(dateStr);
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-}
-
-// A book whose current owner (the last link in the ownership chain) has
-// passed away becomes a quiet memorial — nobody edits or rearranges it,
-// children can only look. Falls out of data that already exists rather
-// than needing its own "is this locked" field.
-export function isGrandfathersShelf(bookId) {
-  const chain = BOOK_OWNERSHIP.filter((o) => o.bookId === bookId).sort((a, b) => a.sortOrder - b.sortOrder);
-  const last = chain[chain.length - 1];
-  const owner = last?.personId ? byId(last.personId) : null;
-  return !!owner?.died;
 }
 
 function BookCard({ book, onOpen }) {

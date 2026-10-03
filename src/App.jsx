@@ -1,22 +1,30 @@
-import { useEffect, useReducer, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useReducer, useRef, useState } from "react";
 import TopBar from "./components/TopBar";
 import BottomBar from "./components/BottomBar";
 import HomeDashboard from "./components/HomeDashboard";
 import MoreMenu from "./components/MoreMenu";
 import SearchView from "./components/SearchView";
 import TreeView from "./components/TreeView";
-import TreasuryView from "./components/TreasuryView";
 import VaultView from "./components/VaultView";
 import JourneyMapView from "./components/JourneyMapView";
-import AdminView from "./components/AdminView";
 import FolioModal from "./components/FolioModal";
 import ContributeModal from "./components/ContributeModal";
 import EditModal from "./components/EditModal";
 import BiographyOverlay from "./components/BiographyOverlay";
-import FamilyBuilderView from "./components/FamilyBuilderView";
 import AddFamilyMemberModal from "./components/AddFamilyMemberModal";
-import AIInterviewModal from "./components/AIInterviewModal";
 import FolioVoiceWizard from "./components/FolioVoiceWizard";
+// Lazy-loaded: heavier or less-constantly-opened views, kept out of the
+// critical path for Home/Tree/Folio — the screens opened on every visit.
+// Each is only ever statically imported from this one file (verified
+// before this change), so splitting them out doesn't risk pulling the
+// same module back in eagerly through a side door.
+const TreasuryView = lazy(() => import("./components/TreasuryView"));
+const AdminView = lazy(() => import("./components/AdminView"));
+const FamilyBuilderView = lazy(() => import("./components/FamilyBuilderView"));
+const AIInterviewModal = lazy(() => import("./components/AIInterviewModal"));
+const LibraryView = lazy(() => import("./components/LibraryView"));
+const ChitrashaleRoom = lazy(() => import("./components/ChitrashaleRoom"));
+const ChitrashaleAddModal = lazy(() => import("./components/ChitrashaleAddModal"));
 import WelcomeIntro from "./components/WelcomeIntro";
 import FamilySplash from "./components/FamilySplash";
 import SuperAdminView from "./components/SuperAdminView";
@@ -29,15 +37,12 @@ import JoinFamilyModal from "./components/JoinFamilyModal";
 import ConnectWhatsAppView from "./components/ConnectWhatsAppView";
 import ParamparaView from "./components/ParamparaView";
 import ParamparaContributeModal from "./components/ParamparaContributeModal";
-import LibraryView from "./components/LibraryView";
 import JapaView from "./components/JapaView";
 import ActivityView, { lastSeenId, markAllSeen } from "./components/ActivityView";
 import JapaLogModal from "./components/JapaLogModal";
 import BookModal from "./components/BookModal";
 import AddBookModal from "./components/AddBookModal";
 import LibraryEntryModal from "./components/LibraryEntryModal";
-import ChitrashaleRoom from "./components/ChitrashaleRoom";
-import ChitrashaleAddModal from "./components/ChitrashaleAddModal";
 import LoginPage from "./components/LoginPage";
 import HelpStandalone from "./components/HelpStandalone";
 import ResetPasswordGate from "./components/ResetPasswordGate";
@@ -887,6 +892,12 @@ export default function App() {
   return (
     <div id="app">
       <TopBar view={view} onNav={goTo} pendingCount={pendingCount} unseenCount={unseenCount} onJoinAnother={() => openJoinFamily({})} onContribute={openContribute} />
+      {/* One boundary covers every lazy-loaded view and modal below (see
+          the `lazy(...)` imports at the top of this file) — simplest and
+          safest shape given how many sibling blocks reference them, rather
+          than a separate Suspense per lazy component. Non-lazy children
+          (BottomBar, FolioModal, etc.) just render through it unaffected. */}
+      <Suspense fallback={<div className="wrap" style={{ textAlign: "center", paddingTop: 80 }}><span className="skeleton" style={{ display: "inline-block", width: 140, height: 14 }} /></div>}>
       <main>
         {view === "cover" && (
           <HomeDashboard
@@ -1030,6 +1041,7 @@ export default function App() {
           onOpenInterview={() => commit({ voiceWizardRequest: null, interviewRequest: { personId: voiceWizardRequest.personId, name: voiceWizardRequest.name, context: [voiceWizardRequest.person.summary, voiceWizardRequest.person.lifeLesson?.quote].filter(Boolean).join(" ") } })}
         />
       )}
+      </Suspense>
 
       <div className={`toast${toast ? " show" : ""}`}>{toast}</div>
 

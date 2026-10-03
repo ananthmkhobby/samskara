@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { PEOPLE, BOOK_OWNERSHIP, BOOK_READERS } from "../data/people";
 import { byId } from "../data/helpers";
-import { libraryCategoryFor, ownershipActionLabel } from "../lib/library";
+import { libraryCategoryFor, ownershipActionLabel, isGrandfathersShelf } from "../lib/library";
 import { EditPencilIcon, CloseIcon } from "./Icons";
-import { isGrandfathersShelf } from "./LibraryView";
 import PhotoLightbox from "./PhotoLightbox";
 import { useModalA11y } from "../hooks/useModalA11y";
 
