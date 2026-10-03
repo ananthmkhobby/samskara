@@ -1,3 +1,28 @@
+/* Self-hosted fallback for --font-display, used only when neither OS-native
+   option (Iowan Old Style on Apple, Palatino Linotype on Windows) is
+   present — i.e. most Android/Linux/bare-Windows visitors, who would
+   otherwise silently land on generic Georgia. Variable-weight files (one
+   each for normal/italic), subsetted to Latin only by Google's own CSS2
+   API — ~50KB apiece — so every weight/style combination actually used
+   across the app (400/600/700, normal/italic) comes from these two files
+   via the browser's own interpolation, not five separate downloads. Served
+   from /public so they're available offline via the PWA's own precache.
+   Source Serif 4, SIL Open Font License. */
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/SourceSerif4-Variable.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: italic;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/SourceSerif4-Italic-Variable.woff2') format('woff2');
+}
+
 :root {
   --parchment: #EFE1BB; --parchment-deep: #E4D097; --parchment-paper: #F8F0DA;
   --ink: #3B2712; --ink-soft: #6B4E30; --ink-faint: #9C8058;
@@ -10,10 +35,37 @@
   --radius: 10px; --radius-sm: 7px;
   --shadow-1: 0 1px 2px rgba(59, 39, 18, .14);
   --shadow-2: 0 16px 36px -16px rgba(59, 39, 18, .5);
-  --font-display: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', 'Source Serif 4', Georgia, serif;
   --font-devanagari: 'Tiro Devanagari Hindi', 'Kohinoor Devanagari', 'Noto Serif Devanagari', 'Nirmala UI', serif;
   --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Type scale — consolidates what was 28 ad-hoc font-size values scattered
+     across every stylesheet into one shared rhythm. Named by role, not by
+     raw size, so a future adjustment moves everything that uses it at
+     once. Hero/headline text (the clamp()-based cover/home titles) stays
+     custom — those are deliberately unique per screen, not body copy. */
+  --text-2xs: 10px;   /* micro badges, tiny captions */
+  --text-xs: 11px;    /* hints, meta lines, timestamps */
+  --text-sm: 12.5px;  /* secondary body text, card subtext */
+  --text-base: 14px;  /* default body text */
+  --text-md: 16px;    /* emphasized body, form labels at rest */
+  --text-lg: 19px;    /* card/section titles */
+  --text-xl: 23px;    /* page headings */
+  --text-2xl: 30px;   /* section-opening display text, below hero scale */
+
+  /* Spacing scale — 4px grid. Existing components keep their current
+     values until touched; new and refreshed CSS should reach for these
+     instead of a fresh pixel number. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+
   color-scheme: light;
 }
 :root[data-theme="dark"] {
