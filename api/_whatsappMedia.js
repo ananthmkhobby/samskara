@@ -42,6 +42,33 @@ export async function fetchTwilioMedia(mediaUrl, contentType) {
   return { buffer, ext: info.ext, kind: info.kind };
 }
 
+// Turns a spoken WhatsApp voice note into text via OpenAI's Whisper API —
+// reuses the same OPENAI_API_KEY already configured for the AI Interview
+// and translation features (api/translate.js), no separate account needed.
+export async function transcribeAudio(buffer, contentType) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("Voice transcription isn't set up yet — add OPENAI_API_KEY to this project's environment variables.");
+  const info = ALLOWED[contentType];
+  const form = new FormData();
+  form.append("file", new Blob([buffer], { type: contentType }), `voice.${info?.ext || "ogg"}`);
+  form.append("model", "whisper-1");
+  const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: form,
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    // Logged server-side only — matches translate.js's own convention of
+    // never surfacing the upstream provider's error text to the user.
+    console.error("Whisper transcription error:", data.error?.message || res.status);
+    throw new Error("transcription request failed");
+  }
+  const text = (data.text || "").trim();
+  if (!text) throw new Error("empty transcription");
+  return text;
+}
+
 // Same bucket and {familyId}/{personId}/{uuid}.{ext} path convention the
 // browser's own uploadFamilyMedia() uses (src/lib/mediaUpload.js) — the
 // webhook runs under the service role, so it uses the Storage client

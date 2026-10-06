@@ -16,7 +16,7 @@
 // Sandbox, and a full paid account. This endpoint always just acks Twilio
 // with a bare 200 once the inbound message has been durably recorded.
 import { serviceClient, validateTwilioSignature, normalizePhoneNumber, resolveIdentity, sendWhatsAppMessage } from "./_whatsappAuth.js";
-import { classifyMediaType, fetchTwilioMedia, storeMedia } from "./_whatsappMedia.js";
+import { classifyMediaType, fetchTwilioMedia, storeMedia, transcribeAudio } from "./_whatsappMedia.js";
 import { advanceConversation } from "./_whatsappConversation.js";
 
 function maskPhone(p) {
@@ -145,6 +145,15 @@ export default async function handler(req, res) {
     await finishMessage({ user_id: identity.userId, family_id: identity.familyId });
     checkpoint("after_finishMessage_identity", requestStarted);
 
+    const { data: conversation } = await supabase
+      .from("whatsapp_conversations").select("*").eq("phone_number", phoneNumber).maybeSingle();
+    checkpoint("after_conversation_select", requestStarted);
+
+    // An abandoned conversation older than a day starts fresh rather than
+    // trapping the next message in a stale flow.
+    const isStale = conversation && Date.now() - new Date(conversation.last_interaction_at).getTime() > 24 * 60 * 60 * 1000;
+    const effectiveConversation = isStale ? null : conversation;
+
     // Unsupported attachment — fail clearly rather than silently dropping it
     // or feeding an unknown type into the conversation engine.
     if (numMedia > 0 && !classifyMediaType(mediaContentType)) {
@@ -154,8 +163,27 @@ export default async function handler(req, res) {
       return;
     }
 
-    let mediaKind = null, mediaPath = null;
-    if (numMedia > 0) {
+    // A voice note sent while we're waiting for "what do you remember about
+    // this" is a spoken answer to that question, not a new memory — talk
+    // naturally, we'll transcribe it, same as if they'd typed it. Handled
+    // before the general media-storage branch below so it never hits the
+    // "new media mid-conversation means they've moved on" reset in
+    // advanceConversation.
+    const isStoryVoiceReply = effectiveConversation?.state === "WAITING_FOR_STORY" && numMedia > 0 && classifyMediaType(mediaContentType) === "audio";
+
+    let mediaKind = null, mediaPath = null, effectiveTextBody = textBody;
+    if (isStoryVoiceReply) {
+      try {
+        const { buffer } = await fetchTwilioMedia(mediaUrl, mediaContentType);
+        effectiveTextBody = await transcribeAudio(buffer, mediaContentType);
+        log("VOICE_STORY_TRANSCRIBED", { phone: maskPhone(phoneNumber), chars: effectiveTextBody.length, ms: Date.now() - requestStarted });
+      } catch (err) {
+        await finishMessage({ processing_status: "failed", error_message: `transcription_failed: ${err.message}` });
+        await reply(phoneNumber, "I couldn't quite catch that voice note. Could you try sending it again, or just type it instead?");
+        ack(res);
+        return;
+      }
+    } else if (numMedia > 0) {
       const { buffer, ext, kind } = await fetchTwilioMedia(mediaUrl, mediaContentType);
       // The person isn't resolved yet at upload time — "unassigned" is the
       // same placeholder the in-app ContributeModal already uses for media
@@ -173,19 +201,10 @@ export default async function handler(req, res) {
       log("MEDIA_STORED", { phone: maskPhone(phoneNumber), kind, ms: Date.now() - requestStarted });
     }
 
-    const { data: conversation } = await supabase
-      .from("whatsapp_conversations").select("*").eq("phone_number", phoneNumber).maybeSingle();
-    checkpoint("after_conversation_select", requestStarted);
-
-    // An abandoned conversation older than a day starts fresh rather than
-    // trapping the next message in a stale flow.
-    const isStale = conversation && Date.now() - new Date(conversation.last_interaction_at).getTime() > 24 * 60 * 60 * 1000;
-    const effectiveConversation = isStale ? null : conversation;
-
     const result = await advanceConversation({
       supabase, familyId: identity.familyId,
       conversation: effectiveConversation,
-      inbound: { textBody, mediaKind, mediaPath, originalFilename: null },
+      inbound: { textBody: effectiveTextBody, mediaKind, mediaPath, originalFilename: null },
       memberships: identity.memberships,
     });
     checkpoint("after_advanceConversation", requestStarted);
