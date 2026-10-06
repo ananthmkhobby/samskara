@@ -23,9 +23,9 @@ const FAMILY_COMMAND = /^(family|families|switch family|switch)$/i;
 const GREETING = /^(hi+|hello+|hey+|hola|yo|namaste|namaskara|namaskaram|help|menu|start)$/i;
 
 const MEDIA_PROMPT = {
-  photo: "Beautiful memory ❤️\nWho is in this photo?",
-  audio: "Who is this memory about?",
-  document: "Got it — who is this document about, or who in the family is it connected to?",
+  photo: "Beautiful memory ❤️\nWho is in this, or who is this about?",
+  audio: "Who is in this, or who is this about?",
+  document: "Got it — who is in this, or who is this about?",
 };
 
 const STORY_PROMPT = {
