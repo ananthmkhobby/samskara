@@ -244,6 +244,68 @@ export async function advanceConversation({ supabase, familyId, conversation, in
     };
   }
 
+  // ---- Someone was asked to identify a photo (outbound-initiated) --------
+  // Reached only via Admin's "Ask the family" action, which seeds this
+  // state + a contributionId in context before the photo is even sent —
+  // there's no media-upload step here, just a name search exactly like
+  // WAITING_FOR_PERSON, kept separate because the eventual YES means
+  // "attach this person to that existing photo," not "create a new
+  // contribution."
+  if (state === "WAITING_FOR_PHOTO_ID") {
+    if (SKIP.test(text)) {
+      return { reply: "No problem — thanks for taking a look anyway!", nextState: "IDLE", pendingPersonId: null, context: {}, contributions: [] };
+    }
+    if (ctx.candidates && /^\d+$/.test(text)) {
+      const idx = parseInt(text, 10) - 1;
+      const picked = ctx.candidates[idx];
+      if (picked) {
+        const { candidates: _candidates, ...rest } = ctx;
+        return { reply: `Is this ${picked.name}? Reply YES or NO.`, nextState: "WAITING_FOR_PHOTO_ID_CONFIRMATION", pendingPersonId: null, context: { ...rest, candidatePersonId: picked.id, candidatePersonName: picked.name }, contributions: [] };
+      }
+      return { reply: `Please reply with a number between 1 and ${ctx.candidates.length}, or send a different name.`, nextState: "WAITING_FOR_PHOTO_ID", pendingPersonId: null, context: ctx, contributions: [] };
+    }
+    if (!text) {
+      return { reply: "Who is this? Tell me a name, or reply SKIP if you're not sure.", nextState: "WAITING_FOR_PHOTO_ID", pendingPersonId: null, context: ctx, contributions: [] };
+    }
+    const matches = await searchPeople(supabase, familyId, text);
+    if (matches.length === 1) {
+      return { reply: `I found ${matches[0].name} in your family tree.\nIs this the person? Reply YES or NO.`, nextState: "WAITING_FOR_PHOTO_ID_CONFIRMATION", pendingPersonId: null, context: { ...ctx, candidatePersonId: matches[0].id, candidatePersonName: matches[0].name }, contributions: [] };
+    }
+    if (matches.length > 1) {
+      const list = matches.map((m, i) => `${i + 1}. ${m.name}`).join("\n");
+      return { reply: `I found a few people named like that:\n${list}\n\nReply with the number, or send a different name.`, nextState: "WAITING_FOR_PHOTO_ID", pendingPersonId: null, context: { ...ctx, candidates: matches.map((m) => ({ id: m.id, name: m.name })) }, contributions: [] };
+    }
+    return { reply: "I couldn't find that person in your family tree.\nTry a different name, or reply SKIP if you're not sure.", nextState: "WAITING_FOR_PHOTO_ID", pendingPersonId: null, context: ctx, contributions: [] };
+  }
+
+  if (state === "WAITING_FOR_PHOTO_ID_CONFIRMATION") {
+    if (YES.test(text)) {
+      return {
+        reply: null, nextState: "IDLE", pendingPersonId: null, context: {}, contributions: [],
+        photoIdResolved: { contributionId: ctx.contributionId, personId: ctx.candidatePersonId, personName: ctx.candidatePersonName },
+      };
+    }
+    if (NO.test(text)) {
+      const { candidatePersonId: _id, candidatePersonName: _name, candidates: _candidates, ...rest } = ctx;
+      return { reply: "No problem — who is it? Tell me a name, or reply SKIP if you're not sure.", nextState: "WAITING_FOR_PHOTO_ID", pendingPersonId: null, context: rest, contributions: [] };
+    }
+    if (!text) {
+      return { reply: `Sorry, just reply YES or NO — is this ${ctx.candidatePersonName}?`, nextState: "WAITING_FOR_PHOTO_ID_CONFIRMATION", pendingPersonId: null, context: ctx, contributions: [] };
+    }
+    // Same reasoning as the other confirmation's fallback — a corrected
+    // name, not a literal yes/no, so search fresh instead of looping.
+    const matches = await searchPeople(supabase, familyId, text);
+    const { candidatePersonId: _id, candidatePersonName: _name, candidates: _candidates, ...rest } = ctx;
+    if (matches.length === 1) {
+      return { reply: `I found ${matches[0].name} in your family tree.\nIs this the person? Reply YES or NO.`, nextState: "WAITING_FOR_PHOTO_ID_CONFIRMATION", pendingPersonId: null, context: { ...rest, candidatePersonId: matches[0].id, candidatePersonName: matches[0].name }, contributions: [] };
+    }
+    if (matches.length > 1) {
+      const list = matches.map((m, i) => `${i + 1}. ${m.name}`).join("\n");
+      return { reply: `I found a few people named like that:\n${list}\n\nReply with the number, or send a different name.`, nextState: "WAITING_FOR_PHOTO_ID", pendingPersonId: null, context: { ...rest, candidates: matches.map((m) => ({ id: m.id, name: m.name })) }, contributions: [] };
+    }
+    return { reply: "I couldn't find that person in your family tree.\nTry a different name, or reply SKIP if you're not sure.", nextState: "WAITING_FOR_PHOTO_ID", pendingPersonId: null, context: rest, contributions: [] };
+  }
+
   // ---- Final save confirmation -------------------------------------------
   if (state === "WAITING_FOR_CONFIRMATION") {
     if (YES.test(text)) {

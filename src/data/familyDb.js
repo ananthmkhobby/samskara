@@ -656,6 +656,22 @@ export async function createMemberLogin(familyId, { username, password, displayN
   return callApi("/api/create-member-login", { familyId, username, password, displayName, personId });
 }
 
+// Which of this family's members can actually be asked to identify a photo
+// over WhatsApp — needs both a login and a connected WhatsApp number.
+// whatsapp_connections has no RLS policies for ordinary clients (by design,
+// per its migration), so this goes through the service-role function too.
+export async function fetchAskablePhotoMembers(familyId) {
+  return callApi("/api/ask-family-photo-id", { familyId, list: true }).then((r) => r.members || []);
+}
+
+// Head/Admin sends an existing unidentified photo to a specific family
+// member over WhatsApp, asking who it is. Goes through a serverless
+// function — needs the service-role key for whatsapp_connections and to
+// send via Twilio. See api/ask-family-photo-id.js.
+export async function askFamilyPhotoId(familyId, contributionId, targetUserId) {
+  return callApi("/api/ask-family-photo-id", { familyId, contributionId, targetUserId });
+}
+
 // Head/Admin sets a brand new password for any member of their own family
 // directly — covers "forgot password" for anyone who can't do the
 // self-service email reset because there's no inbox to receive it.

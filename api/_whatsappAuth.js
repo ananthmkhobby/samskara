@@ -70,6 +70,21 @@ export async function sendWhatsAppMessage(phoneNumber, body) {
   });
 }
 
+// A business-initiated message (one the family member hasn't replied to
+// recently) must be a Meta-approved Content Template, not free-form body
+// text — WhatsApp rejects a plain `body` send outside the 24h customer
+// service window. Used for "ask the family to identify this photo."
+// `contentVariables` keys must match the numbering the template was built
+// with in the Twilio Content Template Builder.
+export async function sendWhatsAppTemplate(phoneNumber, contentSid, contentVariables) {
+  await twilioRestClient().messages.create({
+    from: process.env.TWILIO_WHATSAPP_FROM,
+    to: `whatsapp:${phoneNumber}`,
+    contentSid,
+    contentVariables: JSON.stringify(contentVariables),
+  });
+}
+
 // Resolves a phone number to its linked Samskara user + active family +
 // role, or null if the number has never been linked. A login can belong to
 // more than one family (married-in members, multi_family_membership

@@ -740,6 +740,19 @@ export default function App() {
           person.birthGotra = birthGotra || undefined;
           updatePersonFields(familyId, c.personId, { rashi: rashi || null, gotra: gotra || null, birth_gotra: birthGotra || null }).catch((err) => console.error(err.message));
         } catch { /* malformed content, skip */ }
+      } else if (c.field === "photoIdentification") {
+        // Not an edit to this person at all — c.personId is who the family
+        // member identified in the photo, and c.content just carries which
+        // existing contribution to attach them to. Sent via WhatsApp's "ask
+        // the family" flow (api/whatsapp-webhook.js); approving it here is
+        // the non-moderator path, mirroring that a Head/Admin's own answer
+        // applies immediately with no review step.
+        try {
+          const { contributionId } = JSON.parse(c.content);
+          setContributions((prev) => prev.map((x) => (x.id === contributionId ? { ...x, personId: c.personId } : x)));
+          updateContribution(contributionId, { person_id: c.personId }).catch((err) => console.error(err.message));
+        } catch { /* malformed content, skip */ }
+        return;
       } else if (c.field === "dayInLife") {
         try {
           const dayInLife = JSON.parse(c.content);

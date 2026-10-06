@@ -5,7 +5,7 @@ import {
   createInvite, fetchFamilyMembers, updateMemberRole, setMemberPersonLink,
   updateMemberDisplayName, fetchInvites, revokeInvite, fetchMemberEmail,
   createMemberLogin, resetMemberPassword, updateFamilyName, updateFamilyTagline, updateFamilyLogo,
-  redeemContentShare, reassignParents,
+  redeemContentShare, reassignParents, fetchAskablePhotoMembers, askFamilyPhotoId,
 } from "../data/familyDb";
 import { categoryFor } from "../lib/parampara";
 import { libraryCategoryFor } from "../lib/library";
@@ -696,6 +696,80 @@ function EditRelationshipsCard() {
   );
 }
 
+// A photo with no one linked yet — from WhatsApp (SKIPped during the
+// conversation) or the app (a memory added without picking a person).
+// "Ask the family" sends it to a chosen member over WhatsApp; their reply
+// comes back through the normal webhook (WAITING_FOR_PHOTO_ID state) and
+// either applies immediately (if they're a Head/Admin) or lands in the
+// review queue as a proposal, same split as every other WhatsApp reply.
+function UnidentifiedPhotosTab({ contributions, onOpenLightbox }) {
+  const unidentified = contributions.filter((c) => c.type === "photo" && !c.personId && c.mediaUrl);
+  const [members, setMembers] = useState(null);
+  const [membersError, setMembersError] = useState("");
+  const [askingId, setAskingId] = useState(null);
+  const [sendingId, setSendingId] = useState(null);
+  const [sentIds, setSentIds] = useState(() => new Set());
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchAskablePhotoMembers(CURRENT_FAMILY_ID).then(setMembers).catch((err) => setMembersError(err.message));
+  }, []);
+
+  async function send(contributionId, targetUserId) {
+    setSendingId(contributionId);
+    setError("");
+    try {
+      await askFamilyPhotoId(CURRENT_FAMILY_ID, contributionId, targetUserId);
+      setSentIds((prev) => new Set(prev).add(contributionId));
+      setAskingId(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSendingId(null);
+    }
+  }
+
+  if (!unidentified.length) return <div className="card"><div className="empty-state">No unidentified photos right now.</div></div>;
+
+  return (
+    <div className="card">
+      {membersError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{membersError}</p>}
+      {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+      {unidentified.map((c) => (
+        <div className="queue-row" key={c.id}>
+          <button type="button" onClick={() => onOpenLightbox(c.mediaUrl)} style={{ border: 0, padding: 0, background: "none", cursor: "zoom-in" }} aria-label="View photo full screen">
+            <img src={c.mediaUrl} alt="" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 6, display: "block" }} />
+          </button>
+          <div className="queue-main">
+            <b>Unidentified photo</b>
+            <div className="queue-meta">from {c.contributor} · {c.date}</div>
+          </div>
+          <div className="queue-actions">
+            {sentIds.has(c.id) ? (
+              <span className="status-pill Verified">Asked</span>
+            ) : askingId === c.id ? (
+              membersError ? (
+                <span className="form-hint">Couldn't load who to ask.</span>
+              ) : members === null ? (
+                <span className="form-hint">Loading…</span>
+              ) : members.length ? (
+                <select defaultValue="" onChange={(e) => e.target.value && send(c.id, e.target.value)} disabled={sendingId === c.id}>
+                  <option value="" disabled>Choose who to ask…</option>
+                  {members.map((m) => <option key={m.userId} value={m.userId}>{m.displayName || "Unnamed member"}</option>)}
+                </select>
+              ) : (
+                <span className="form-hint">No one has connected WhatsApp yet.</span>
+              )
+            ) : (
+              <button type="button" className="btn small" onClick={() => setAskingId(c.id)}>Ask the family</button>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function MembersPage() {
   const [invitesRefreshKey, setInvitesRefreshKey] = useState(0);
   const [membersRefreshKey, setMembersRefreshKey] = useState(0);
@@ -718,8 +792,9 @@ function MembersPage() {
 
 export default function AdminView({ contributions, onApprove, onReject, onDeleteContribution, canModerate }) {
   const showMembersTab = !IS_DEMO && canModerate;
+  const showPhotosTab = !IS_DEMO && canModerate;
   const showWhatsAppTab = !IS_DEMO && canModerate;
-  const adminTabs = [...(showMembersTab ? ["Members"] : []), "Review queue", ...(showWhatsAppTab ? ["WhatsApp"] : [])];
+  const adminTabs = [...(showMembersTab ? ["Members"] : []), "Review queue", ...(showPhotosTab ? ["Photos"] : []), ...(showWhatsAppTab ? ["WhatsApp"] : [])];
   const [adminTab, setAdminTab] = useState(showMembersTab ? "Members" : "Review queue");
   const [tab, setTab] = useState("Pending");
   const [lightboxSrc, setLightboxSrc] = useState(null);
@@ -819,24 +894,26 @@ export default function AdminView({ contributions, onApprove, onReject, onDelete
   return (
     <section className="wrap">
       <div className="section-head">
-        <h2>{adminTab === "Members" ? "Manage members" : adminTab === "WhatsApp" ? "WhatsApp activity" : "Review queue"}</h2>
+        <h2>{adminTab === "Members" ? "Manage members" : adminTab === "Photos" ? "Unidentified photos" : adminTab === "WhatsApp" ? "WhatsApp activity" : "Review queue"}</h2>
         <p>
           {adminTab === "Members"
             ? "Invite people, see who's joined, fix a name, or set which person in the tree someone is — for themselves or, if they never got around to it, for anyone."
+            : adminTab === "Photos"
+            ? "Photos with no one linked yet — send one to a family member on WhatsApp and ask who it is."
             : adminTab === "WhatsApp"
             ? "Recent messages Samskara has received on WhatsApp for this family, and what happened with each one — for debugging the integration, not for everyday use."
             : "Everything the family has submitted or proposed to edit, waiting for a second pair of eyes before it changes the archive."}
         </p>
         {adminTab === "Review queue" && !canModerate && <p className="form-hint" style={{ marginTop: 6 }}>You can see what's pending, but only Admins or the Family Head can approve or reject.</p>}
       </div>
-      {(showMembersTab || showWhatsAppTab) && (
+      {(showMembersTab || showPhotosTab || showWhatsAppTab) && (
         <div className="admin-tabs">
           {adminTabs.map((t) => (
             <button key={t} className={`chip${adminTab === t ? " active" : ""}`} onClick={() => setAdminTab(t)}>{t}</button>
           ))}
         </div>
       )}
-      {adminTab === "Members" ? <MembersPage /> : adminTab === "WhatsApp" ? <WhatsAppAdminTab /> : (
+      {adminTab === "Members" ? <MembersPage /> : adminTab === "Photos" ? <UnidentifiedPhotosTab contributions={contributions} onOpenLightbox={setLightboxSrc} /> : adminTab === "WhatsApp" ? <WhatsAppAdminTab /> : (
       <>
       <div className="admin-tabs">
         {TABS.map((t) => (

@@ -217,6 +217,52 @@ export default async function handler(req, res) {
       log("FAMILY_SWITCHED", { phone: maskPhone(phoneNumber), familyId: result.switchToFamilyId });
     }
 
+    // Resolving an "ask the family to identify this photo" request — not a
+    // new contribution, an update to an existing one's person_id. A
+    // Head/Admin's answer applies immediately (same trust level as every
+    // other direct edit they make); anyone else's goes to the review queue
+    // as a proposal, same Verified/Pending split as every other piece of
+    // WhatsApp content — applied on approval by App.jsx's
+    // applyContributionEffects (field: "photoIdentification").
+    if (result.photoIdResolved) {
+      const { contributionId, personId, personName } = result.photoIdResolved;
+      const isModerator = identity.role === "head" || identity.role === "admin";
+      if (isModerator) {
+        const { error: updateErr } = await supabase.from("contributions").update({ person_id: personId }).eq("id", contributionId).eq("family_id", identity.familyId);
+        if (updateErr) {
+          await finishMessage({ processing_status: "failed", error_message: `photo_id_update_failed: ${updateErr.message}` });
+          await reply(phoneNumber, "I couldn't save that right now. Please try replying again.");
+          ack(res);
+          return;
+        }
+      } else {
+        const { error: proposeErr } = await supabase.from("contributions").insert({
+          family_id: identity.familyId, person_id: personId, type: "edit",
+          field: "photoIdentification", field_label: `Identify a photo as ${personName}`,
+          content: JSON.stringify({ contributionId }),
+          contributor: identity.displayName, contributor_user_id: identity.userId,
+          status: "Pending", source: "whatsapp", source_message_id: messageSid,
+        });
+        if (proposeErr) {
+          await finishMessage({ processing_status: "failed", error_message: `photo_id_propose_failed: ${proposeErr.message}` });
+          await reply(phoneNumber, "I couldn't save that right now. Please try replying again.");
+          ack(res);
+          return;
+        }
+      }
+      log("PHOTO_IDENTIFIED", { phone: maskPhone(phoneNumber), applied: isModerator });
+      await supabase.from("whatsapp_conversations").upsert({
+        phone_number: phoneNumber, user_id: identity.userId, family_id: identity.familyId,
+        state: "IDLE", pending_person_id: null, context: {}, last_interaction_at: new Date().toISOString(),
+      });
+      await finishMessage({ processing_status: "completed" });
+      await reply(phoneNumber, isModerator
+        ? `Thanks! I've linked this photo to ${personName}.`
+        : `Thanks! I've sent "${personName}" to your family's review queue for confirmation.`);
+      ack(res);
+      return;
+    }
+
     if (result.contributions.length) {
       log("PERSON_MATCHED", { phone: maskPhone(phoneNumber), matched: !!result.personId });
       const status = identity.role === "head" || identity.role === "admin" ? "Verified" : "Pending";
