@@ -2,6 +2,14 @@
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
+  "functions": {
+    "api/photobook-person.js": {
+      "includeFiles": "node_modules/pdfkit/js/{standard-fonts,data}/**"
+    },
+    "api/photobook-family.js": {
+      "includeFiles": "node_modules/pdfkit/js/{standard-fonts,data}/**"
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
