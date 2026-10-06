@@ -45,6 +45,32 @@ function personPromptAfterSkip() {
   return "No problem — who is it? Tell me their name, or reply SKIP to save this without linking it to a person.";
 }
 
+function helpReply(memberships) {
+  return "Send me a photo, voice note, document, or tell me about a memory, and I'll help preserve it for your family."
+    + (memberships && memberships.length > 1 ? "\n\n(Reply FAMILY to switch which family I save things to — you're connected to more than one.)" : "");
+}
+
+// Shared by the first attempt at a name (WAITING_FOR_PERSON) and by a
+// WAITING_FOR_PERSON_CONFIRMATION reply that wasn't YES/NO — in both cases
+// the caller just told us a name and we need to search for it fresh.
+async function matchPersonReply(supabase, familyId, ctx, text) {
+  const matches = await searchPeople(supabase, familyId, text);
+  if (matches.length === 1) {
+    const next = { ...ctx, candidatePersonId: matches[0].id, candidatePersonName: matches[0].name };
+    delete next.candidates; delete next.allowSkip;
+    return { reply: `I found ${matches[0].name} in your family tree.\nIs this the person? Reply YES or NO.`, nextState: "WAITING_FOR_PERSON_CONFIRMATION", pendingPersonId: null, context: next, contributions: [] };
+  }
+  if (matches.length > 1) {
+    const list = matches.map((m, i) => `${i + 1}. ${m.name}`).join("\n");
+    const next = { ...ctx, candidates: matches.map((m) => ({ id: m.id, name: m.name })) };
+    delete next.allowSkip;
+    return { reply: `I found a few people named like that:\n${list}\n\nReply with the number, or send a different name.`, nextState: "WAITING_FOR_PERSON", pendingPersonId: null, context: next, contributions: [] };
+  }
+  const next = { ...ctx, allowSkip: true };
+  delete next.candidates;
+  return { reply: "I couldn't find that person in your family tree.\nYou can try a different name, or reply SKIP to save this as an unassigned family memory for now.", nextState: "WAITING_FOR_PERSON", pendingPersonId: null, context: next, contributions: [] };
+}
+
 // Only meaningful for someone in more than one family (married-in members
 // linked to both their own and their spouse's tree) — a single-family
 // account just gets told so and stays IDLE, since there's nothing to pick.
@@ -117,6 +143,16 @@ export async function advanceConversation({ supabase, familyId, conversation, in
     return { reply: "Cancelled — nothing was saved. Send a photo, voice note, document, or tell me about a memory whenever you're ready.", nextState: "IDLE", pendingPersonId: null, context: {}, contributions: [] };
   }
 
+  // A greeting anywhere mid-flow means they're starting over or just saying
+  // hi, not answering whatever question is in flight — same treatment as
+  // CANCEL. Without this, a stale WAITING_FOR_PERSON_CONFIRMATION (e.g. from
+  // an old test message that matched the wrong person and was never
+  // confirmed) would re-ask "is this <wrong person>?" on every later "Hi",
+  // forever, since that state's fallback only recognized exact YES/NO.
+  if (GREETING.test(greetingCheckText) && state !== "IDLE") {
+    return { reply: helpReply(memberships), nextState: "IDLE", pendingPersonId: null, context: {}, contributions: [] };
+  }
+
   // New media mid-conversation means they've moved on to a different
   // memory — start that one fresh rather than erroring into a dead end.
   if (inbound.mediaKind && state !== "IDLE") {
@@ -142,9 +178,7 @@ export async function advanceConversation({ supabase, familyId, conversation, in
       ctx = { mediaKind: null, memoryText: text };
       return { reply: "Got it — who is this memory about? Tell me a name.", nextState: "WAITING_FOR_PERSON", pendingPersonId: null, context: ctx, contributions: [] };
     }
-    const help = "Send me a photo, voice note, document, or tell me about a memory, and I'll help preserve it for your family."
-      + (memberships && memberships.length > 1 ? "\n\n(Reply FAMILY to switch which family I save things to — you're connected to more than one.)" : "");
-    return { reply: help, nextState: "IDLE", pendingPersonId: null, context: {}, contributions: [] };
+    return { reply: helpReply(memberships), nextState: "IDLE", pendingPersonId: null, context: {}, contributions: [] };
   }
 
   // ---- Waiting for a name (first attempt, a retry, a number pick, or SKIP) ----
@@ -165,21 +199,7 @@ export async function advanceConversation({ supabase, familyId, conversation, in
     if (!text) {
       return { reply: "Who is this about? Tell me a name.", nextState: "WAITING_FOR_PERSON", pendingPersonId: null, context: ctx, contributions: [] };
     }
-    const matches = await searchPeople(supabase, familyId, text);
-    if (matches.length === 1) {
-      const next = { ...ctx, candidatePersonId: matches[0].id, candidatePersonName: matches[0].name };
-      delete next.candidates; delete next.allowSkip;
-      return { reply: `I found ${matches[0].name} in your family tree.\nIs this the person? Reply YES or NO.`, nextState: "WAITING_FOR_PERSON_CONFIRMATION", pendingPersonId: null, context: next, contributions: [] };
-    }
-    if (matches.length > 1) {
-      const list = matches.map((m, i) => `${i + 1}. ${m.name}`).join("\n");
-      const next = { ...ctx, candidates: matches.map((m) => ({ id: m.id, name: m.name })) };
-      delete next.allowSkip;
-      return { reply: `I found a few people named like that:\n${list}\n\nReply with the number, or send a different name.`, nextState: "WAITING_FOR_PERSON", pendingPersonId: null, context: next, contributions: [] };
-    }
-    const next = { ...ctx, allowSkip: true };
-    delete next.candidates;
-    return { reply: "I couldn't find that person in your family tree.\nYou can try a different name, or reply SKIP to save this as an unassigned family memory for now.", nextState: "WAITING_FOR_PERSON", pendingPersonId: null, context: next, contributions: [] };
+    return matchPersonReply(supabase, familyId, ctx, text);
   }
 
   // ---- Confirming a single strong match ---------------------------------
@@ -192,7 +212,15 @@ export async function advanceConversation({ supabase, familyId, conversation, in
       const { candidatePersonId: _id, candidatePersonName: _name, ...rest } = ctx;
       return { reply: personPromptAfterSkip(), nextState: "WAITING_FOR_PERSON", pendingPersonId: null, context: { ...rest, allowSkip: true }, contributions: [] };
     }
-    return { reply: `Sorry, just reply YES or NO — is this ${ctx.candidatePersonName}?`, nextState: "WAITING_FOR_PERSON_CONFIRMATION", pendingPersonId: null, context: ctx, contributions: [] };
+    if (!text) {
+      return { reply: `Sorry, just reply YES or NO — is this ${ctx.candidatePersonName}?`, nextState: "WAITING_FOR_PERSON_CONFIRMATION", pendingPersonId: null, context: ctx, contributions: [] };
+    }
+    // Not yes/no — almost certainly a corrected name, not a literal answer
+    // to the question (e.g. the match was wrong and they just typed who
+    // they actually meant). Re-search instead of repeating "is this X?"
+    // forever on a candidate they've effectively already rejected.
+    const { candidatePersonId: _id, candidatePersonName: _name, ...rest } = ctx;
+    return matchPersonReply(supabase, familyId, rest, text);
   }
 
   // ---- Collecting the story (photo/document only) ------------------------
