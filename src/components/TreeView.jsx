@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { PEOPLE, VALUES } from "../data/people";
+import { CURRENT_FAMILY_ID, CURRENT_FAMILY_NAME } from "../data/session";
+import { supabase } from "../lib/supabaseClient";
 import BanyanTree from "./BanyanTree";
 import ClassicTree from "./ClassicTree";
 import FocusTreeView from "./FocusTreeView";
@@ -19,6 +21,39 @@ const ILLUSTRATED_MAX_PEOPLE = 20;
 export default function TreeView({ contributions, onSelectPerson, onNav }) {
   const [valueFilter, setValueFilter] = useState(null);
   const [mode, setMode] = useState(SHOW_BANYAN_TOGGLE ? "banyan" : "classic");
+  const [familyPdfDownloading, setFamilyPdfDownloading] = useState(false);
+
+  async function handleDownloadFamilyPdf() {
+    setFamilyPdfDownloading(true);
+    try {
+      const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+      const res = await fetch("/api/photobook-family", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ familyId: CURRENT_FAMILY_ID }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Couldn't generate the family photobook.");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${(CURRENT_FAMILY_NAME || "family").replace(/\s+/g, "-").toLowerCase()}-photobook.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message || "Couldn't generate the family photobook.");
+    } finally {
+      setFamilyPdfDownloading(false);
+    }
+  }
   // A fresh array reference each render — PEOPLE is mutated in place after
   // edits, and BanyanTree/ClassicTree's own layout memoization is keyed on
   // this reference.
@@ -69,6 +104,9 @@ export default function TreeView({ contributions, onSelectPerson, onNav }) {
         )}
         <button className={`chip${mode === "classic" ? " active" : ""}`} onClick={() => setMode("classic")}>Tree</button>
         <button className={`chip${mode === "focus" ? " active" : ""}`} onClick={() => setMode("focus")}>Focus view</button>
+        <button className="btn ghost small" onClick={handleDownloadFamilyPdf} disabled={familyPdfDownloading}>
+          {familyPdfDownloading ? "Preparing the family book…" : "Download family photobook (PDF)"}
+        </button>
       </div>
       {mode !== "focus" && (
         <div className="banyan-toolbar">

@@ -7,6 +7,7 @@ import { resizeImage } from "../lib/imageResize";
 import { uploadFamilyMedia, resolveMediaUrl } from "../lib/mediaUpload";
 import { CURRENT_FAMILY_ID } from "../data/session";
 import { useModalA11y } from "../hooks/useModalA11y";
+import { supabase } from "../lib/supabaseClient";
 
 // Anubhava Chitrashale ("their room") is built and working, but held back
 // from release for now — flip this back on when it's ready to ship. Kept
@@ -32,6 +33,39 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
   // that section is the point of the Folio, this one is a log.
   const [contribsCollapsed, setContribsCollapsed] = useState(contribs.length > 4);
   const hasPhoto = !!person.photoUrl;
+  const [pdfDownloading, setPdfDownloading] = useState(false);
+
+  async function handleDownloadPdf() {
+    setPdfDownloading(true);
+    try {
+      const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+      const res = await fetch("/api/photobook-person", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ familyId: CURRENT_FAMILY_ID, personId: person.id }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Couldn't generate the PDF.");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${person.name.replace(/\s+/g, "-").toLowerCase()}-folio.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message || "Couldn't generate the PDF.");
+    } finally {
+      setPdfDownloading(false);
+    }
+  }
 
   async function handlePhotoFile(e) {
     const file = e.target.files[0];
@@ -426,7 +460,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
           <div className="folio-actions">
             <button className="btn" onClick={() => onShare(person.id)}>Share what you know</button>
             <button className="btn primary" onClick={onOpenBiography}>Open full biography</button>
-            <button className="btn ghost" onClick={() => window.print()}>Download PDF</button>
+            <button className="btn ghost" onClick={handleDownloadPdf} disabled={pdfDownloading}>{pdfDownloading ? "Preparing PDF…" : "Download PDF"}</button>
           </div>
         </div>
       </div>

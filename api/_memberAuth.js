@@ -32,6 +32,27 @@ export async function requireModerator(supabase, req, familyId) {
   return member;
 }
 
+// Same shape as requireModerator, minus the role restriction — for actions
+// that only repackage data a member can already see in-app (e.g. a
+// photobook export) rather than changing anything, so there's no privacy
+// benefit to gating it to Head/Admin and real cost to doing so (most
+// contributors aren't moderators).
+export async function requireMember(supabase, req, familyId) {
+  const token = (req.headers.authorization || "").replace(/^Bearer /, "");
+  if (!token) throw new Error("Not signed in.");
+  const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
+  if (userErr || !user) throw new Error("Your session has expired — please reload and sign in again.");
+  const { data: member, error: memberErr } = await supabase
+    .from("family_members")
+    .select("id, role")
+    .eq("user_id", user.id)
+    .eq("family_id", familyId)
+    .maybeSingle();
+  if (memberErr) throw new Error(memberErr.message);
+  if (!member) throw new Error("You're not a member of this family.");
+  return member;
+}
+
 export function usernameToEmail(username) {
   return `${username.trim().toLowerCase()}@members.samskara.app`;
 }
