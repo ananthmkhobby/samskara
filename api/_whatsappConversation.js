@@ -17,6 +17,10 @@ const NO = /^(n|no|nope)$/i;
 const SKIP = /^skip$/i;
 const CANCEL = /^cancel$/i;
 const FAMILY_COMMAND = /^(family|families|switch family|switch)$/i;
+// Someone saying hello or asking for help shouldn't be captured as the
+// opening line of a memory — without this, "Hi" became `memoryText: "Hi"`
+// and the bot asked "who is this about?", which reads as broken.
+const GREETING = /^(hi+|hello+|hey+|hola|yo|namaste|namaskara|namaskaram|help|menu|start)$/i;
 
 const MEDIA_PROMPT = {
   photo: "Beautiful memory ❤️\nWho is in this photo?",
@@ -104,6 +108,10 @@ export async function advanceConversation({ supabase, familyId, conversation, in
   const state = conversation?.state || "IDLE";
   let ctx = { ...(conversation?.context || {}) };
   const text = (inbound.textBody || "").trim();
+  // "Hey!!" / "hi there" read as a greeting to a person, not to a regex —
+  // strip trailing punctuation and a trailing "there"/"samskara" before
+  // testing against GREETING, so the common WhatsApp forms still match.
+  const greetingCheckText = text.replace(/[!.?]+$/, "").replace(/\s+(there|samskara)$/i, "").trim();
 
   if (CANCEL.test(text) && state !== "IDLE") {
     return { reply: "Cancelled — nothing was saved. Send a photo, voice note, document, or tell me about a memory whenever you're ready.", nextState: "IDLE", pendingPersonId: null, context: {}, contributions: [] };
@@ -128,8 +136,9 @@ export async function advanceConversation({ supabase, familyId, conversation, in
     // reply to something that already finished (e.g. confirming a save a
     // second time out of habit) rather than someone actually trying to
     // start a new memory titled "Yes" — treat it the same as empty text
-    // instead of silently creating a nonsense draft.
-    if (text && !YES.test(text) && !NO.test(text)) {
+    // instead of silently creating a nonsense draft. A greeting or help
+    // request gets the same treatment, for the same reason.
+    if (text && !YES.test(text) && !NO.test(text) && !GREETING.test(greetingCheckText)) {
       ctx = { mediaKind: null, memoryText: text };
       return { reply: "Got it — who is this memory about? Tell me a name.", nextState: "WAITING_FOR_PERSON", pendingPersonId: null, context: ctx, contributions: [] };
     }
