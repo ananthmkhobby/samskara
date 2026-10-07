@@ -4,6 +4,7 @@ import { redeemInvite, recordConsent, registerNewFamily } from "../data/familyDb
 import { ACCOUNT_NEEDS_FAMILY } from "../data/session";
 import { POLICY_VERSION } from "../lib/policy";
 import { SHOW_GOOGLE_AUTH } from "../lib/featureFlags";
+import { callApi } from "../lib/apiFetch";
 
 // Reads a `?code=` invite link once at module load (mirrors App.jsx's
 // FORCE_INTRO pattern) — if present, the join form opens pre-filled instead
@@ -86,6 +87,16 @@ function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, erro
   // other half of that: signing back in with just the username, no inbox
   // ever required.
   const [loginWithUsername, setLoginWithUsername] = useState(false);
+  // Interim stopgap until a real email service is configured (see
+  // api/request-password-reset.js) — "Forgot password?" above may not
+  // reliably deliver today, and a self-registered Head has no Admin above
+  // them to reset them in-app the way a regular member does. This just
+  // files a request for the app owner to handle manually via /superadmin.
+  const [requestHelpOpen, setRequestHelpOpen] = useState(false);
+  const [requestNote, setRequestNote] = useState("");
+  const [requestBusy, setRequestBusy] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
+  const [requestError, setRequestError] = useState("");
 
   async function submit(e) {
     e.preventDefault();
@@ -112,6 +123,23 @@ function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, erro
     setResetBusy(false);
     if (err) { setError(err.message); return; }
     setResetSent(true);
+  }
+
+  async function sendHelpRequest() {
+    if (!email.trim()) {
+      setRequestError("Enter your email above first.");
+      return;
+    }
+    setRequestBusy(true);
+    setRequestError("");
+    try {
+      await callApi("/api/request-password-reset", { email: email.trim(), note: requestNote.trim() });
+      setRequestSent(true);
+    } catch (err) {
+      setRequestError(err.message);
+    } finally {
+      setRequestBusy(false);
+    }
   }
 
   return (
@@ -147,9 +175,27 @@ function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, erro
             <button type="button" className="link-btn" onClick={() => { setLoginWithUsername(true); setEmail(""); setError(""); }}>
               No email? Log in with username
             </button>
+            {" · "}
+            <button type="button" className="link-btn" onClick={() => setRequestHelpOpen((v) => !v)}>
+              Can't get in at all? Request help
+            </button>
           </>
         )}
       </p>
+      {!loginWithUsername && requestHelpOpen && (
+        requestSent ? (
+          <p className="form-hint">Received — you'll be contacted once it's handled.</p>
+        ) : (
+          <div className="form-row">
+            <label>Tell us a bit more (optional)</label>
+            <textarea value={requestNote} onChange={(e) => setRequestNote(e.target.value)} placeholder="e.g. which family this is for, or anything else that'll help us find you" />
+            {requestError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{requestError}</p>}
+            <button type="button" className="btn ghost small" disabled={requestBusy} onClick={sendHelpRequest} style={{ marginTop: 8 }}>
+              {requestBusy ? "Sending…" : "Send request"}
+            </button>
+          </div>
+        )
+      )}
       {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
       <button type="submit" className="btn primary small" disabled={busy} style={{ marginTop: 10 }}>{busy ? "Signing in…" : "Log in →"}</button>
     </form>

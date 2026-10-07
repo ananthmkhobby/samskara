@@ -16,6 +16,73 @@ const GATABLE_MODULES = [
   { key: "aiFeatures", label: "AI features (interview, photo-scan, translate)" },
 ];
 
+// Interim stopgap until a real email service exists (see api/
+// request-password-reset.js) — lists requests filed from the login page's
+// "Can't get in at all?" link. Resolving a password still happens manually
+// (a service-role script, same call api/reset-member-password.js already
+// makes) — this list only tracks who's waiting, "Mark resolved" is just
+// bookkeeping once you've actually reset them and told them the new one.
+function PasswordResetRequestsSection({ adminSecret }) {
+  const [requests, setRequests] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [resolvingId, setResolvingId] = useState(null);
+
+  async function load() {
+    if (!adminSecret) { setError("Enter the admin secret above first."); return; }
+    setBusy(true);
+    setError("");
+    try {
+      const data = await callApi("/api/password-reset-requests", { adminSecret });
+      setRequests(data.requests);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resolve(id) {
+    setResolvingId(id);
+    try {
+      await callApi("/api/password-reset-requests", { adminSecret, action: "resolve", id });
+      setRequests((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setResolvingId(null);
+    }
+  }
+
+  return (
+    <div className="card" style={{ maxWidth: 460, padding: 20, marginTop: 24 }}>
+      <h4 style={{ marginTop: 0 }}>Password reset requests</h4>
+      <p className="form-hint" style={{ marginTop: 0 }}>
+        Filed from the login page by anyone who couldn't get in and had no working "Forgot password" email. Reset them manually, then mark it resolved.
+      </p>
+      <button type="button" className="btn ghost small" disabled={busy} onClick={load}>{busy ? "Loading…" : "Load requests"}</button>
+      {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+      {requests && requests.length === 0 && <p className="form-hint">Nothing open right now.</p>}
+      {requests && requests.length > 0 && (
+        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+          {requests.map((r) => (
+            <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+              <div>
+                <strong>{r.email}</strong>
+                <p className="form-hint" style={{ margin: "2px 0" }}>{r.note || "(no note)"}</p>
+                <span className="form-hint">{new Date(r.created_at).toLocaleString()}</span>
+              </div>
+              <button type="button" className="btn small ghost" disabled={resolvingId === r.id} onClick={() => resolve(r.id)}>
+                {resolvingId === r.id ? "…" : "Mark resolved"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SuperAdminView() {
   const [adminSecret, setAdminSecret] = useState(() => sessionStorage.getItem(SECRET_SESSION_KEY) || "");
   const [familyName, setFamilyName] = useState("");
@@ -123,6 +190,8 @@ export default function SuperAdminView() {
           <p className="form-hint">Hand these to the family head yourself — there's no email sent automatically.</p>
         </div>
       )}
+
+      <PasswordResetRequestsSection adminSecret={adminSecret} />
     </section>
   );
 }
