@@ -334,6 +334,20 @@ skip_nonce_check = false
 # If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
 email_optional = false
 
+# Google sign-in — for self-registration (see register_new_family in
+# migrations). This configures the LOCAL supabase CLI stack only; production
+# is configured separately in the Supabase Dashboard under Authentication ->
+# Providers -> Google, using a Client ID/Secret from a Google Cloud Console
+# OAuth 2.0 Client (Web application type), with its authorized redirect URI
+# set to this project's own Supabase auth callback (not this app's URL).
+[auth.external.google]
+enabled = false
+client_id = "env(SUPABASE_AUTH_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_GOOGLE_SECRET)"
+redirect_uri = ""
+url = ""
+skip_nonce_check = false
+
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.
 # You can configure "web3" rate limit in the [auth.rate_limit] section and set up [auth.captcha] if self-hosting.
 [auth.web3.solana]

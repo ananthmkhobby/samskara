@@ -574,6 +574,16 @@ export async function redeemInvite(code, displayName) {
   return data;
 }
 
+// Starts a brand-new family with the caller as its Head — 'head' is hardcoded
+// inside register_new_family() itself, never passed from here, same as
+// redeem_invite() always hardcoding 'member'.
+export async function registerNewFamily(familyName, displayName) {
+  const db = requireClient();
+  const { data, error } = await db.rpc("register_new_family", { p_family_name: familyName, p_display_name: displayName || null });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 // ---- Family roster / admin promotion ----------------------------------------
 
 export async function fetchFamilyMembers(familyId) {
