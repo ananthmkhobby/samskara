@@ -76,7 +76,7 @@ export default function AIInterviewModal({ request, onCancel, onSubmit }) {
     setBusy(true);
     setError("");
     try {
-      const data = await callApi("/api/interview-followup", { personName: request.name, context: request.context, history: newHistory });
+      const data = await callApi("/api/interview", { action: "followup", personName: request.name, context: request.context, history: newHistory });
       setCurrentQuestion(data.question);
     } catch (err) {
       setError(err.message);
@@ -93,7 +93,7 @@ export default function AIInterviewModal({ request, onCancel, onSubmit }) {
     setBusy(true);
     setError("");
     try {
-      const data = await callApi("/api/interview-draft", { personName: request.name, history: finalHistory });
+      const data = await callApi("/api/interview", { action: "draft", personName: request.name, history: finalHistory });
       setDraft({ title: data.title, text: data.text });
     } catch (err) {
       setError(err.message);

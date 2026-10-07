@@ -7,6 +7,7 @@ import {
   createMemberLogin, resetMemberPassword, updateFamilyName, updateFamilyTagline, updateFamilyLogo,
   redeemContentShare, reassignParents, fetchAskablePhotoMembers, askFamilyPhotoId,
   fetchDuplicateDismissals, insertDuplicateDismissal,
+  createGalleryExportCode, fetchGalleryExportCodes, revokeGalleryExportCode,
 } from "../data/familyDb";
 import { hammingDistance, DUPLICATE_HAMMING_THRESHOLD } from "../lib/imageHash";
 import { categoryFor } from "../lib/parampara";
@@ -346,6 +347,141 @@ function InvitesList({ refreshKey }) {
                 </>
               )}
               {status !== "pending" && <span className={`status-pill ${status === "used" ? "Verified" : "Rejected"}`}>{status === "used" ? "Used" : "Expired"}</span>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// A code, not a link — meant to be read off this screen and typed into a
+// different product (ScanJunction's photo editor), which has no login of
+// its own. Unlike an invite, generating a new one doesn't revoke the old —
+// and redeeming one doesn't consume it either (see GalleryExportCodesList).
+function GalleryExportCodeCard({ onCreated }) {
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  async function generate() {
+    setBusy(true);
+    setError("");
+    setCopied(false);
+    try {
+      const c = await createGalleryExportCode(CURRENT_FAMILY_ID, CURRENT_USER_ID);
+      setCode(c);
+      onCreated?.();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard unavailable — code is still visible to copy manually */ }
+  }
+
+  return (
+    <div className="card" style={{ marginBottom: 18, padding: 16 }}>
+      <h4 style={{ marginTop: 0 }}>Gallery export code</h4>
+      <p className="form-hint" style={{ marginTop: 0 }}>
+        Generate a code and hand it to whoever is using ScanJunction's photo editor — they'll enter it there to import this family's verified photos. The code can be reused until it expires or you revoke it.
+      </p>
+      {code ? (
+        <div className="tag-row" style={{ alignItems: "center" }}>
+          <input
+            type="text" readOnly value={code} onFocus={(e) => e.target.select()}
+            style={{ flex: 1, minWidth: 200, fontFamily: "monospace", fontSize: 16, letterSpacing: 1, textAlign: "center" }}
+          />
+          <button type="button" className="btn small" onClick={copy}>{copied ? "Copied!" : "Copy code"}</button>
+          <button type="button" className="btn small ghost" onClick={generate} disabled={busy}>New code</button>
+        </div>
+      ) : (
+        <button type="button" className="btn small primary" onClick={generate} disabled={busy}>{busy ? "Generating…" : "Generate export code"}</button>
+      )}
+      {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+    </div>
+  );
+}
+
+function GalleryExportCodesList({ refreshKey }) {
+  const [codes, setCodes] = useState(null);
+  const [busyId, setBusyId] = useState(null);
+  const [error, setError] = useState("");
+  const [copiedId, setCopiedId] = useState(null);
+
+  useEffect(() => {
+    fetchGalleryExportCodes(CURRENT_FAMILY_ID).then(setCodes).catch((err) => setError(err.message));
+  }, [refreshKey]);
+
+  // No "used" terminal state, unlike invites — this code stays usable
+  // after being redeemed, so lastUsedAt is shown as metadata on an active
+  // row, never a status by itself.
+  function statusFor(c) {
+    if (c.revokedAt) return "revoked";
+    if (new Date(c.expiresAt) < new Date()) return "expired";
+    return "active";
+  }
+
+  async function copy(c) {
+    try {
+      await navigator.clipboard.writeText(c.code);
+      setCopiedId(c.id);
+      window.setTimeout(() => setCopiedId(null), 2000);
+    } catch { /* clipboard unavailable */ }
+  }
+
+  async function revoke(c) {
+    setBusyId(c.id);
+    setError("");
+    try {
+      await revokeGalleryExportCode(c.id);
+      // Soft-revoke — patch locally rather than filtering out, so revoked
+      // history stays visible (the family may want to review it later).
+      setCodes((prev) => prev.map((x) => (x.id === c.id ? { ...x, revokedAt: new Date().toISOString() } : x)));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  if (codes !== null && !codes.length) return null;
+
+  return (
+    <div className="card" style={{ marginBottom: 18, padding: 16 }}>
+      <h4 style={{ marginTop: 0 }}>Export codes</h4>
+      <p className="form-hint" style={{ marginTop: 0 }}>Every code generated so far, and whether it's still usable.</p>
+      {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+      {codes === null ? null : codes.map((c) => {
+        const status = statusFor(c);
+        return (
+          <div className="queue-row" key={c.id} style={{ gridTemplateColumns: "1fr auto", padding: "10px 0" }}>
+            <div className="queue-main">
+              <b style={{ fontFamily: "monospace" }}>{c.code}</b>
+              <div className="queue-meta">
+                {status === "revoked" && `Revoked · generated ${c.createdAt.slice(0, 10)}`}
+                {status === "expired" && `Expired ${c.expiresAt.slice(0, 10)}${c.lastUsedAt ? ` · last imported ${c.lastUsedAt.slice(0, 10)}` : ""}`}
+                {status === "active" && `Expires ${c.expiresAt.slice(0, 10)}${c.lastUsedAt ? ` · last imported ${c.lastUsedAt.slice(0, 10)}` : " · not used yet"}`}
+              </div>
+            </div>
+            <div className="queue-actions">
+              {status === "active" && (
+                <>
+                  <button type="button" className="btn small" onClick={() => copy(c)}>{copiedId === c.id ? "Copied!" : "Copy code"}</button>
+                  <button type="button" className="btn small ghost" disabled={busyId === c.id} onClick={() => revoke(c)}>
+                    {busyId === c.id ? "…" : "Revoke"}
+                  </button>
+                </>
+              )}
+              {status !== "active" && <span className="status-pill Rejected">{status === "revoked" ? "Revoked" : "Expired"}</span>}
             </div>
           </div>
         );
@@ -904,6 +1040,7 @@ function DuplicatePhotosTab({ contributions, onDeleteContribution, onOpenLightbo
 function MembersPage() {
   const [invitesRefreshKey, setInvitesRefreshKey] = useState(0);
   const [membersRefreshKey, setMembersRefreshKey] = useState(0);
+  const [galleryExportRefreshKey, setGalleryExportRefreshKey] = useState(0);
   return (
     <>
       <FamilyNameCard />
@@ -912,6 +1049,8 @@ function MembersPage() {
       <InvitesList refreshKey={invitesRefreshKey} />
       <CreateLoginCard onCreated={() => setMembersRefreshKey((k) => k + 1)} />
       <RosterCard key={membersRefreshKey} />
+      <GalleryExportCodeCard onCreated={() => setGalleryExportRefreshKey((k) => k + 1)} />
+      <GalleryExportCodesList refreshKey={galleryExportRefreshKey} />
       <EditRelationshipsCard />
       <ImportSharedStoryCard />
       {/* Placed last — this is an occasional bulk action, not something a

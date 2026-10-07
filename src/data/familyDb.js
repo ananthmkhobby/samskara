@@ -422,6 +422,60 @@ export async function revokeInvite(inviteId) {
   if (error) throw new Error(error.message);
 }
 
+// ---- Gallery Export Codes (ScanJunction / third-party photo import) --------
+
+// No 0/O, 1/I/L — avoids ambiguity when read off a screen or typed into a
+// different product's field. 12 characters at 32 symbols each is ~2^60 of
+// entropy, deliberately far more than an invite code: this is reusable and
+// reachable from the public internet with no session at all (see
+// api/gallery-export.js), so the code itself is the only thing standing
+// between a caller and a family's private photos.
+const GALLERY_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+function generateGalleryExportCode() {
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  const raw = Array.from(bytes, (b) => GALLERY_CODE_ALPHABET[b % GALLERY_CODE_ALPHABET.length]).join("");
+  return `${raw.slice(0, 4)}-${raw.slice(4, 8)}-${raw.slice(8, 12)}`;
+}
+
+export async function createGalleryExportCode(familyId, userId) {
+  const db = requireClient();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const code = generateGalleryExportCode();
+    const { data, error } = await db
+      .from("gallery_export_codes")
+      .insert({ family_id: familyId, created_by: userId, code })
+      .select()
+      .single();
+    if (!error) return data.code;
+    if (!/duplicate key/i.test(error.message)) throw new Error(error.message);
+    // Vanishingly unlikely collision at this entropy — retry with a fresh code.
+  }
+  throw new Error("Couldn't generate a unique code — try again.");
+}
+
+export async function fetchGalleryExportCodes(familyId) {
+  const db = requireClient();
+  const { data, error } = await db
+    .from("gallery_export_codes")
+    .select("id, code, revoked_at, last_used_at, expires_at, created_at")
+    .eq("family_id", familyId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data.map((r) => ({
+    id: r.id, code: r.code, revokedAt: r.revoked_at, lastUsedAt: r.last_used_at,
+    expiresAt: r.expires_at, createdAt: r.created_at,
+  }));
+}
+
+// Soft-revoke, not a delete (unlike revokeInvite) — this credential is
+// handed to a genuine third party, so keeping the row lets the family
+// review "did I ever issue one of these and when" later.
+export async function revokeGalleryExportCode(id) {
+  const db = requireClient();
+  const { error } = await db.from("gallery_export_codes").update({ revoked_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 // ---- Cross-family content sharing (Parampare) -------------------------------
 
 // Snapshots one of this family's own Parampara entries into a redeemable
