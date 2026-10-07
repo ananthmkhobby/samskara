@@ -168,8 +168,17 @@ function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, erro
           `Check ${email.trim()} for a reset link.`
         ) : (
           <>
+            {/* Shown first and stated plainly, same as the username-login
+                branch above — this already works today with no email
+                involved at all (Admin > Members > Reset password), so it's
+                the fastest real fix for anyone who has a Head or Admin to
+                ask. The email link and the superadmin-routed request below
+                are both slower, less certain fallbacks for someone who
+                doesn't. */}
+            If you're a member of a family already here, your Family Head or Admin can reset it for you directly — no email needed (Admin → Members → Reset password).
+            <br />
             <button type="button" className="link-btn" disabled={resetBusy} onClick={sendReset}>
-              {resetBusy ? "Sending…" : "Forgot password?"}
+              {resetBusy ? "Sending…" : "Or try an email reset link"}
             </button>
             {" · "}
             <button type="button" className="link-btn" onClick={() => { setLoginWithUsername(true); setEmail(""); setError(""); }}>
@@ -177,7 +186,7 @@ function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, erro
             </button>
             {" · "}
             <button type="button" className="link-btn" onClick={() => setRequestHelpOpen((v) => !v)}>
-              Can't get in at all? Request help
+              No admin to ask? Request help
             </button>
           </>
         )}
@@ -187,6 +196,9 @@ function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, erro
           <p className="form-hint">Received — you'll be contacted once it's handled.</p>
         ) : (
           <div className="form-row">
+            <p className="form-hint" style={{ marginTop: 0 }}>
+              For when there's no Family Head or Admin who can reset you directly — e.g. you started your own family here and there's no one above you. This doesn't reset anything itself; someone will follow up to sort it out.
+            </p>
             <label>Tell us a bit more (optional)</label>
             <textarea value={requestNote} onChange={(e) => setRequestNote(e.target.value)} placeholder="e.g. which family this is for, or anything else that'll help us find you" />
             {requestError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{requestError}</p>}
