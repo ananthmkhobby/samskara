@@ -8,6 +8,7 @@ import { useModalA11y } from "../hooks/useModalA11y";
 import { resizeImage } from "../lib/imageResize";
 import { uploadFamilyMedia } from "../lib/mediaUpload";
 import { CURRENT_FAMILY_ID } from "../data/session";
+import { SHOW_AI_FEATURES } from "../lib/featureFlags";
 
 const TYPE_DEFS = [
   { key: "memory", label: "Memory", Icon: MemoryIcon },
@@ -257,12 +258,14 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
                           <AudioIcon />
                         </button>
                       )}
-                      <button
-                        type="button" className="btn small ghost" disabled={!text.trim() || translating}
-                        onClick={translateText}
-                      >
-                        {translating ? "Translating…" : speechLang === "kn-IN" ? "Translate to English" : "ಕನ್ನಡಕ್ಕೆ ಅನುವಾದಿಸಿ"}
-                      </button>
+                      {SHOW_AI_FEATURES && (
+                        <button
+                          type="button" className="btn small ghost" disabled={!text.trim() || translating}
+                          onClick={translateText}
+                        >
+                          {translating ? "Translating…" : speechLang === "kn-IN" ? "Translate to English" : "ಕನ್ನಡಕ್ಕೆ ಅನುವಾದಿಸಿ"}
+                        </button>
+                      )}
                     </div>
                   </div>
                   <textarea placeholder="Write what you remember, or use the mic to dictate…" value={text} onChange={(e) => setText(e.target.value)} />

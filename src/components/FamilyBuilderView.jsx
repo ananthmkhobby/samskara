@@ -7,6 +7,7 @@ import { CURRENT_FAMILY_ID } from "../data/session";
 import { callApi } from "../lib/apiFetch";
 import { downloadTemplate, parseTemplateWorkbook } from "../lib/familyTemplate";
 import FamilyNodeEditor from "./FamilyNodeEditor";
+import { SHOW_AI_FEATURES } from "../lib/featureFlags";
 
 export default function FamilyBuilderView({ onNav }) {
   const [root, setRoot] = useState(null);
@@ -139,13 +140,15 @@ export default function FamilyBuilderView({ onNav }) {
             </div>
             <button type="submit" className="btn primary" disabled={!starterName.trim()}>Begin building</button>
           </form>
-          <div className="card fam-builder-path">
-            <h3>Or scan a photo of an existing chart</h3>
-            <p className="form-hint" style={{ marginTop: 0 }}>Already have a family tree drawn on paper or a photo of one? Upload it and AI will read the names and relationships to get you started — you'll still be able to fix anything it gets wrong before saving.</p>
-            <input ref={fileRef} type="file" accept="image/*" onChange={handleScan} disabled={scanning} />
-            {scanning && <p className="form-hint">Reading the photo… this can take a moment.</p>}
-            {scanError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{scanError}</p>}
-          </div>
+          {SHOW_AI_FEATURES && (
+            <div className="card fam-builder-path">
+              <h3>Or scan a photo of an existing chart</h3>
+              <p className="form-hint" style={{ marginTop: 0 }}>Already have a family tree drawn on paper or a photo of one? Upload it and AI will read the names and relationships to get you started — you'll still be able to fix anything it gets wrong before saving.</p>
+              <input ref={fileRef} type="file" accept="image/*" onChange={handleScan} disabled={scanning} />
+              {scanning && <p className="form-hint">Reading the photo… this can take a moment.</p>}
+              {scanError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{scanError}</p>}
+            </div>
+          )}
           <div className="card fam-builder-path">
             <h3>Or fill in a spreadsheet template</h3>
             <p className="form-hint" style={{ marginTop: 0 }}>Best for a large family — fill in everyone's details offline, at your own pace, then upload it all in one go. Photos and recordings still get added afterward, inside the app.</p>

@@ -4,6 +4,7 @@ import { geocodePlace } from "../lib/geocode";
 import { speakQuestion, hasVoiceFor } from "../lib/speech";
 import { AudioIcon, CloseIcon } from "./Icons";
 import { useModalA11y } from "../hooks/useModalA11y";
+import { SHOW_AI_FEATURES } from "../lib/featureFlags";
 
 const SPEECH_LANGS = [
   { code: "en-IN", label: "English" },
@@ -189,10 +190,10 @@ export default function FolioVoiceWizard({ request, onSubmitField, onFinish, onO
             ) : (
               <p className="form-hint" style={{ marginTop: 6 }}>Nothing new was captured this time — that's fine, it'll ask again next time you run the walkthrough.</p>
             )}
-            <p className="form-hint">Want to go deeper? The AI-guided interview has a longer conversation and drafts a full biography chapter.</p>
+            {SHOW_AI_FEATURES && <p className="form-hint">Want to go deeper? The AI-guided interview has a longer conversation and drafts a full biography chapter.</p>}
             <div className="folio-actions">
-              <button className="btn primary" onClick={onOpenInterview}>Continue to AI interview →</button>
-              <button className="btn ghost" onClick={onFinish}>Done</button>
+              {SHOW_AI_FEATURES && <button className="btn primary" onClick={onOpenInterview}>Continue to AI interview →</button>}
+              <button className={SHOW_AI_FEATURES ? "btn ghost" : "btn primary"} onClick={onFinish}>Done</button>
             </div>
           </div>
         </div>

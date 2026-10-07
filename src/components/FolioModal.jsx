@@ -8,6 +8,7 @@ import { uploadFamilyMedia, resolveMediaUrl } from "../lib/mediaUpload";
 import { CURRENT_FAMILY_ID } from "../data/session";
 import { useModalA11y } from "../hooks/useModalA11y";
 import { supabase } from "../lib/supabaseClient";
+import { SHOW_AI_FEATURES, SHOW_DATE_OF_DEATH } from "../lib/featureFlags";
 
 // Anubhava Chitrashale ("their room") is built and working, but held back
 // from release for now — flip this back on when it's ready to ship. Kept
@@ -132,13 +133,15 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
               <span className="interview-cta-sub">A few quick spoken questions — heritage, life lesson, summary, places. Skip anything, pick up later.</span>
             </span>
           </button>
-          <button type="button" className="interview-cta" onClick={onOpenInterview}>
-            <span className="interview-cta-icon">🎙️</span>
-            <span>
-              <b>Record {person.name.split(" ")[0]}'s story, AI-guided</b>
-              <span className="interview-cta-sub">A few spoken questions — the AI drafts a biography chapter from the conversation</span>
-            </span>
-          </button>
+          {SHOW_AI_FEATURES && (
+            <button type="button" className="interview-cta" onClick={onOpenInterview}>
+              <span className="interview-cta-icon">🎙️</span>
+              <span>
+                <b>Record {person.name.split(" ")[0]}'s story, AI-guided</b>
+                <span className="interview-cta-sub">A few spoken questions — the AI drafts a biography chapter from the conversation</span>
+              </span>
+            </button>
+          )}
           {SHOW_CHITRASHALE && (
             <button type="button" className="interview-cta room-cta" onClick={onOpenRoom}>
               <span className="interview-cta-icon">🪔</span>
@@ -169,23 +172,25 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
               field here: marking someone deceased (and so showing "Late"
               everywhere) is weightier than most edits, so it's deliberately
               not left to a Pending-review proposal from any member. */}
-          <div className="folio-section">
-            <div className="folio-section-head">
-              <h4>Date of death</h4>
-              {canModerate && (
-                <button className="icon-only" aria-label="Edit date of death" onClick={() => onEdit({ field: "died", fieldLabel: "Date of death", value: person.died || "", diedUnknown: person.diedUnknown || false })}><EditPencilIcon /></button>
-              )}
+          {SHOW_DATE_OF_DEATH && (
+            <div className="folio-section">
+              <div className="folio-section-head">
+                <h4>Date of death</h4>
+                {canModerate && (
+                  <button className="icon-only" aria-label="Edit date of death" onClick={() => onEdit({ field: "died", fieldLabel: "Date of death", value: person.died || "", diedUnknown: person.diedUnknown || false })}><EditPencilIcon /></button>
+                )}
+              </div>
+              {person.diedUnknown ? (
+                <p className="folio-summary">Passed away — exact date not known</p>
+              ) : person.died ? (
+                <p className="folio-summary">
+                  {person.diedYearOnly
+                    ? `Known only as ${person.died.slice(0, 4)}`
+                    : new Date(`${person.died}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+                </p>
+              ) : <p className="form-hint" style={{ marginTop: 0 }}>Not on record yet.</p>}
             </div>
-            {person.diedUnknown ? (
-              <p className="folio-summary">Passed away — exact date not known</p>
-            ) : person.died ? (
-              <p className="folio-summary">
-                {person.diedYearOnly
-                  ? `Known only as ${person.died.slice(0, 4)}`
-                  : new Date(`${person.died}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
-              </p>
-            ) : <p className="form-hint" style={{ marginTop: 0 }}>Not on record yet.</p>}
-          </div>
+          )}
           <div className="folio-section">
             <div className="folio-section-head">
               <h4>Heritage details</h4>
