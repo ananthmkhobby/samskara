@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabaseClient";
 import { redeemInvite, recordConsent, registerNewFamily } from "../data/familyDb";
 import { ACCOUNT_NEEDS_FAMILY } from "../data/session";
 import { POLICY_VERSION } from "../lib/policy";
+import { SHOW_GOOGLE_AUTH } from "../lib/featureFlags";
 
 // Reads a `?code=` invite link once at module load (mirrors App.jsx's
 // FORCE_INTRO pattern) — if present, the join form opens pre-filled instead
@@ -56,9 +57,11 @@ export default function AuthPanel({ onShowPrivacy, onShowTerms }) {
 
   return (
     <div className="auth-panel card">
-      <button type="button" className="btn ghost" style={{ width: "100%", marginBottom: 14 }} onClick={signInWithGoogle}>
-        Continue with Google
-      </button>
+      {SHOW_GOOGLE_AUTH && (
+        <button type="button" className="btn ghost" style={{ width: "100%", marginBottom: 14 }} onClick={signInWithGoogle}>
+          Continue with Google
+        </button>
+      )}
       <div className="auth-tabs">
         <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>Log in</button>
         <button className={mode === "signup" ? "active" : ""} onClick={() => setMode("signup")}>New here? Create an account</button>

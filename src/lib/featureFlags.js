@@ -14,3 +14,10 @@ export const SHOW_AI_FEATURES = false;
 // died/diedUnknown data already on record, or the "Late" name prefix
 // elsewhere in the app (Tree, Search, etc.) — only this section's display.
 export const SHOW_DATE_OF_DEATH = false;
+
+// Hides the "Continue with Google" button on the login/sign-up panel. The
+// code path is fully built (see signInWithGoogle in AuthPanel.jsx) but
+// Google sign-in is disabled in the Supabase Dashboard until a real OAuth
+// Client ID/Secret from Google Cloud Console is configured there — flip
+// this once that's done, no other change needed.
+export const SHOW_GOOGLE_AUTH = false;
