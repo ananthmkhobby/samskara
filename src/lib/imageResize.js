@@ -1,3 +1,5 @@
+import { computeDHash } from "./imageHash";
+
 // Downscales an uploaded image file to a JPEG, returning both a data URL
 // (for an instant local preview) and a Blob (for the actual Supabase
 // Storage upload) — resizing once and reusing the result for both.
@@ -9,6 +11,10 @@
 // downscales further at display time via CSS, so raising this doesn't cost
 // them anything — it only fixes every larger view that was stretching a
 // 320px source past its real resolution.)
+//
+// Also computes a perceptual hash (imageHash) from the same canvas while
+// it's already decoded — for duplicate-photo detection (Admin > Duplicates)
+// — rather than decoding the image a second time just for that.
 export function resizeImage(file, maxSize = 1600) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -24,7 +30,14 @@ export function resizeImage(file, maxSize = 1600) {
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, w, h);
         const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-        canvas.toBlob((blob) => resolve({ dataUrl, blob }), "image/jpeg", 0.85);
+        let imageHash = null;
+        try {
+          imageHash = computeDHash(ctx.getImageData(0, 0, w, h));
+        } catch {
+          // Cross-origin canvas taint or similar — duplicate detection is a
+          // nice-to-have, never block the actual upload over it.
+        }
+        canvas.toBlob((blob) => resolve({ dataUrl, blob, imageHash }), "image/jpeg", 0.85);
       };
       img.src = reader.result;
     };

@@ -83,6 +83,7 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
   const [docError, setDocError] = useState("");
   const [photoDataUrl, setPhotoDataUrl] = useState("");
   const [photoBlob, setPhotoBlob] = useState(null);
+  const [photoHash, setPhotoHash] = useState(null);
   const [photoError, setPhotoError] = useState("");
   const [avBlob, setAvBlob] = useState(null);
   const [avUrl, setAvUrl] = useState(null);
@@ -114,9 +115,10 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
     if (!file) return;
     setPhotoError("");
     try {
-      const { dataUrl, blob } = await resizeImage(file);
+      const { dataUrl, blob, imageHash } = await resizeImage(file);
       setPhotoDataUrl(dataUrl);
       setPhotoBlob(blob);
+      setPhotoHash(imageHash);
     } catch {
       setPhotoError("Couldn't read that image — try a different file.");
     }
@@ -208,6 +210,7 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
       // human-readable name needs a field of its own rather than overloading
       // content the way the old filename-only version did.
       type, content, title: type === "document" ? fileName : undefined,
+      imageHash: type === "photo" ? photoHash : undefined,
       expCategory: expCategory || undefined, contributor: contributor.trim() || "Anonymous"
     });
     setSubmitting(false);

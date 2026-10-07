@@ -171,7 +171,7 @@ export default async function handler(req, res) {
     // advanceConversation.
     const isStoryVoiceReply = effectiveConversation?.state === "WAITING_FOR_STORY" && numMedia > 0 && classifyMediaType(mediaContentType) === "audio";
 
-    let mediaKind = null, mediaPath = null, effectiveTextBody = textBody;
+    let mediaKind = null, mediaPath = null, mediaImageHash = null, effectiveTextBody = textBody;
     if (isStoryVoiceReply) {
       try {
         const { buffer } = await fetchTwilioMedia(mediaUrl, mediaContentType);
@@ -188,7 +188,9 @@ export default async function handler(req, res) {
       // The person isn't resolved yet at upload time — "unassigned" is the
       // same placeholder the in-app ContributeModal already uses for media
       // about someone not yet (or never) linked to a tree entry.
-      mediaPath = await storeMedia(supabase, identity.familyId, "unassigned", buffer, ext, mediaContentType);
+      const stored = await storeMedia(supabase, identity.familyId, "unassigned", buffer, ext, mediaContentType);
+      mediaPath = stored.path;
+      mediaImageHash = stored.imageHash;
       // _whatsappMedia.js classifies images as "image" (matching
       // whatsapp_messages.message_type's DB check constraint), but the
       // conversation engine and contributions.type both speak "photo"
@@ -204,7 +206,7 @@ export default async function handler(req, res) {
     const result = await advanceConversation({
       supabase, familyId: identity.familyId,
       conversation: effectiveConversation,
-      inbound: { textBody: effectiveTextBody, mediaKind, mediaPath, originalFilename: null },
+      inbound: { textBody: effectiveTextBody, mediaKind, mediaPath, mediaImageHash, originalFilename: null },
       memberships: identity.memberships,
     });
     checkpoint("after_advanceConversation", requestStarted);
@@ -272,6 +274,7 @@ export default async function handler(req, res) {
         type: c.type,
         content: c.content,
         title: c.title,
+        image_hash: c.image_hash ?? null,
         contributor: identity.displayName,
         contributor_user_id: identity.userId,
         status,

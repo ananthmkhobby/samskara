@@ -97,7 +97,7 @@ function buildFamilySwitchPrompt(memberships) {
 // carry no caption field of their own.
 function buildContributions(ctx) {
   const rows = [];
-  if (ctx.mediaKind === "photo") rows.push({ type: "photo", content: ctx.mediaPath });
+  if (ctx.mediaKind === "photo") rows.push({ type: "photo", content: ctx.mediaPath, image_hash: ctx.mediaImageHash ?? null });
   else if (ctx.mediaKind === "document") rows.push({ type: "document", content: ctx.mediaPath, title: ctx.originalFilename || "Document" });
   else if (ctx.mediaKind === "audio") rows.push({ type: "audio", content: ctx.mediaPath });
 
@@ -162,7 +162,7 @@ export async function advanceConversation({ supabase, familyId, conversation, in
   // ---- Entry point: nothing in flight yet -------------------------------
   if (state === "IDLE" || (inbound.mediaKind && Object.keys(ctx).length === 0)) {
     if (inbound.mediaKind) {
-      ctx = { mediaKind: inbound.mediaKind, mediaPath: inbound.mediaPath, originalFilename: inbound.originalFilename || null };
+      ctx = { mediaKind: inbound.mediaKind, mediaPath: inbound.mediaPath, mediaImageHash: inbound.mediaImageHash ?? null, originalFilename: inbound.originalFilename || null };
       return { reply: MEDIA_PROMPT[inbound.mediaKind], nextState: "WAITING_FOR_PERSON", pendingPersonId: null, context: ctx, contributions: [] };
     }
     if (FAMILY_COMMAND.test(text)) {

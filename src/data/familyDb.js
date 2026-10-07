@@ -88,6 +88,7 @@ export async function insertContribution(familyId, c) {
     title: c.title ?? null,
     body_text: c.text ?? null,
     book_id: c.bookId ?? null,
+    image_hash: c.imageHash ?? null,
   };
   const { data, error } = await db.from("contributions").insert(row).select().single();
   if (error) throw new Error(error.message);
@@ -111,6 +112,27 @@ export async function deleteContribution(familyId, contribution) {
     await db.storage.from("family-media").remove([contribution.content]).catch(() => {});
   }
   const { error } = await db.from("contributions").delete().eq("id", contribution.id).eq("family_id", familyId);
+  if (error) throw new Error(error.message);
+}
+
+// ---- Duplicate-photo dismissals (Admin > Duplicates) ------------------------
+
+export async function fetchDuplicateDismissals(familyId) {
+  const db = requireClient();
+  const { data, error } = await db.from("duplicate_dismissals").select("contribution_id_a, contribution_id_b").eq("family_id", familyId);
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// Always pass the pair sorted (lower id first) — matches the table's own
+// `ordered_pair` check constraint, which exists so a pair can only ever be
+// dismissed once regardless of which order the two photos were compared in.
+export async function insertDuplicateDismissal(familyId, idA, idB, userId) {
+  const db = requireClient();
+  const [a, b] = [idA, idB].sort((x, y) => x - y);
+  const { error } = await db.from("duplicate_dismissals").insert({
+    family_id: familyId, contribution_id_a: a, contribution_id_b: b, dismissed_by: userId,
+  });
   if (error) throw new Error(error.message);
 }
 
@@ -149,6 +171,7 @@ export function mapContributionRow(row) {
     title: row.title,
     text: row.body_text,
     bookId: row.book_id,
+    imageHash: row.image_hash,
   };
 }
 

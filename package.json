@@ -9,11 +9,13 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "provision-family": "node --env-file=.env.local scripts/provision-family.mjs",
+    "backfill-image-hashes": "node --env-file=.env.local scripts/backfill-image-hashes.mjs",
     "backup": "node scripts/backup.mjs"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.9.0",
     "@supabase/supabase-js": "^2.110.8",
+    "jimp": "^1.6.1",
     "leaflet": "^1.9.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

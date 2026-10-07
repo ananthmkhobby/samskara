@@ -6,7 +6,9 @@ import {
   updateMemberDisplayName, fetchInvites, revokeInvite, fetchMemberEmail,
   createMemberLogin, resetMemberPassword, updateFamilyName, updateFamilyTagline, updateFamilyLogo,
   redeemContentShare, reassignParents, fetchAskablePhotoMembers, askFamilyPhotoId,
+  fetchDuplicateDismissals, insertDuplicateDismissal,
 } from "../data/familyDb";
+import { hammingDistance, DUPLICATE_HAMMING_THRESHOLD } from "../lib/imageHash";
 import { categoryFor } from "../lib/parampara";
 import { libraryCategoryFor } from "../lib/library";
 import { spotFor } from "../lib/chitrashale";
@@ -770,6 +772,135 @@ function UnidentifiedPhotosTab({ contributions, onOpenLightbox }) {
   );
 }
 
+// A generous, deliberate ceiling — see api/photobook-family.js's
+// MAX_FAMILY_BOOK_PEOPLE for the same "legible capped-out message instead
+// of a silent slow scan" reasoning. Not expected to trigger at this app's
+// current per-family scale; the comparison below is O(n²).
+const MAX_PHOTOS_FOR_DUPLICATE_SCAN = 500;
+
+function pairKey(idA, idB) {
+  const [lo, hi] = idA < idB ? [idA, idB] : [idB, idA];
+  return `${lo}:${hi}`;
+}
+
+// Union-find over the candidate photos' perceptual hashes — two photos join
+// a cluster when their Hamming distance is within DUPLICATE_HAMMING_
+// THRESHOLD and that specific pair hasn't been dismissed. A dismissed pair
+// can still end up back in the same cluster via a third, undismissed photo
+// bridging them — an accepted simplification for a first version at this
+// app's modest per-family photo counts, not worth a more elaborate
+// clustering scheme yet.
+function buildDuplicateClusters(candidates, dismissedPairKeys) {
+  const parent = candidates.map((_, i) => i);
+  function find(x) { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
+  function union(x, y) { const rx = find(x), ry = find(y); if (rx !== ry) parent[rx] = ry; }
+
+  for (let i = 0; i < candidates.length; i++) {
+    for (let j = i + 1; j < candidates.length; j++) {
+      const a = candidates[i], b = candidates[j];
+      if (dismissedPairKeys.has(pairKey(a.id, b.id))) continue;
+      if (hammingDistance(a.imageHash, b.imageHash) <= DUPLICATE_HAMMING_THRESHOLD) union(i, j);
+    }
+  }
+
+  const groups = new Map();
+  candidates.forEach((c, i) => {
+    const root = find(i);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root).push(c);
+  });
+  return [...groups.values()].filter((g) => g.length > 1);
+}
+
+function DuplicatePhotosTab({ contributions, onDeleteContribution, onOpenLightbox }) {
+  const [dismissedPairKeys, setDismissedPairKeys] = useState(() => new Set());
+  const [dismissalsError, setDismissalsError] = useState("");
+  const [busyKey, setBusyKey] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchDuplicateDismissals(CURRENT_FAMILY_ID)
+      .then((rows) => setDismissedPairKeys(new Set(rows.map((r) => pairKey(r.contribution_id_a, r.contribution_id_b)))))
+      .catch((err) => setDismissalsError(err.message));
+  }, []);
+
+  const candidates = contributions.filter((c) => c.type === "photo" && c.status === "Verified" && c.imageHash);
+
+  if (candidates.length > MAX_PHOTOS_FOR_DUPLICATE_SCAN) {
+    return (
+      <div className="card">
+        <div className="empty-state">
+          This family has {candidates.length} verified photos — duplicate scanning is capped at {MAX_PHOTOS_FOR_DUPLICATE_SCAN} to stay fast. Contact support if you need this run anyway.
+        </div>
+      </div>
+    );
+  }
+
+  const clusters = buildDuplicateClusters(candidates, dismissedPairKeys);
+
+  async function dismissCluster(cluster) {
+    const key = cluster.map((c) => c.id).join(",");
+    setBusyKey(key);
+    setError("");
+    const pairs = [];
+    for (let i = 0; i < cluster.length; i++) {
+      for (let j = i + 1; j < cluster.length; j++) {
+        const k = pairKey(cluster[i].id, cluster[j].id);
+        if (!dismissedPairKeys.has(k)) pairs.push([cluster[i].id, cluster[j].id, k]);
+      }
+    }
+    try {
+      for (const [a, b] of pairs) await insertDuplicateDismissal(CURRENT_FAMILY_ID, a, b, CURRENT_USER_ID);
+      setDismissedPairKeys((prev) => {
+        const next = new Set(prev);
+        pairs.forEach(([, , k]) => next.add(k));
+        return next;
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  if (!clusters.length) return <div className="card"><div className="empty-state">No likely duplicates right now.</div></div>;
+
+  return (
+    <div className="card">
+      {dismissalsError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{dismissalsError}</p>}
+      {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+      {clusters.map((cluster) => {
+        const key = cluster.map((c) => c.id).join(",");
+        return (
+          <div className="queue-row" key={key} style={{ alignItems: "flex-start" }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {cluster.map((c) => (
+                <button key={c.id} type="button" onClick={() => onOpenLightbox(c.mediaUrl)} style={{ border: 0, padding: 0, background: "none", cursor: "zoom-in" }} aria-label="View photo full screen">
+                  <img src={c.mediaUrl} alt="" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 6, display: "block" }} />
+                </button>
+              ))}
+            </div>
+            <div className="queue-main">
+              <b>{cluster.length} photos that look the same</b>
+              <div className="queue-meta">{cluster.map((c) => `${c.contributor} · ${c.date}`).join(" — ")}</div>
+            </div>
+            <div className="queue-actions" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {cluster.map((c) => (
+                <button key={c.id} type="button" className="btn small ghost" onClick={() => onDeleteContribution(c)}>
+                  Delete this one
+                </button>
+              ))}
+              <button type="button" className="btn small" disabled={busyKey === key} onClick={() => dismissCluster(cluster)}>
+                {busyKey === key ? "…" : "Not duplicates"}
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function MembersPage() {
   const [invitesRefreshKey, setInvitesRefreshKey] = useState(0);
   const [membersRefreshKey, setMembersRefreshKey] = useState(0);
@@ -793,8 +924,9 @@ function MembersPage() {
 export default function AdminView({ contributions, onApprove, onReject, onDeleteContribution, canModerate }) {
   const showMembersTab = !IS_DEMO && canModerate;
   const showPhotosTab = !IS_DEMO && canModerate;
+  const showDuplicatesTab = !IS_DEMO && canModerate;
   const showWhatsAppTab = !IS_DEMO && canModerate;
-  const adminTabs = [...(showMembersTab ? ["Members"] : []), "Review queue", ...(showPhotosTab ? ["Photos"] : []), ...(showWhatsAppTab ? ["WhatsApp"] : [])];
+  const adminTabs = [...(showMembersTab ? ["Members"] : []), "Review queue", ...(showPhotosTab ? ["Photos"] : []), ...(showDuplicatesTab ? ["Duplicates"] : []), ...(showWhatsAppTab ? ["WhatsApp"] : [])];
   const [adminTab, setAdminTab] = useState(showMembersTab ? "Members" : "Review queue");
   const [tab, setTab] = useState("Pending");
   const [lightboxSrc, setLightboxSrc] = useState(null);
@@ -894,26 +1026,28 @@ export default function AdminView({ contributions, onApprove, onReject, onDelete
   return (
     <section className="wrap">
       <div className="section-head">
-        <h2>{adminTab === "Members" ? "Manage members" : adminTab === "Photos" ? "Unidentified photos" : adminTab === "WhatsApp" ? "WhatsApp activity" : "Review queue"}</h2>
+        <h2>{adminTab === "Members" ? "Manage members" : adminTab === "Photos" ? "Unidentified photos" : adminTab === "Duplicates" ? "Possible duplicate photos" : adminTab === "WhatsApp" ? "WhatsApp activity" : "Review queue"}</h2>
         <p>
           {adminTab === "Members"
             ? "Invite people, see who's joined, fix a name, or set which person in the tree someone is — for themselves or, if they never got around to it, for anyone."
             : adminTab === "Photos"
             ? "Photos with no one linked yet — send one to a family member on WhatsApp and ask who it is."
+            : adminTab === "Duplicates"
+            ? "Photos that look the same, likely saved twice — once from the app, once from WhatsApp, or any other repeat. Scans only Verified Gallery photos."
             : adminTab === "WhatsApp"
             ? "Recent messages Samskara has received on WhatsApp for this family, and what happened with each one — for debugging the integration, not for everyday use."
             : "Everything the family has submitted or proposed to edit, waiting for a second pair of eyes before it changes the archive."}
         </p>
         {adminTab === "Review queue" && !canModerate && <p className="form-hint" style={{ marginTop: 6 }}>You can see what's pending, but only Admins or the Family Head can approve or reject.</p>}
       </div>
-      {(showMembersTab || showPhotosTab || showWhatsAppTab) && (
+      {(showMembersTab || showPhotosTab || showDuplicatesTab || showWhatsAppTab) && (
         <div className="admin-tabs">
           {adminTabs.map((t) => (
             <button key={t} className={`chip${adminTab === t ? " active" : ""}`} onClick={() => setAdminTab(t)}>{t}</button>
           ))}
         </div>
       )}
-      {adminTab === "Members" ? <MembersPage /> : adminTab === "Photos" ? <UnidentifiedPhotosTab contributions={contributions} onOpenLightbox={setLightboxSrc} /> : adminTab === "WhatsApp" ? <WhatsAppAdminTab /> : (
+      {adminTab === "Members" ? <MembersPage /> : adminTab === "Photos" ? <UnidentifiedPhotosTab contributions={contributions} onOpenLightbox={setLightboxSrc} /> : adminTab === "Duplicates" ? <DuplicatePhotosTab contributions={contributions} onDeleteContribution={onDeleteContribution} onOpenLightbox={setLightboxSrc} /> : adminTab === "WhatsApp" ? <WhatsAppAdminTab /> : (
       <>
       <div className="admin-tabs">
         {TABS.map((t) => (

@@ -4,6 +4,8 @@
 // per section 21 of the integration spec, MIME type and size are validated
 // before anything is stored.
 import { randomUUID } from "crypto";
+import { Jimp } from "jimp";
+import { computeDHash } from "../src/lib/imageHash.js";
 
 const BUCKET = "family-media";
 const MAX_BYTES = 20 * 1024 * 1024; // 20MB — comfortably above WhatsApp's own image/voice-note limits
@@ -69,6 +71,23 @@ export async function transcribeAudio(buffer, contentType) {
   return text;
 }
 
+// Best-effort perceptual hash for duplicate-photo detection (Admin >
+// Duplicates) — unlike the browser's resizeImage(), WhatsApp photos are
+// stored at their original resolution with no client-side decode step
+// already done, so this is the one place that needs an actual image
+// library (jimp — pure JS, no native bindings, same reasoning that made
+// @react-pdf/renderer/pdfkit the safe Vercel choice elsewhere in this
+// project). Never lets a decode failure fail the whole message.
+async function hashImageBuffer(buffer) {
+  try {
+    const img = await Jimp.read(buffer);
+    img.resize({ w: 32, h: 32 }).greyscale();
+    return computeDHash(img.bitmap);
+  } catch {
+    return null;
+  }
+}
+
 // Same bucket and {familyId}/{personId}/{uuid}.{ext} path convention the
 // browser's own uploadFamilyMedia() uses (src/lib/mediaUpload.js) — the
 // webhook runs under the service role, so it uses the Storage client
@@ -77,5 +96,6 @@ export async function storeMedia(supabase, familyId, personId, buffer, ext, cont
   const path = `${familyId}/${personId}/${randomUUID()}.${ext}`;
   const { error } = await supabase.storage.from(BUCKET).upload(path, buffer, { contentType });
   if (error) throw new Error(`Couldn't save that attachment: ${error.message}`);
-  return path;
+  const imageHash = contentType.startsWith("image/") ? await hashImageBuffer(buffer) : null;
+  return { path, imageHash };
 }
