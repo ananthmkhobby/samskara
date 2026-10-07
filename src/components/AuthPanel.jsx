@@ -88,7 +88,7 @@ function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, erro
   // ever required.
   const [loginWithUsername, setLoginWithUsername] = useState(false);
   // Interim stopgap until a real email service is configured (see
-  // api/request-password-reset.js) — "Forgot password?" above may not
+  // api/password-reset-requests.js) — "Forgot password?" above may not
   // reliably deliver today, and a self-registered Head has no Admin above
   // them to reset them in-app the way a regular member does. This just
   // files a request for the app owner to handle manually via /superadmin.
@@ -133,7 +133,7 @@ function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, erro
     setRequestBusy(true);
     setRequestError("");
     try {
-      await callApi("/api/request-password-reset", { email: email.trim(), note: requestNote.trim() });
+      await callApi("/api/password-reset-requests", { action: "submit", email: email.trim(), note: requestNote.trim() });
       setRequestSent(true);
     } catch (err) {
       setRequestError(err.message);

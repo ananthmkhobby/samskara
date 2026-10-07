@@ -1,13 +1,15 @@
-// Vercel serverless function — the admin-facing half of the interim
-// password-reset-request stopgap (see request-password-reset.js and the
-// password_reset_requests migration). Same shared-secret trust model as
-// provision-family.js. POST-only (matches callApi's shape, src/lib/
-// apiFetch.js, which never sends GET): action:"list" returns open requests,
-// action:"resolve" marks one resolved. Actually changing anyone's password
-// still happens manually (a service-role script, same call
+// Vercel serverless function — the whole interim password-reset-request
+// stopgap in one endpoint (merged from two separate files to stay under
+// Vercel's Hobby-plan 12-function limit): action:"submit" is public/
+// unauthenticated (filed from the login page's "No admin to ask?" link),
+// action:"list"/"resolve" are gated by the same shared-secret trust model
+// as provision-family.js. Actually changing anyone's password still
+// happens manually (a service-role script, same call
 // api/reset-member-password.js already uses) — this endpoint only tracks
 // the request, it never resets a password itself.
 import { createClient } from "@supabase/supabase-js";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -23,13 +25,36 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { adminSecret, action, id } = req.body || {};
+  const { action, adminSecret, email, note, id } = req.body || {};
+  const supabase = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
+
+  if (action === "submit") {
+    if (!email?.trim() || !EMAIL_RE.test(email.trim())) {
+      res.status(400).json({ error: "Enter a valid email address." });
+      return;
+    }
+    if (note && note.length > 500) {
+      res.status(400).json({ error: "That note is too long — keep it under 500 characters." });
+      return;
+    }
+    try {
+      const { error } = await supabase.from("password_reset_requests").insert({ email: email.trim(), note: note?.trim() || null });
+      if (error) throw new Error(error.message);
+      // Generic response regardless of whether this email matches a real
+      // account — never confirm/deny account existence to an unauthenticated
+      // caller.
+      res.status(200).json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message || "Couldn't submit that request." });
+    }
+    return;
+  }
+
+  // Everything below (list, resolve) requires the admin secret.
   if (adminSecret !== secret) {
     res.status(401).json({ error: "Incorrect admin secret." });
     return;
   }
-
-  const supabase = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
 
   if (action === "resolve") {
     if (!id) {

@@ -17,7 +17,7 @@ const GATABLE_MODULES = [
 ];
 
 // Interim stopgap until a real email service exists (see api/
-// request-password-reset.js) — lists requests filed from the login page's
+// api/password-reset-requests.js) — lists requests filed from the login page's
 // "Can't get in at all?" link. Resolving a password still happens manually
 // (a service-role script, same call api/reset-member-password.js already
 // makes) — this list only tracks who's waiting, "Mark resolved" is just
@@ -33,7 +33,7 @@ function PasswordResetRequestsSection({ adminSecret }) {
     setBusy(true);
     setError("");
     try {
-      const data = await callApi("/api/password-reset-requests", { adminSecret });
+      const data = await callApi("/api/password-reset-requests", { adminSecret, action: "list" });
       setRequests(data.requests);
     } catch (err) {
       setError(err.message);
