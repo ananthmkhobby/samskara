@@ -9,7 +9,20 @@
 // there's no guarantee the Node function builder applies a JSX transform to
 // a .js file. createElement sidesteps that question entirely.
 import { createElement as h } from "react";
-import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, View, Text, Image, StyleSheet, Font } from "@react-pdf/renderer";
+import { fileURLToPath } from "url";
+import path from "path";
+import { buildVamshavali } from "../src/lib/vamshavali.js";
+
+// Noto Sans Kannada (SIL Open Font License) — the Standard-14 PDF fonts
+// used everywhere else in this file (Times-Roman etc.) have no Kannada
+// glyphs at all, so the Vamshavali document needs its own embedded font.
+// Bundled into this function's deployment via vercel.json's existing
+// includeFiles mechanism (same precedent already used there for pdfkit's
+// own standard-font data). Registered once, at module load, for every
+// render in this process.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+Font.register({ family: "Noto Sans Kannada", src: path.join(__dirname, "_fonts/NotoSansKannada-Regular.ttf") });
 
 // Ported from src/components/PersonAvatar.jsx:1,7-11 — generation-to-color
 // mapping, used here for section dividers in the whole-family book.
@@ -103,6 +116,26 @@ const styles = StyleSheet.create({
   tocEntry: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
   tocDot: { width: 6, height: 6, borderRadius: 3, marginRight: 8 },
   tocName: { fontSize: 11, color: COLOR.ink },
+
+  vTitleKannada: { fontFamily: "Noto Sans Kannada", fontSize: 22, color: COLOR.maroonDeep, textAlign: "center" },
+  vTitleEnglish: { fontSize: 11, color: COLOR.inkSoft, textAlign: "center", marginTop: 4, marginBottom: 4 },
+  // Noto Sans Kannada, not Times-Italic — this line mixes English and
+  // Kannada mid-sentence, and the Standard-14 fonts have no Kannada
+  // glyphs at all, which garbled the Kannada word when this was tried
+  // with Times-Italic. Noto Sans Kannada covers Latin too, so one font
+  // for the whole mixed-script line is both correct and simpler.
+  vSubhead: { fontFamily: "Noto Sans Kannada", fontSize: 9.5, color: COLOR.inkSoft, textAlign: "center", marginBottom: 18 },
+  vSection: { marginBottom: 16, border: `0.75pt solid ${COLOR.gold}`, borderRadius: 4 },
+  vSectionHead: { backgroundColor: COLOR.parchment, paddingVertical: 6, paddingHorizontal: 10 },
+  vSectionTitleKannada: { fontFamily: "Noto Sans Kannada", fontSize: 13, color: COLOR.maroonDeep },
+  vSectionTitleEnglish: { fontSize: 8.5, color: COLOR.inkSoft, marginTop: 1 },
+  vRow: { flexDirection: "row", paddingVertical: 5, paddingHorizontal: 10, borderTop: `0.5pt solid ${COLOR.parchment}` },
+  vRowTerm: { width: "32%" },
+  vRowTermKannada: { fontFamily: "Noto Sans Kannada", fontSize: 10.5, color: COLOR.ink },
+  vRowTermEnglish: { fontSize: 7.5, color: COLOR.inkSoft, marginTop: 1 },
+  vRowName: { width: "34%", fontFamily: "Noto Sans Kannada", fontSize: 10.5, color: COLOR.ink },
+  vRowStatus: { width: "14%", fontSize: 9, color: COLOR.inkSoft },
+  vRowGotra: { width: "20%", fontSize: 9, color: COLOR.inkSoft },
 });
 
 function PersonHeader({ person }) {
@@ -209,4 +242,44 @@ export function PersonPage({ person, media, memories }) {
   );
 }
 
-export { Document, Page, View, Text, Image, StyleSheet, h };
+// One row in a Vamshavali section — "unresolved"/"noneFound" render a
+// plain dash rather than guessing, matching buildVamshavali's own refusal
+// to guess anywhere the data doesn't support it.
+function VamshavaliRow({ row }) {
+  const displayName = row.unresolved || row.noneFound ? "—" : row.name === null ? "ಇದ್ದಾರೆ" : row.name;
+  const status = row.unresolved ? "Unknown" : row.noneFound ? "" : row.isAlive ? "Alive" : "Departed";
+  return h(View, { style: styles.vRow },
+    h(View, { style: styles.vRowTerm },
+      h(Text, { style: styles.vRowTermKannada }, row.kannadaTerm),
+      h(Text, { style: styles.vRowTermEnglish }, row.englishTerm)
+    ),
+    h(Text, { style: styles.vRowName }, displayName),
+    h(Text, { style: styles.vRowStatus }, status),
+    h(Text, { style: styles.vRowGotra }, row.gotra || (row.unresolved || row.noneFound ? "" : "—"))
+  );
+}
+
+function VamshavaliSection({ section }) {
+  return h(View, { style: styles.vSection },
+    h(View, { style: styles.vSectionHead },
+      h(Text, { style: styles.vSectionTitleKannada }, section.title),
+      h(Text, { style: styles.vSectionTitleEnglish }, section.titleEnglish)
+    ),
+    section.rows.map((row, i) => h(VamshavaliRow, { key: i, row }))
+  );
+}
+
+// `vamshavali` is this person's buildVamshavali(...) result, computed by
+// the caller (so the one relationship engine in src/lib/vamshavali.js is
+// also the one source of truth server-side — see the import at the top of
+// this file).
+export function VamshavaliPage({ vamshavali, familyName }) {
+  return h(Page, { size: "A4", style: styles.page },
+    h(Text, { style: styles.vTitleKannada }, "ವಂಶಾವಳಿ"),
+    h(Text, { style: styles.vTitleEnglish }, `Vamshavali — ${formatName(vamshavali.ego)}${familyName ? `, ${familyName}` : ""}`),
+    h(Text, { style: styles.vSubhead }, "Pitru form — only those who have passed are named; living relatives are marked ಇದ್ದಾರೆ (alive)."),
+    vamshavali.sections.map((section) => h(VamshavaliSection, { key: section.key, section }))
+  );
+}
+
+export { Document, Page, View, Text, Image, StyleSheet, Font, h, buildVamshavali };

@@ -3,11 +3,8 @@
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/photobook-person.js": {
-      "includeFiles": "node_modules/pdfkit/js/{standard-fonts,data}/**"
-    },
-    "api/photobook-family.js": {
-      "includeFiles": "node_modules/pdfkit/js/{standard-fonts,data}/**"
+    "api/photobook.js": {
+      "includeFiles": "{node_modules/pdfkit/js/standard-fonts,node_modules/pdfkit/js/data,api/_fonts}/**"
     }
   },
   "headers": [

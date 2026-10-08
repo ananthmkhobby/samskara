@@ -30,3 +30,27 @@
 .parampara-highlight-card .quote::before { content: "\201C"; }
 .parampara-highlight-card .quote::after { content: "\201D"; }
 .parampara-highlight-card .who { font-size: 12px; color: var(--ink-faint); margin-top: 8px; }
+
+.vamshavali-modal { max-width: 640px; max-height: 85vh; overflow-y: auto; }
+.vamshavali-section { margin-top: 18px; border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
+.vamshavali-section-head { background: var(--gold-wash); padding: 10px 14px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.vamshavali-section-title-kn { font-family: var(--font-display); font-size: 16px; color: var(--maroon-deep); font-weight: 600; }
+.vamshavali-section-title-en { font-size: 11px; color: var(--ink-faint); }
+.vamshavali-row {
+  display: grid; grid-template-columns: 1.5fr 1.3fr 0.8fr 0.8fr 0.7fr; gap: 8px; align-items: center;
+  padding: 8px 14px; border-top: 1px solid var(--line); font-size: 13px;
+}
+.vamshavali-row-term { display: flex; flex-direction: column; }
+.vamshavali-term-kn { color: var(--ink); }
+.vamshavali-term-en { font-size: 10.5px; color: var(--ink-faint); }
+.vamshavali-row-name { color: var(--ink); }
+.vamshavali-row-status { font-size: 11.5px; font-weight: 600; }
+.vamshavali-row-status.status-alive { color: var(--forest); }
+.vamshavali-row-status.status-departed { color: var(--ink-faint); }
+.vamshavali-row-gotra, .vamshavali-row-rashi { font-size: 12px; color: var(--ink-soft); }
+.vamshavali-row-unresolved { grid-template-columns: 1.5fr 1fr; }
+.vamshavali-row-unknown { font-size: 12px; color: var(--ink-faint); font-style: italic; }
+@media (max-width: 560px) {
+  .vamshavali-row { grid-template-columns: 1fr 1fr; row-gap: 2px; }
+  .vamshavali-row-term { grid-column: 1 / -1; }
+}

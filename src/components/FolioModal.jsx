@@ -40,13 +40,13 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
     setPdfDownloading(true);
     try {
       const session = supabase ? (await supabase.auth.getSession()).data.session : null;
-      const res = await fetch("/api/photobook-person", {
+      const res = await fetch("/api/photobook", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
-        body: JSON.stringify({ familyId: CURRENT_FAMILY_ID, personId: person.id }),
+        body: JSON.stringify({ action: "person", familyId: CURRENT_FAMILY_ID, personId: person.id }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

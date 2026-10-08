@@ -7,6 +7,7 @@ import PhotoLightbox from "./PhotoLightbox";
 import HeritageIntro, { DiyaIcon } from "./HeritageIntro";
 import { EditPencilIcon, CloseIcon } from "./Icons";
 import { useModalA11y } from "../hooks/useModalA11y";
+import VamshavaliView from "./VamshavaliView";
 
 // A share code's whole content — title, story, since-year — travels; the
 // photo doesn't, since mediaPath points at this family's own private
@@ -109,6 +110,7 @@ export default function ParamparaView({ contributions, canModerate, onContribute
   const [urlMap, setUrlMap] = useState({});
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [shareModal, setShareModal] = useState(null);
+  const [vamshavaliOpen, setVamshavaliOpen] = useState(false);
 
   async function handleShare(entry) {
     try {
@@ -152,6 +154,17 @@ export default function ParamparaView({ contributions, canModerate, onContribute
         </div>
       )}
 
+      <div className="card parampara-lineage-card heritage-fade-up" style={{ "--enter-delay": "0.8s" }}>
+        <div className="folio-section-head">
+          <span className="eyebrow">ವಂಶಾವಳಿ Vamshavali</span>
+        </div>
+        <p className="form-hint" style={{ marginTop: 4 }}>
+          A traditional lineage document — father's and mother's line, three to four generations, with gotra and
+          who's still living, laid out the way a family priest would prepare it.
+        </p>
+        <button type="button" className="btn ghost small" onClick={() => setVamshavaliOpen(true)}>View &amp; download</button>
+      </div>
+
       <div className="tag-row parampara-filters heritage-fade-up" style={{ marginTop: lineageEntry ? 18 : 0, "--enter-delay": "0.85s" }}>
         <button className={`chip${filter === null ? " active" : ""}`} onClick={() => setFilter(null)}>All</button>
         {PARAMPARA_CATEGORIES.map((c) => (
@@ -176,6 +189,7 @@ export default function ParamparaView({ contributions, canModerate, onContribute
       )}
       <PhotoLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
       <ShareCodeModal state={shareModal} onClose={() => setShareModal(null)} />
+      {vamshavaliOpen && <VamshavaliView onClose={() => setVamshavaliOpen(false)} />}
     </section>
   );
 }

@@ -27,13 +27,13 @@ export default function TreeView({ contributions, onSelectPerson, onNav }) {
     setFamilyPdfDownloading(true);
     try {
       const session = supabase ? (await supabase.auth.getSession()).data.session : null;
-      const res = await fetch("/api/photobook-family", {
+      const res = await fetch("/api/photobook", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
-        body: JSON.stringify({ familyId: CURRENT_FAMILY_ID }),
+        body: JSON.stringify({ action: "family", familyId: CURRENT_FAMILY_ID }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
