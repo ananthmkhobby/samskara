@@ -761,11 +761,12 @@ export default function App() {
         }
       } else if (c.field === "heritage") {
         try {
-          const { rashi, gotra, birthGotra } = JSON.parse(c.content);
+          const { rashi, gotra, birthGotra, gender } = JSON.parse(c.content);
           person.rashi = rashi || undefined;
           person.gotra = gotra || undefined;
           person.birthGotra = birthGotra || undefined;
-          updatePersonFields(familyId, c.personId, { rashi: rashi || null, gotra: gotra || null, birth_gotra: birthGotra || null }).catch((err) => console.error(err.message));
+          person.gender = gender || undefined;
+          updatePersonFields(familyId, c.personId, { rashi: rashi || null, gotra: gotra || null, birth_gotra: birthGotra || null, gender: gender || null }).catch((err) => console.error(err.message));
         } catch { /* malformed content, skip */ }
       } else if (c.field === "photoIdentification") {
         // Not an edit to this person at all — c.personId is who the family

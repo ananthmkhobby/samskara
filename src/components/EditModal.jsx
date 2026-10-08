@@ -23,6 +23,7 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
   const [rashi, setRashi] = useState(request.rashi || "");
   const [gotra, setGotra] = useState(request.gotra || "");
   const [birthGotra, setBirthGotra] = useState(request.birthGotra || "");
+  const [gender, setGender] = useState(request.gender || "");
   const [dayYear, setDayYear] = useState(request.dayYear || "");
   const [dayItems, setDayItems] = useState(request.dayItems || "");
   const [selectedValues, setSelectedValues] = useState(request.values || []);
@@ -124,7 +125,7 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
       return;
     }
     const content = isHeritage
-      ? JSON.stringify({ rashi: rashi.trim(), gotra: gotra.trim(), birthGotra: birthGotra.trim() })
+      ? JSON.stringify({ rashi: rashi.trim(), gotra: gotra.trim(), birthGotra: birthGotra.trim(), gender })
       : isLifeLesson
         ? JSON.stringify({ quote: value.trim(), values: selectedValues })
         : isDayInLife
@@ -219,6 +220,24 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
                     Only needed if this differs from the gotra above — e.g. a married-in daughter-in-law's gotra by birth, kept alongside her gotra by marriage.
                   </p>
                   <input type="text" placeholder="e.g. Kashyapa" value={birthGotra} onChange={(e) => setBirthGotra(e.target.value)} />
+                </div>
+                <div className="form-row">
+                  <label>Gender (optional)</label>
+                  <p className="form-hint" style={{ marginTop: 0, marginBottom: 6 }}>
+                    Only ever used to work out relationship terms (Father/Mother, Brother/Sister) for documents like the
+                    Vamshavali — never shown or used anywhere else.
+                  </p>
+                  <div className="tag-row">
+                    {[["male", "Male"], ["female", "Female"], ["", "Prefer not to say"]].map(([key, label]) => (
+                      <button
+                        type="button" key={label}
+                        className={`chip${gender === key ? " active" : ""}`}
+                        onClick={() => setGender(key)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </>
             ) : isLifeLesson ? (

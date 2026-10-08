@@ -194,15 +194,20 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
           <div className="folio-section">
             <div className="folio-section-head">
               <h4>Heritage details</h4>
-              <button className="icon-only" aria-label="Edit heritage details" onClick={() => onEdit({ field: "heritage", fieldLabel: "Rashi & gotra", rashi: person.rashi || "", gotra: person.gotra || "", birthGotra: person.birthGotra || "" })}><EditPencilIcon /></button>
+              <button className="icon-only" aria-label="Edit heritage details" onClick={() => onEdit({ field: "heritage", fieldLabel: "Rashi, gotra & gender", rashi: person.rashi || "", gotra: person.gotra || "", birthGotra: person.birthGotra || "", gender: person.gender || "" })}><EditPencilIcon /></button>
             </div>
-            {person.rashi || person.gotra || person.birthGotra ? (
+            {person.rashi || person.gotra || person.birthGotra || person.gender ? (
               <div className="tag-row">
                 {person.rashi && <span className="tag">Rashi: {person.rashi}</span>}
                 {person.gotra && <span className="tag">Gotra: {person.gotra}</span>}
                 {person.birthGotra && <span className="tag">Birth gotra: {person.birthGotra}</span>}
+                {person.gender && <span className="tag">Gender: {person.gender === "male" ? "Male" : "Female"}</span>}
               </div>
             ) : <p className="form-hint" style={{ marginTop: 0 }}>Rashi and gotra haven't been added yet — optional, but nice to have on record.</p>}
+            <p className="form-hint" style={{ marginTop: 8 }}>
+              Gender here is only ever used to work out relationship terms (Father/Mother, Brother/Sister) for documents
+              like the Vamshavali — it's optional, and nothing else in the app shows or depends on it.
+            </p>
           </div>
           <div className="folio-section">
             <div className="folio-section-head">
