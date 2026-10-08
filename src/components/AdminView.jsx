@@ -8,6 +8,7 @@ import {
   redeemContentShare, reassignParents, fetchAskablePhotoMembers, askFamilyPhotoId,
   fetchDuplicateDismissals, insertDuplicateDismissal,
   createGalleryExportCode, fetchGalleryExportCodes, revokeGalleryExportCode,
+  updatePersonFields,
 } from "../data/familyDb";
 import { hammingDistance, DUPLICATE_HAMMING_THRESHOLD } from "../lib/imageHash";
 import { categoryFor } from "../lib/parampara";
@@ -948,6 +949,84 @@ function buildDuplicateClusters(candidates, dismissedPairKeys) {
   return [...groups.values()].filter((g) => g.length > 1);
 }
 
+// Bulk gender entry — one person's gender can already be set from their own
+// Folio (Heritage details), but that's painfully slow for a whole tree.
+// Every PERSON here is already an existing real family's data, so this is
+// strictly additive: nothing is pre-filled or guessed, and a tree nobody
+// touches stays exactly as it was. Mutates the live PEOPLE array in place,
+// same as App.jsx's own heritage-edit handler, so the Vamshavali reflects a
+// change immediately without a reload.
+function GenderTab() {
+  const [, forceUpdate] = useState(0);
+  const [savingId, setSavingId] = useState(null);
+  const [errorId, setErrorId] = useState(null);
+
+  const byGen = new Map();
+  for (const p of PEOPLE) {
+    if (!byGen.has(p.gen)) byGen.set(p.gen, []);
+    byGen.get(p.gen).push(p);
+  }
+  const gens = [...byGen.keys()].sort((a, b) => a - b);
+  for (const gen of gens) byGen.get(gen).sort((a, b) => a.name.localeCompare(b.name));
+  const setCount = PEOPLE.filter((p) => p.gender).length;
+
+  async function setGender(person, value) {
+    const prev = person.gender;
+    person.gender = value || undefined;
+    setSavingId(person.id);
+    setErrorId(null);
+    forceUpdate((n) => n + 1);
+    try {
+      await updatePersonFields(CURRENT_FAMILY_ID, person.id, { gender: value || null });
+    } catch {
+      person.gender = prev;
+      setErrorId(person.id);
+    } finally {
+      setSavingId(null);
+      forceUpdate((n) => n + 1);
+    }
+  }
+
+  return (
+    <div className="card">
+      <p className="form-hint" style={{ marginTop: 0 }}>
+        {setCount} of {PEOPLE.length} people have a gender on record — optional, and used only to work out
+        relationship terms (Father/Mother, Brother/Sister, Husband/Wife) for documents like the Vamshavali. Nothing
+        else in the app shows or depends on it.
+      </p>
+      {gens.map((gen) => (
+        <div key={gen}>
+          <div className="gender-gen-heading">Generation {gen - MIN_GEN + 1}</div>
+          {byGen.get(gen).map((p) => (
+            <div className="queue-row" key={p.id}>
+              <PersonAvatar person={p} size={40} minGen={MIN_GEN} maxGen={MAX_GEN} />
+              <div className="queue-main">
+                <b>{p.name}</b>
+                <div className="queue-meta">
+                  {yearsLabel(p)}
+                  {errorId === p.id && <span style={{ color: "var(--maroon-ink)" }}> — couldn't save, try again</span>}
+                </div>
+              </div>
+              <div className="tag-row">
+                {[["male", "Male"], ["female", "Female"], ["", "Unset"]].map(([key, label]) => (
+                  <button
+                    type="button" key={label}
+                    className={`chip${(p.gender || "") === key ? " active" : ""}`}
+                    disabled={savingId === p.id}
+                    onClick={() => setGender(p, key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function DuplicatePhotosTab({ contributions, onDeleteContribution, onOpenLightbox }) {
   const [dismissedPairKeys, setDismissedPairKeys] = useState(() => new Set());
   const [dismissalsError, setDismissalsError] = useState("");
@@ -1064,8 +1143,9 @@ export default function AdminView({ contributions, onApprove, onReject, onDelete
   const showMembersTab = !IS_DEMO && canModerate;
   const showPhotosTab = !IS_DEMO && canModerate;
   const showDuplicatesTab = !IS_DEMO && canModerate;
+  const showGenderTab = !IS_DEMO && canModerate;
   const showWhatsAppTab = !IS_DEMO && canModerate;
-  const adminTabs = [...(showMembersTab ? ["Members"] : []), "Review queue", ...(showPhotosTab ? ["Photos"] : []), ...(showDuplicatesTab ? ["Duplicates"] : []), ...(showWhatsAppTab ? ["WhatsApp"] : [])];
+  const adminTabs = [...(showMembersTab ? ["Members"] : []), "Review queue", ...(showPhotosTab ? ["Photos"] : []), ...(showDuplicatesTab ? ["Duplicates"] : []), ...(showGenderTab ? ["Genders"] : []), ...(showWhatsAppTab ? ["WhatsApp"] : [])];
   const [adminTab, setAdminTab] = useState(showMembersTab ? "Members" : "Review queue");
   const [tab, setTab] = useState("Pending");
   const [lightboxSrc, setLightboxSrc] = useState(null);
@@ -1166,7 +1246,7 @@ export default function AdminView({ contributions, onApprove, onReject, onDelete
   return (
     <section className="wrap">
       <div className="section-head">
-        <h2>{adminTab === "Members" ? "Manage members" : adminTab === "Photos" ? "Unidentified photos" : adminTab === "Duplicates" ? "Possible duplicate photos" : adminTab === "WhatsApp" ? "WhatsApp activity" : "Review queue"}</h2>
+        <h2>{adminTab === "Members" ? "Manage members" : adminTab === "Photos" ? "Unidentified photos" : adminTab === "Duplicates" ? "Possible duplicate photos" : adminTab === "Genders" ? "Set genders" : adminTab === "WhatsApp" ? "WhatsApp activity" : "Review queue"}</h2>
         <p>
           {adminTab === "Members"
             ? "Invite people, see who's joined, fix a name, or set which person in the tree someone is — for themselves or, if they never got around to it, for anyone."
@@ -1174,20 +1254,22 @@ export default function AdminView({ contributions, onApprove, onReject, onDelete
             ? "Photos with no one linked yet — send one to a family member on WhatsApp and ask who it is."
             : adminTab === "Duplicates"
             ? "Photos that look the same, likely saved twice — once from the app, once from WhatsApp, or any other repeat. Scans only Verified Gallery photos."
+            : adminTab === "Genders"
+            ? "Quickly set who's male or female across the whole tree — needed to work out relationship terms for the Vamshavali (Parampare). Skip anyone you'd rather not record."
             : adminTab === "WhatsApp"
             ? "Recent messages Samskara has received on WhatsApp for this family, and what happened with each one — for debugging the integration, not for everyday use."
             : "Everything the family has submitted or proposed to edit, waiting for a second pair of eyes before it changes the archive."}
         </p>
         {adminTab === "Review queue" && !canModerate && <p className="form-hint" style={{ marginTop: 6 }}>You can see what's pending, but only Admins or the Family Head can approve or reject.</p>}
       </div>
-      {(showMembersTab || showPhotosTab || showDuplicatesTab || showWhatsAppTab) && (
+      {(showMembersTab || showPhotosTab || showDuplicatesTab || showGenderTab || showWhatsAppTab) && (
         <div className="admin-tabs">
           {adminTabs.map((t) => (
             <button key={t} className={`chip${adminTab === t ? " active" : ""}`} onClick={() => setAdminTab(t)}>{t}</button>
           ))}
         </div>
       )}
-      {adminTab === "Members" ? <MembersPage /> : adminTab === "Photos" ? <UnidentifiedPhotosTab contributions={contributions} onOpenLightbox={setLightboxSrc} /> : adminTab === "Duplicates" ? <DuplicatePhotosTab contributions={contributions} onDeleteContribution={onDeleteContribution} onOpenLightbox={setLightboxSrc} /> : adminTab === "WhatsApp" ? <WhatsAppAdminTab /> : (
+      {adminTab === "Members" ? <MembersPage /> : adminTab === "Photos" ? <UnidentifiedPhotosTab contributions={contributions} onOpenLightbox={setLightboxSrc} /> : adminTab === "Duplicates" ? <DuplicatePhotosTab contributions={contributions} onDeleteContribution={onDeleteContribution} onOpenLightbox={setLightboxSrc} /> : adminTab === "Genders" ? <GenderTab /> : adminTab === "WhatsApp" ? <WhatsAppAdminTab /> : (
       <>
       <div className="admin-tabs">
         {TABS.map((t) => (

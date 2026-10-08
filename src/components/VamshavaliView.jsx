@@ -140,7 +140,8 @@ export default function VamshavaliView({ onClose }) {
           <p className="form-hint" style={{ marginTop: 4 }}>
             Rows marked "Not yet recorded" are missing a link somewhere in the chain — most often because no one's
             gender is on record for that parent pair yet. A way to ask the family for this is coming soon; for now,
-            an Admin can add it from the person's own entry.
+            an Admin can set it quickly for everyone at once under Admin → Genders, or one person at a time from
+            their own Folio.
           </p>
 
           {downloadError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{downloadError}</p>}
