@@ -155,7 +155,7 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
     setTranslating(true);
     setTranslateError("");
     try {
-      const data = await callApi("/api/translate", { text, targetLang });
+      const data = await callApi("/api/ai-tools", { action: "translate", text, targetLang });
       setText(data.translated);
       setSpeechLang(targetLang === "kn" ? "kn-IN" : "en-IN");
     } catch (err) {

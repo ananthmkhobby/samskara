@@ -50,7 +50,7 @@ export default function FamilyBuilderView({ onNav }) {
         reader.onerror = () => reject(new Error("Could not read that file."));
         reader.readAsDataURL(file);
       });
-      const data = await callApi("/api/scan-family-tree", { image: dataUrl });
+      const data = await callApi("/api/ai-tools", { action: "scan", image: dataUrl });
       setRoot(hydrateNode(data.tree));
     } catch (err) {
       setScanError(err.message || "Something went wrong reading that photo.");

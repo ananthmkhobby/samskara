@@ -111,6 +111,22 @@ const WHATSAPP_LINK_TOKEN_FROM_URL = (() => {
   }
   try { return localStorage.getItem("vamsha.whatsappLinkToken"); } catch { return null; }
 })();
+// Same "read once at module load, before history.replaceState() strips the
+// query string" reasoning as above — captures a real ad-click landing
+// (api/track-click.js, viewable at /superadmin) for cross-referencing
+// against what the ad platform itself reports. Only set when utm_source is
+// actually present, so a plain visit is never logged as a click.
+const UTM_FROM_URL = (() => {
+  if (typeof window === "undefined") return null;
+  const p = new URLSearchParams(window.location.search);
+  const utmSource = p.get("utm_source");
+  if (!utmSource) return null;
+  return {
+    utmSource, utmMedium: p.get("utm_medium"), utmCampaign: p.get("utm_campaign"),
+    utmTerm: p.get("utm_term"), utmContent: p.get("utm_content"),
+    landingPath: window.location.pathname,
+  };
+})();
 
 export default function App() {
   const [view, setView] = useState(() => viewForPath(window.location.pathname));
@@ -156,6 +172,17 @@ export default function App() {
       if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
     });
     return () => sub.subscription.unsubscribe();
+  }, []);
+  // Fire-and-forget — must never block render or surface an error. Plain
+  // fetch, not callApi: no response handling needed, and a signed-in bearer
+  // token isn't relevant to what this records.
+  useEffect(() => {
+    if (!UTM_FROM_URL) return;
+    fetch("/api/track-click", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "track", ...UTM_FROM_URL }),
+    }).catch(() => {});
   }, []);
   const [selectedPersonId, setSelectedPersonId] = useState(null);
   const [biographyPersonId, setBiographyPersonId] = useState(null);

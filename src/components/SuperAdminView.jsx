@@ -83,6 +83,56 @@ function PasswordResetRequestsSection({ adminSecret }) {
   );
 }
 
+// Lists the most recent real ad-click landings (api/track-click.js) — for
+// cross-referencing against what an ad platform's own dashboard reports.
+// A gap between the two counts for the same day/campaign is the invalid-
+// click rate you're actually paying for.
+function AdClickLogSection({ adminSecret }) {
+  const [clicks, setClicks] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function load() {
+    if (!adminSecret) { setError("Enter the admin secret above first."); return; }
+    setBusy(true);
+    setError("");
+    try {
+      const data = await callApi("/api/track-click", { adminSecret, action: "list" });
+      setClicks(data.clicks);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ maxWidth: 620, padding: 20, marginTop: 24 }}>
+      <h4 style={{ marginTop: 0 }}>Ad click log</h4>
+      <p className="form-hint" style={{ marginTop: 0 }}>
+        Every real landing tagged with a utm_source, newest first (most recent 200) — tag your ad's destination URL with utm_source/utm_medium/utm_campaign to show up here.
+      </p>
+      <button type="button" className="btn ghost small" disabled={busy} onClick={load}>{busy ? "Loading…" : "Load clicks"}</button>
+      {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+      {clicks && clicks.length === 0 && <p className="form-hint">No clicks logged yet.</p>}
+      {clicks && clicks.length > 0 && (
+        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10, maxHeight: 400, overflowY: "auto" }}>
+          {clicks.map((c) => (
+            <div key={c.id} style={{ borderTop: "1px solid var(--line)", paddingTop: 10, fontSize: 13 }}>
+              <strong>{c.utm_source}</strong>{c.utm_medium ? ` · ${c.utm_medium}` : ""}{c.utm_campaign ? ` · ${c.utm_campaign}` : ""}
+              <p className="form-hint" style={{ margin: "2px 0" }}>
+                {[c.city, c.region, c.country].filter(Boolean).join(", ") || "Unknown location"}
+                {c.referrer ? ` — from ${c.referrer}` : ""}
+              </p>
+              <span className="form-hint">{new Date(c.created_at).toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SuperAdminView() {
   const [adminSecret, setAdminSecret] = useState(() => sessionStorage.getItem(SECRET_SESSION_KEY) || "");
   const [familyName, setFamilyName] = useState("");
@@ -192,6 +242,7 @@ export default function SuperAdminView() {
       )}
 
       <PasswordResetRequestsSection adminSecret={adminSecret} />
+      <AdClickLogSection adminSecret={adminSecret} />
     </section>
   );
 }
