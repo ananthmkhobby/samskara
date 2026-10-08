@@ -148,35 +148,35 @@ function RosterCard() {
             )}
             <div className="queue-meta">{ROLE_LABELS[m.role]} · joined {m.createdAt?.slice(0, 10)}</div>
             {isModerator && (
-              emails[m.id] !== undefined ? (
-                <div className="queue-meta">{emails[m.id] === null ? "Couldn't load email" : emails[m.id]}</div>
-              ) : (
-                <button type="button" className="link-btn" style={{ fontSize: 11 }} onClick={() => showEmail(m)}>
-                  Show sign-up email
-                </button>
-              )
-            )}
-            {isModerator && (
-              resetDone[m.id] ? (
-                <p className="form-hint" style={{ marginTop: 4 }}>
-                  New password: <b>{resetDone[m.id]}</b> — write it down, it won't be shown again.
-                </p>
-              ) : resettingId === m.id ? (
-                <div className="tag-row" style={{ alignItems: "center", marginTop: 4 }}>
-                  <input
-                    type="text" autoFocus minLength={6} value={passwordDraft} onChange={(e) => setPasswordDraft(e.target.value)}
-                    placeholder="New password (min 6 chars)" style={{ fontSize: 13, padding: "4px 6px" }}
-                  />
-                  <button type="button" className="btn small" disabled={busyId === m.id} onClick={() => saveReset(m)}>
-                    {busyId === m.id ? "…" : "Set"}
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+                {emails[m.id] !== undefined ? (
+                  <div className="queue-meta">{emails[m.id] === null ? "Couldn't load email" : emails[m.id]}</div>
+                ) : (
+                  <button type="button" className="link-btn" style={{ fontSize: 11 }} onClick={() => showEmail(m)}>
+                    Show sign-up email
                   </button>
-                  <button type="button" className="btn small ghost" onClick={() => { setResettingId(null); setPasswordDraft(""); }}>Cancel</button>
-                </div>
-              ) : (
-                <button type="button" className="link-btn" style={{ fontSize: 11 }} onClick={() => setResettingId(m.id)}>
-                  Reset password
-                </button>
-              )
+                )}
+                {resetDone[m.id] ? (
+                  <p className="form-hint" style={{ marginTop: 4 }}>
+                    New password: <b>{resetDone[m.id]}</b> — write it down, it won't be shown again.
+                  </p>
+                ) : resettingId === m.id ? (
+                  <div className="tag-row" style={{ alignItems: "center", marginTop: 4 }}>
+                    <input
+                      type="text" autoFocus minLength={6} value={passwordDraft} onChange={(e) => setPasswordDraft(e.target.value)}
+                      placeholder="New password (min 6 chars)" style={{ fontSize: 13, padding: "4px 6px" }}
+                    />
+                    <button type="button" className="btn small" disabled={busyId === m.id} onClick={() => saveReset(m)}>
+                      {busyId === m.id ? "…" : "Set"}
+                    </button>
+                    <button type="button" className="btn small ghost" onClick={() => { setResettingId(null); setPasswordDraft(""); }}>Cancel</button>
+                  </div>
+                ) : (
+                  <button type="button" className="link-btn" style={{ fontSize: 11 }} onClick={() => setResettingId(m.id)}>
+                    Reset password
+                  </button>
+                )}
+              </div>
             )}
             {(m.userId === CURRENT_USER_ID || isModerator) && (
               <div style={{ marginTop: 6 }}>
