@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { PEOPLE } from "../data/people";
+import { PEOPLE, MIN_GEN } from "../data/people";
 import { CURRENT_FAMILY_ID, MY_PERSON_ID } from "../data/session";
 import { buildVamshavali } from "../lib/vamshavali";
 import { supabase } from "../lib/supabaseClient";
@@ -54,6 +54,21 @@ export default function VamshavaliView({ onClose }) {
 
   const vamshavali = useMemo(() => (egoId ? buildVamshavali(egoId, PEOPLE, "pitru") : { ego: null, sections: [] }), [egoId]);
 
+  // Grouped oldest generation first — a big family's person list is
+  // otherwise one long flat alphabetical list with no sense of who's an
+  // elder vs. a grandchild, which made picking an older relative as the
+  // subject slower than it should be.
+  const peopleByGen = useMemo(() => {
+    const byGen = new Map();
+    for (const p of PEOPLE) {
+      if (!byGen.has(p.gen)) byGen.set(p.gen, []);
+      byGen.get(p.gen).push(p);
+    }
+    return [...byGen.keys()].sort((a, b) => a - b).map((gen) => ({
+      gen, people: byGen.get(gen).slice().sort((a, b) => a.name.localeCompare(b.name)),
+    }));
+  }, []);
+
   async function handleDownload() {
     setDownloading(true);
     setDownloadError("");
@@ -102,8 +117,12 @@ export default function VamshavaliView({ onClose }) {
           <div className="form-row">
             <label>For whom</label>
             <select value={egoId || ""} onChange={(e) => setEgoId(e.target.value)}>
-              {PEOPLE.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+              {peopleByGen.map(({ gen, people }) => (
+                <optgroup key={gen} label={`Generation ${gen - MIN_GEN + 1}`}>
+                  {people.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>
