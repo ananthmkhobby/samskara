@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PEOPLE, VALUES } from "../data/people";
 import { yearsLabel, byId, MIN_GEN, MAX_GEN } from "../data/helpers";
 import { EXP_LABELS } from "./Icons";
 import PersonAvatar from "./PersonAvatar";
 import PhotoLightbox from "./PhotoLightbox";
+import { fetchMyPrivateContributions } from "../data/familyDb";
+import { batchResolveMediaUrls } from "../lib/mediaUpload";
+import { CURRENT_FAMILY_ID, CURRENT_USER_ID } from "../data/session";
 
-const TABS = ["Wisdom", "Gallery"];
 const GALLERY_TYPES = ["photo", "audio", "video", "memory", "document"];
 
-function GalleryCard({ c, onSelectPerson, onOpenPhoto }) {
+function GalleryCard({ c, onSelectPerson, onOpenPhoto, isPrivate }) {
   const person = c.personId ? byId(c.personId) : null;
   const isRealPhoto = c.type === "photo" && !!c.mediaUrl;
   const isRealAudio = c.type === "audio" && !!c.mediaUrl;
@@ -40,6 +42,8 @@ function GalleryCard({ c, onSelectPerson, onOpenPhoto }) {
             <PersonAvatar person={person} size={28} minGen={MIN_GEN} maxGen={MAX_GEN} className="avatar" />
             <span>{person.name}</span>
           </button>
+        ) : isPrivate ? (
+          <span className="gallery-who gallery-who-family">🔒 Private to you</span>
         ) : (
           <span className="gallery-who gallery-who-family">🪔 Shared with the whole family</span>
         )}
@@ -57,20 +61,55 @@ export default function TreasuryView({ contributions, onSelectPerson, initialTab
   const [filter, setFilter] = useState(null);
   const [typeFilter, setTypeFilter] = useState(null);
   const [lightboxSrc, setLightboxSrc] = useState(null);
+  const [privateItems, setPrivateItems] = useState(null);
+  const [privateLoading, setPrivateLoading] = useState(false);
+  const [privateError, setPrivateError] = useState("");
   const withLessons = PEOPLE.filter((p) => p.lifeLesson && (!filter || p.lifeLesson.values.includes(filter)));
+
+  // Only a real signed-in member has private uploads to find — not shown
+  // for an anonymous demo visitor, who has no account for anything to be
+  // scoped to.
+  const showPrivateTab = !!CURRENT_USER_ID;
+  const TABS = ["Wisdom", "Gallery", ...(showPrivateTab ? ["Private to me"] : [])];
 
   const galleryItems = contributions
     .filter((c) => c.status === "Verified" && GALLERY_TYPES.includes(c.type) && (!typeFilter || c.type === typeFilter))
     .slice()
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
+  // Private contributions never arrive in the `contributions` prop at all
+  // (fetchFamilyData excludes them) — this tab is the one place they're
+  // meant to surface, fetched and resolved on its own, only when opened.
+  useEffect(() => {
+    if (tab !== "Private to me" || !showPrivateTab) return;
+    let cancelled = false;
+    setPrivateLoading(true);
+    setPrivateError("");
+    (async () => {
+      try {
+        const rows = await fetchMyPrivateContributions(CURRENT_FAMILY_ID, CURRENT_USER_ID);
+        const paths = rows.filter((c) => GALLERY_TYPES.includes(c.type) && c.type !== "memory").map((c) => c.content);
+        const urlMap = await batchResolveMediaUrls(paths);
+        if (cancelled) return;
+        setPrivateItems(rows.map((c) => ({ ...c, mediaUrl: urlMap[c.content] || null })));
+      } catch (err) {
+        if (!cancelled) setPrivateError(err.message);
+      } finally {
+        if (!cancelled) setPrivateLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [tab, showPrivateTab]);
+
   return (
     <section className="wrap">
       <div className="section-head">
-        <h2>{tab === "Wisdom" ? "Treasury of Wisdom" : "Family Gallery"}</h2>
+        <h2>{tab === "Wisdom" ? "Treasury of Wisdom" : tab === "Private to me" ? "Private to me" : "Family Gallery"}</h2>
         <p>
           {tab === "Wisdom"
             ? "The one lesson each storyteller wanted the family to keep. Filter by value to find what you need today."
+            : tab === "Private to me"
+            ? "Only visible to you — not the family, not an Admin. Nothing here shows up anywhere else in the app."
             : "Every photo, recording, and memory the family has shared, verified and kept — whether it belongs to one person's Folio or the whole family."}
         </p>
       </div>
@@ -104,6 +143,21 @@ export default function TreasuryView({ contributions, onSelectPerson, initialTab
             </div>
           ) : (
             <div className="empty-state">No life lessons recorded for “{filter}” yet.</div>
+          )}
+        </>
+      ) : tab === "Private to me" ? (
+        <>
+          {privateError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{privateError}</p>}
+          {privateLoading ? (
+            <div className="empty-state">Loading…</div>
+          ) : privateItems?.length ? (
+            <div className="gallery-grid">
+              {privateItems.map((c) => (
+                <GalleryCard key={c.id} c={c} onSelectPerson={onSelectPerson} onOpenPhoto={setLightboxSrc} isPrivate />
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">Nothing here yet — mark something "private" when you add it, and it'll show up here, only for you.</div>
           )}
         </>
       ) : (

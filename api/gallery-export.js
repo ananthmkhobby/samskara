@@ -90,7 +90,10 @@ export default async function handler(req, res) {
     .select("id, content, contributor, date, person_id")
     .eq("family_id", exportCode.family_id)
     .eq("type", "photo")
-    .eq("status", "Verified");
+    .eq("status", "Verified")
+    // Runs under the service role (bypasses RLS) — a private photo must
+    // never leave the family's own archive via this external-facing export.
+    .eq("visibility", "shared");
   if (photoErr) {
     res.status(500).json({ error: "Something went wrong." });
     return;

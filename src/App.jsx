@@ -495,10 +495,17 @@ export default function App() {
     const status = canModerate ? "Verified" : "Pending";
     try {
       const contribution = await withMediaUrl(await insertContribution(CURRENT_FAMILY_ID, { ...data, status, date: todayStr(), contributorUserId: CURRENT_USER_ID }));
-      setContributions((prev) => [...prev, contribution]);
-      if (canModerate) applyContributionEffects(contribution);
+      // A private contribution never enters the shared `contributions`
+      // array — fetchFamilyData() already excludes it on every later boot
+      // (visibility <> 'shared'), so adding it here too would leak it into
+      // the Folio/Gallery/Admin queue for the rest of this one session,
+      // even though a reload would correctly hide it again.
+      if (data.visibility !== "private") {
+        setContributions((prev) => [...prev, contribution]);
+        if (canModerate) applyContributionEffects(contribution);
+      }
       closeOverlay();
-      showToast(canModerate ? "Added — now visible on the folio." : "Thanks — submitted for admin review.");
+      showToast(data.visibility === "private" ? "Saved privately — only you can see this." : canModerate ? "Added — now visible on the folio." : "Thanks — submitted for admin review.");
     } catch (err) {
       showToast(`Couldn't save that: ${err.message}`);
     }

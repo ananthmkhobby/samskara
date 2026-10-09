@@ -59,7 +59,11 @@ async function handlePerson(req, res, supabase) {
 
   const { data: contribRows, error: contribErr } = await supabase
     .from("contributions").select("id, type, content, contributor, status, date")
-    .eq("family_id", familyId).eq("person_id", personId).eq("status", "Verified");
+    // visibility: this runs under the service role, which bypasses RLS
+    // entirely — the "shared" check has to happen explicitly here, the
+    // same as fetchFamilyData does for the regular app (a private
+    // contribution must never end up in anyone's downloaded Folio).
+    .eq("family_id", familyId).eq("person_id", personId).eq("status", "Verified").eq("visibility", "shared");
   if (contribErr) throw new Error(contribErr.message);
 
   const photoRows = (contribRows || [])
@@ -99,7 +103,9 @@ async function handleFamily(req, res, supabase) {
 
   const { data: contribRows, error: contribErr } = await supabase
     .from("contributions").select("id, person_id, type, content, contributor, status, date")
-    .eq("family_id", familyId).eq("status", "Verified");
+    // visibility: see the matching comment in handlePerson above — this
+    // runs under the service role, so the "shared" check can't rely on RLS.
+    .eq("family_id", familyId).eq("status", "Verified").eq("visibility", "shared");
   if (contribErr) throw new Error(contribErr.message);
 
   const contributionsByPerson = new Map();

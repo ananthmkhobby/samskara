@@ -15,6 +15,21 @@ export async function uploadFamilyMedia(familyId, personId, blob, ext) {
   return path;
 }
 
+// Same idea as uploadFamilyMedia, but under a reserved path shape the
+// Storage RLS policy specifically recognizes: {familyId}/__private__/{userId}/
+// {uuid}.{ext}. "__private__" can never collide with a real person id —
+// makeUniquePersonId's slugify only ever produces [a-z0-9-], never
+// underscores — and the third segment being the uploader's own id is what
+// the policy checks to keep this readable by nobody else, at the Storage
+// level, not just the app's own display logic.
+export async function uploadPrivateFamilyMedia(familyId, userId, blob, ext) {
+  if (!supabase) throw new Error("Media storage isn't configured.");
+  const path = `${familyId}/__private__/${userId}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: blob.type });
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+  return path;
+}
+
 export async function resolveMediaUrl(path) {
   if (!supabase || !path) return null;
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL_SECONDS);

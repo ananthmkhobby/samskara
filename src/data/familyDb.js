@@ -13,7 +13,14 @@ export async function fetchFamilyData(familyId) {
   const [people, marriages, contributions, experienceEntries] = await Promise.all([
     db.from("people").select("*").eq("family_id", familyId).order("sort_index", { ascending: true, nullsFirst: false }),
     db.from("marriages").select("*").eq("family_id", familyId),
-    db.from("contributions").select("*").eq("family_id", familyId),
+    // Excludes private contributions entirely — not just a display filter,
+    // the point of this query being the ONE place the whole app's shared
+    // contributions state comes from. A private row (anyone's, including
+    // your own) never enters this array, which is what makes every
+    // existing "Verified" display filter downstream correctly private-safe
+    // without needing to touch any of them. See fetchMyPrivateContributions
+    // below for the one place a private row IS meant to surface.
+    db.from("contributions").select("*").eq("family_id", familyId).eq("visibility", "shared"),
     db.from("experience_entries").select("*").eq("family_id", familyId),
   ]);
   if (people.error) throw new Error(people.error.message);
@@ -21,6 +28,20 @@ export async function fetchFamilyData(familyId) {
   if (contributions.error) throw new Error(contributions.error.message);
   if (experienceEntries.error) throw new Error(experienceEntries.error.message);
   return { people: people.data, marriages: marriages.data, contributions: contributions.data, experienceEntries: experienceEntries.data };
+}
+
+// Powers Gallery's "Private to me" tab — the one place a private
+// contribution is meant to surface, and only for the person who uploaded
+// it. Deliberately a separate query rather than a client-side filter over
+// fetchFamilyData's result, since that result never contains private rows
+// at all (see above).
+export async function fetchMyPrivateContributions(familyId, userId) {
+  const db = requireClient();
+  const { data, error } = await db
+    .from("contributions").select("*")
+    .eq("family_id", familyId).eq("visibility", "private").eq("contributor_user_id", userId);
+  if (error) throw new Error(error.message);
+  return (data || []).map(mapContributionRow);
 }
 
 export async function fetchFamilyDetails(familyId) {
@@ -77,6 +98,13 @@ export async function insertContribution(familyId, c) {
     field_label: c.fieldLabel ?? null,
     content: c.content ?? null,
     contributor: c.contributor ?? null,
+    // Was silently dropped here before — every call site in App.jsx already
+    // passes contributorUserId, but this function never read it into the
+    // row, so every web-uploaded contribution had a null contributor_user_id
+    // in the database regardless. The WhatsApp bot's own insert path (built
+    // separately in api/whatsapp-webhook.js) sets this correctly; only this
+    // shared web-app path had the gap.
+    contributor_user_id: c.contributorUserId ?? null,
     status: c.status,
     date: c.date,
     exp_category: c.expCategory ?? null,
@@ -89,6 +117,7 @@ export async function insertContribution(familyId, c) {
     body_text: c.text ?? null,
     book_id: c.bookId ?? null,
     image_hash: c.imageHash ?? null,
+    visibility: c.visibility ?? "shared",
   };
   const { data, error } = await db.from("contributions").insert(row).select().single();
   if (error) throw new Error(error.message);
@@ -172,6 +201,7 @@ export function mapContributionRow(row) {
     text: row.body_text,
     bookId: row.book_id,
     imageHash: row.image_hash,
+    visibility: row.visibility,
   };
 }
 

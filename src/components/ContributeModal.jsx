@@ -6,8 +6,8 @@ import { useSpeechToText } from "../hooks/useSpeechToText";
 import { callApi } from "../lib/apiFetch";
 import { useModalA11y } from "../hooks/useModalA11y";
 import { resizeImage } from "../lib/imageResize";
-import { uploadFamilyMedia } from "../lib/mediaUpload";
-import { CURRENT_FAMILY_ID } from "../data/session";
+import { uploadFamilyMedia, uploadPrivateFamilyMedia } from "../lib/mediaUpload";
+import { CURRENT_FAMILY_ID, CURRENT_USER_ID } from "../data/session";
 import { SHOW_AI_FEATURES } from "../lib/featureFlags";
 
 const TYPE_DEFS = [
@@ -91,6 +91,10 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
   const [date, setDate] = useState("");
   const [dateLabel, setDateLabel] = useState("");
   const [contributor, setContributor] = useState("");
+  // "shared" by default — opting into private is always a deliberate choice,
+  // never the starting state, so nobody's first upload accidentally goes
+  // somewhere only they can see.
+  const [visibility, setVisibility] = useState("shared");
   const [recorderKey, setRecorderKey] = useState(0);
   const [translating, setTranslating] = useState(false);
   const [translateError, setTranslateError] = useState("");
@@ -172,6 +176,12 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
     // person id to scope the Storage path under yet — "unassigned" is safe
     // since Storage RLS only checks the family_id segment of the path.
     const uploadPersonId = personId === "__new__" ? "unassigned" : personId;
+    // Private uploads go through a differently-shaped Storage path, checked
+    // by its own RLS policy (see uploadPrivateFamilyMedia) — this isn't a
+    // display-only toggle, so which function gets called here matters.
+    const upload = (blob, ext) => (visibility === "private"
+      ? uploadPrivateFamilyMedia(CURRENT_FAMILY_ID, CURRENT_USER_ID, blob, ext)
+      : uploadFamilyMedia(CURRENT_FAMILY_ID, uploadPersonId, blob, ext));
 
     let content = "";
     setSubmitError("");
@@ -180,11 +190,11 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
       else if (type === "audio" || type === "video") {
         if (!avBlob) return;
         setSubmitting(true);
-        content = await uploadFamilyMedia(CURRENT_FAMILY_ID, uploadPersonId, avBlob, type === "video" ? "webm" : "webm");
+        content = await upload(avBlob, type === "video" ? "webm" : "webm");
       } else if (type === "photo") {
         if (!photoBlob) return;
         setSubmitting(true);
-        content = await uploadFamilyMedia(CURRENT_FAMILY_ID, uploadPersonId, photoBlob, "jpg");
+        content = await upload(photoBlob, "jpg");
       } else if (type === "document") {
         if (!docFile) return;
         setSubmitting(true);
@@ -193,7 +203,7 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
         // "dat" only for the rare file with no extension at all, so the
         // upload never fails over something this cosmetic.
         const ext = docFile.name.includes(".") ? docFile.name.split(".").pop().toLowerCase() : "dat";
-        content = await uploadFamilyMedia(CURRENT_FAMILY_ID, uploadPersonId, docFile, ext);
+        content = await upload(docFile, ext);
       }
       else if (type === "date") content = `${date || "date TBD"} — ${dateLabel.trim() || "Untitled date"}`;
     } catch (err) {
@@ -211,7 +221,8 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
       // content the way the old filename-only version did.
       type, content, title: type === "document" ? fileName : undefined,
       imageHash: type === "photo" ? photoHash : undefined,
-      expCategory: expCategory || undefined, contributor: contributor.trim() || "Anonymous"
+      expCategory: expCategory || undefined, contributor: contributor.trim() || "Anonymous",
+      visibility,
     });
     setSubmitting(false);
   }
@@ -319,9 +330,21 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
               <label>Your name</label>
               <input type="text" placeholder="e.g. Kavya Reddy" value={contributor} onChange={(e) => setContributor(e.target.value)} />
             </div>
+            <div className="form-row">
+              <label>Who can see this?</label>
+              <div className="tag-row">
+                <button type="button" className={`chip${visibility === "shared" ? " active" : ""}`} onClick={() => setVisibility("shared")}>Share with the family</button>
+                <button type="button" className={`chip${visibility === "private" ? " active" : ""}`} onClick={() => setVisibility("private")}>Keep private to me</button>
+              </div>
+              {visibility === "private" && (
+                <p className="form-hint">Only you will ever see this — not the family, not an Admin. Find it again later under Gallery → Private to me.</p>
+              )}
+            </div>
             {submitError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{submitError}</p>}
             <div className="folio-actions">
-              <button type="submit" className="btn primary" disabled={submitting}>{submitting ? "Uploading…" : canModerate ? "Add now" : "Submit for review"}</button>
+              <button type="submit" className="btn primary" disabled={submitting}>
+                {submitting ? "Uploading…" : visibility === "private" ? "Save privately" : canModerate ? "Add now" : "Submit for review"}
+              </button>
               <button type="button" className="btn ghost" onClick={onCancel} disabled={submitting}>Cancel</button>
             </div>
           </form>
