@@ -14,6 +14,12 @@
 }
 .login-help-link:hover { background: var(--parchment-paper); }
 .login-back-link { left: 18px; right: auto; }
+/* Mirrors login-back-link's corner — LoginPage itself never renders a back
+   link, so the top-left is free for this instead. Two pill buttons, one per
+   top corner, rather than stacking both under the single "Help" link where
+   the demo was easy to miss entirely (it lived one scroll down inside the
+   Help page's content, reachable only after already clicking Help). */
+.login-demo-link { left: 18px; right: auto; color: var(--maroon-ink, var(--ink-soft)); font-weight: 700; }
 
 .login-hero { text-align: center; max-width: 480px; margin-bottom: 6px; }
 .login-hero .brand-mark { display: inline-block; width: 46px; height: 46px; margin-bottom: 16px; }

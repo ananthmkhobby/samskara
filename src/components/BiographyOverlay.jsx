@@ -4,17 +4,12 @@ import { yearsLabel, formatName, MIN_GEN, MAX_GEN } from "../data/helpers";
 import { EditPencilIcon } from "./Icons";
 import PersonAvatar from "./PersonAvatar";
 
-function ChapterContent({ chapter, onEdit, isOverridden, canModerate, onReset }) {
+function ChapterContent({ chapter, onEdit }) {
   return (
     <>
       <div className="chapter-head">
         <h3 className="chapter-title">{chapter.title}</h3>
-        <div style={{ display: "flex", gap: 6 }}>
-          {canModerate && isOverridden && (
-            <button className="btn small ghost" onClick={onReset}>Reset to auto-generated</button>
-          )}
-          <button className="icon-only" aria-label="Propose edit to this chapter" onClick={onEdit}><EditPencilIcon /></button>
-        </div>
+        <button className="icon-only" aria-label="Propose edit to this chapter" onClick={onEdit}><EditPencilIcon /></button>
       </div>
       <div className="chapter-text">
         {chapter.text.split("\n\n").map((par, i) => <p key={i}>{par}</p>)}
@@ -23,7 +18,7 @@ function ChapterContent({ chapter, onEdit, isOverridden, canModerate, onReset })
   );
 }
 
-export default function BiographyOverlay({ person, onClose, onEditChapter, canModerate, isChapterOverridden, onResetChapter }) {
+export default function BiographyOverlay({ person, onClose, onEditChapter }) {
   const [chapterIndex, setChapterIndex] = useState(0);
   const [activeSide, setActiveSide] = useState("A");
   const [pageAChapter, setPageAChapter] = useState(0);
@@ -31,9 +26,20 @@ export default function BiographyOverlay({ person, onClose, onEditChapter, canMo
   const pageARef = useRef(null);
   const pageBRef = useRef(null);
   const touchStartRef = useRef(null);
+  // Guards against a second flip starting while one's still mid-turn — was
+  // previously unguarded, so a fast double-click (or mashing Next) queued a
+  // second rotateY transform on top of the first, which is most of what
+  // made navigating between chapters feel sluggish: every extra click
+  // during the ~850ms animation just silently did nothing until it ended.
+  const isAnimatingRef = useRef(false);
+
+  // 320ms rather than the original 850ms — still reads as a page turn, not
+  // a slide, but doesn't make Next/Previous feel like it's fighting you.
+  const FLIP_MS = 320;
 
   function flipTo(newIndex, dir) {
-    if (newIndex < 0 || newIndex >= person.chapters.length || newIndex === chapterIndex) return;
+    if (isAnimatingRef.current || newIndex < 0 || newIndex >= person.chapters.length || newIndex === chapterIndex) return;
+    isAnimatingRef.current = true;
     const activeRef = activeSide === "A" ? pageARef : pageBRef;
     const standbyRef = activeSide === "A" ? pageBRef : pageARef;
 
@@ -53,12 +59,16 @@ export default function BiographyOverlay({ person, onClose, onEditChapter, canMo
     const targetRot = dir > 0 ? "-179.9deg" : "179.9deg";
     const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+    let finished = false;
     function finish() {
+      if (finished) return;
+      finished = true;
       setChapterIndex(newIndex);
       setActiveSide((s) => (s === "A" ? "B" : "A"));
       activeEl.style.transition = "none";
       activeEl.style.transform = "rotateY(0deg)";
       activeEl.style.zIndex = 1;
+      isAnimatingRef.current = false;
     }
     if (reduce) {
       activeEl.style.transition = "none";
@@ -66,10 +76,14 @@ export default function BiographyOverlay({ person, onClose, onEditChapter, canMo
       finish();
     } else {
       requestAnimationFrame(() => {
-        activeEl.style.transition = "transform .85s cubic-bezier(.45,.05,.2,1)";
+        activeEl.style.transition = `transform ${FLIP_MS}ms cubic-bezier(.45,.05,.2,1)`;
         activeEl.style.transform = `rotateY(${targetRot})`;
       });
       activeEl.addEventListener("transitionend", finish, { once: true });
+      // Safety net: if transitionend never fires (tab backgrounded mid-flip,
+      // the element unmounts, a browser quirk), don't leave the book stuck
+      // mid-turn forever — finish a little after the transition should have.
+      setTimeout(finish, FLIP_MS + 150);
     }
   }
 
@@ -121,18 +135,12 @@ export default function BiographyOverlay({ person, onClose, onEditChapter, canMo
                 <ChapterContent
                   chapter={person.chapters[pageAChapter]}
                   onEdit={() => onEditChapter(pageAChapter, person.chapters[pageAChapter].text)}
-                  isOverridden={isChapterOverridden(pageAChapter)}
-                  canModerate={canModerate}
-                  onReset={() => onResetChapter(pageAChapter)}
                 />
               </div>
               <div className="book-page" ref={pageBRef} style={{ zIndex: activeSide === "B" ? 2 : 1 }}>
                 <ChapterContent
                   chapter={person.chapters[pageBChapter]}
                   onEdit={() => onEditChapter(pageBChapter, person.chapters[pageBChapter].text)}
-                  isOverridden={isChapterOverridden(pageBChapter)}
-                  canModerate={canModerate}
-                  onReset={() => onResetChapter(pageBChapter)}
                 />
               </div>
             </div>

@@ -4,6 +4,13 @@ export default function LoginPage({ onShowHelp, onShowPrivacy, onShowTerms }) {
   return (
     <div className="login-page">
       <button className="login-help-link" onClick={onShowHelp}>Help</button>
+      <button
+        type="button"
+        className="login-help-link login-demo-link"
+        onClick={() => { window.location.href = "/?demo=1"; }}
+      >
+        Try a live demo →
+      </button>
       <div className="login-hero">
         <div className="login-keepsake" aria-hidden="true">
           <img src="/images/heritage-letter.jpg" alt="" loading="eager" />

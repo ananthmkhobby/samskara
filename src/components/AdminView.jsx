@@ -1192,7 +1192,7 @@ export default function AdminView({ contributions, onApprove, onReject, onDelete
       try {
         const { rashi, gotra, birthGotra, gender } = JSON.parse(c.content);
         const genderLabel = gender === "male" ? "Gender: Male" : gender === "female" ? "Gender: Female" : null;
-        return `✎ Proposed heritage details: ${[rashi && `Rashi: ${rashi}`, gotra && `Gotra: ${gotra}`, birthGotra && `Birth gotra: ${birthGotra}`, genderLabel].filter(Boolean).join(", ") || "(cleared)"}`;
+        return `✎ Proposed heritage details: ${[rashi && `Rashi/Sunsign: ${rashi}`, gotra && `Lineage/Gotra: ${gotra}`, birthGotra && `Birth lineage/gotra: ${birthGotra}`, genderLabel].filter(Boolean).join(", ") || "(cleared)"}`;
       } catch { return "✎ Proposed heritage details"; }
     }
     if (c.type === "edit") return `✎ Proposed ${c.fieldLabel}: "${c.content.slice(0, 90)}${c.content.length > 90 ? "…" : ""}"`;

@@ -868,20 +868,6 @@ export default function App() {
     }
   }
 
-  // Admin/Family Head only — undoes a bad chapter edit by removing it from
-  // the stored chapters, reverting to the auto-generated fallback built from
-  // summary/life lesson/places (there's no separate "original" text to
-  // restore to now that edits write the person's row directly).
-  function clearChapter(personId, idx) {
-    const person = byId(personId);
-    if (!person) return;
-    const chapters = (person.chapters || []).filter((_, i) => i !== idx);
-    person.chapters = chapters;
-    bump();
-    updatePersonFields(CURRENT_FAMILY_ID, personId, { chapters }).catch((err) => showToast(`Couldn't reset chapter: ${err.message}`));
-    showToast("Chapter reset to the auto-generated version.");
-  }
-
   // Admin/Family Head only — hides a bad/duplicate Experience card without
   // needing a review round-trip.
   function deleteExperienceEntry(personId, entryId) {
@@ -1034,9 +1020,6 @@ export default function App() {
           person={biographyPerson}
           onClose={closeOverlay}
           onEditChapter={(idx, text) => commit({ biographyPersonId: null, editRequest: { personId: biographyPerson.id, field: `chapter:${idx}`, fieldLabel: `Chapter: ${biographyPerson.chapters[idx].title}`, value: text } })}
-          canModerate={canModerate}
-          isChapterOverridden={(idx) => (rawBiographyPerson?.chapters?.length || 0) > idx}
-          onResetChapter={(idx) => clearChapter(biographyPerson.id, idx)}
         />
       )}
       {contributeRequest && (

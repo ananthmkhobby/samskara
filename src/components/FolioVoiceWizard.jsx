@@ -22,8 +22,8 @@ const STEPS = [
     question: (name) => `What's ${name}'s rashi, or birth star, if you know it? And their gotra?`,
     isFilled: (p) => !!(p.rashi || p.gotra),
     fields: [
-      { key: "rashi", label: "Rashi", placeholder: "e.g. Simha" },
-      { key: "gotra", label: "Gotra", placeholder: "e.g. Bharadwaja" }
+      { key: "rashi", label: "Rashi/Sunsign", placeholder: "e.g. Simha" },
+      { key: "gotra", label: "Lineage/Gotra", placeholder: "e.g. Bharadwaja" }
     ],
     buildContent: (v) => JSON.stringify({ rashi: (v.rashi || "").trim(), gotra: (v.gotra || "").trim() })
   },

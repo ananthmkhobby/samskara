@@ -207,15 +207,15 @@ export default function EditModal({ request, onCancel, onSubmit, canModerate }) 
             ) : isHeritage ? (
               <>
                 <div className="form-row">
-                  <label>Rashi (optional)</label>
+                  <label>Rashi/Sunsign (optional)</label>
                   <input type="text" placeholder="e.g. Simha" value={rashi} onChange={(e) => setRashi(e.target.value)} />
                 </div>
                 <div className="form-row">
-                  <label>Gotra (optional)</label>
+                  <label>Lineage/Gotra (optional)</label>
                   <input type="text" placeholder="e.g. Bharadwaja" value={gotra} onChange={(e) => setGotra(e.target.value)} />
                 </div>
                 <div className="form-row">
-                  <label>Birth gotra (optional)</label>
+                  <label>Birth lineage/gotra (optional)</label>
                   <p className="form-hint" style={{ marginTop: 0, marginBottom: 6 }}>
                     Only needed if this differs from the gotra above — e.g. a married-in daughter-in-law's gotra by birth, kept alongside her gotra by marriage.
                   </p>
