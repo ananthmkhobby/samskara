@@ -628,6 +628,13 @@ export default function App() {
             anchor.parents = [...anchor.parents, id];
             updatePersonFields(familyId, anchor.id, { parents: anchor.parents }).catch((err) => console.error("Failed to link parent:", err.message));
           }
+        } else if (c.relation === "sibling") {
+          // Shares whichever parent(s) the anchor already has on record —
+          // the Folio only shows "+ Add sibling" when the anchor has at
+          // least one, so there's always something to share here.
+          newPerson.gen = anchor.gen;
+          newPerson.parents = [...anchor.parents];
+          addPerson(newPerson).catch((err) => console.error("Failed to persist new sibling:", err.message));
         } else {
           newPerson.gen = anchor.gen + 1;
           newPerson.parents = anchor.spouse ? [anchor.id, anchor.spouse] : [anchor.id];

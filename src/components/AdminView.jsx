@@ -1184,6 +1184,8 @@ export default function AdminView({ contributions, onApprove, onReject, onDelete
         ? `👪 Add ${c.name} as spouse of ${anchorName}`
         : c.relation === "parent"
         ? `👪 Add ${c.name} as a parent of ${anchorName}`
+        : c.relation === "sibling"
+        ? `👪 Add ${c.name} as a sibling of ${anchorName}`
         : `👪 Add ${c.name} as son/daughter of ${anchorName}`;
     }
     if (c.field === "heritage") {

@@ -32,6 +32,17 @@
 .parampara-highlight-card .who { font-size: 12px; color: var(--ink-faint); margin-top: 8px; }
 
 .vamshavali-modal { max-width: 640px; max-height: 85vh; overflow-y: auto; }
+.vamshavali-gap-summary { margin-top: 16px; padding: 12px 14px; background: var(--parchment); border-radius: var(--radius-sm); }
+.vamshavali-gap-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.vamshavali-gap-chip {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 5px 10px;
+  background: var(--parchment-paper); border: 1px solid var(--line-strong); border-radius: 8px; cursor: pointer; font: inherit;
+}
+.vamshavali-gap-chip:hover { border-color: var(--maroon); }
+.vamshavali-gap-chip .vamshavali-term-kn { font-size: 12.5px; }
+.vamshavali-gap-chip .vamshavali-term-en { font-size: 10px; }
+.vamshavali-row-highlight { background: var(--gold-wash); animation: vamshavaliHighlightFade 1.8s ease-out; }
+@keyframes vamshavaliHighlightFade { from { background: var(--gold-wash); } to { background: transparent; } }
 .vamshavali-section { margin-top: 18px; border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
 .vamshavali-section-head { background: var(--gold-wash); padding: 10px 14px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .vamshavali-section-title-kn { font-family: var(--font-display); font-size: 16px; color: var(--maroon-deep); font-weight: 600; }

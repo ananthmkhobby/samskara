@@ -4,7 +4,7 @@
   animation: modalBackdropIn .18s ease;
 }
 .modal-panel {
-  background: var(--parchment-paper); width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; border-radius: 16px 16px 0 0;
+  background: var(--parchment-paper); width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; overflow-x: hidden; border-radius: 16px 16px 0 0;
   border: 1px solid var(--line); box-shadow: var(--shadow-2); position: relative;
   animation: modalPanelInMobile .22s cubic-bezier(.2, .8, .2, 1);
 }

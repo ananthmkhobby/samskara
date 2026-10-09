@@ -184,7 +184,7 @@ button.trust { border: 0; font-family: inherit; cursor: pointer; }
 .section-head h2 { font-size: var(--text-xl); }
 .section-head p { color: var(--ink-soft); margin-top: 6px; font-size: var(--text-base); max-width: 560px; }
 .tag-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.tag { font-size: var(--text-2xs); font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--parchment-paper); color: var(--gold-deep); border: 1px solid var(--gold-deep); }
+.tag { font-size: var(--text-2xs); font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--parchment-paper); color: var(--gold-deep); border: 1px solid var(--gold-deep); overflow-wrap: anywhere; max-width: 100%; }
 .empty-state { padding: 40px 20px; text-align: center; color: var(--ink-faint); border: 1px dashed var(--line-strong); border-radius: var(--radius); }
 
 .skeleton {

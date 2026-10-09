@@ -252,7 +252,7 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
                 <>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                     <label style={{ marginBottom: 0 }}>Your memory</label>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                       <select value={speechLang} onChange={(e) => setSpeechLang(e.target.value)} style={{ width: "auto", padding: "4px 8px", fontSize: 11.5 }}>
                         {SPEECH_LANGS.map((l) => <option value={l.code} key={l.code}>{l.label}</option>)}
                       </select>

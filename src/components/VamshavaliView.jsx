@@ -8,10 +8,10 @@ import { CloseIcon } from "./Icons";
 
 const ROW_LABELS = { alive: "Alive", departed: "Departed", unknown: "Unknown" };
 
-function VamshavaliRow({ row }) {
+function VamshavaliRow({ row, id, highlighted }) {
   if (row.unresolved) {
     return (
-      <div className="vamshavali-row vamshavali-row-unresolved">
+      <div id={id} className={`vamshavali-row vamshavali-row-unresolved${highlighted ? " vamshavali-row-highlight" : ""}`}>
         <div className="vamshavali-row-term">
           <span className="vamshavali-term-kn">{row.kannadaTerm}</span>
           <span className="vamshavali-term-en">{row.englishTerm}</span>
@@ -22,7 +22,7 @@ function VamshavaliRow({ row }) {
   }
   if (row.noneFound) {
     return (
-      <div className="vamshavali-row vamshavali-row-unresolved">
+      <div id={id} className={`vamshavali-row vamshavali-row-unresolved${highlighted ? " vamshavali-row-highlight" : ""}`}>
         <div className="vamshavali-row-term">
           <span className="vamshavali-term-kn">{row.kannadaTerm}</span>
           <span className="vamshavali-term-en">{row.englishTerm}</span>
@@ -33,7 +33,7 @@ function VamshavaliRow({ row }) {
   }
   const status = row.isAlive ? ROW_LABELS.alive : ROW_LABELS.departed;
   return (
-    <div className="vamshavali-row">
+    <div id={id} className={`vamshavali-row${highlighted ? " vamshavali-row-highlight" : ""}`}>
       <div className="vamshavali-row-term">
         <span className="vamshavali-term-kn">{row.kannadaTerm}</span>
         <span className="vamshavali-term-en">{row.englishTerm}</span>
@@ -53,8 +53,36 @@ export default function VamshavaliView({ onClose }) {
   const [egoId, setEgoId] = useState(MY_PERSON_ID || PEOPLE[0]?.id || null);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState("");
+  const [highlightedId, setHighlightedId] = useState(null);
 
   const vamshavali = useMemo(() => (egoId ? buildVamshavali(egoId, PEOPLE, "pitru") : { ego: null, sections: [] }), [egoId]);
+
+  // Flattened straight from what buildVamshavali() already computed — no
+  // new engine logic, just gathering the "unresolved"/"noneFound" rows
+  // that are otherwise scattered across five separate sections into one
+  // at-a-glance count.
+  const { gaps, totalRows } = useMemo(() => {
+    const found = [];
+    let total = 0;
+    for (const section of vamshavali.sections) {
+      for (let i = 0; i < section.rows.length; i++) {
+        const row = section.rows[i];
+        total++;
+        if (row.unresolved || row.noneFound) {
+          found.push({ id: `vamshavali-row-${section.key}-${i}`, kannadaTerm: row.kannadaTerm, englishTerm: row.englishTerm });
+        }
+      }
+    }
+    return { gaps: found, totalRows: total };
+  }, [vamshavali]);
+
+  function jumpToGap(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightedId(id);
+    window.setTimeout(() => setHighlightedId((cur) => (cur === id ? null : cur)), 1800);
+  }
 
   // Grouped oldest generation first — a big family's person list is
   // otherwise one long flat alphabetical list with no sense of who's an
@@ -129,6 +157,28 @@ export default function VamshavaliView({ onClose }) {
             </select>
           </div>
 
+          {vamshavali.sections.length > 0 && (
+            <div className="vamshavali-gap-summary">
+              {gaps.length === 0 ? (
+                <p className="form-hint" style={{ margin: 0 }}>All {totalRows} relationships on this document are recorded.</p>
+              ) : (
+                <>
+                  <p className="form-hint" style={{ marginTop: 0, marginBottom: 6, fontWeight: 700, color: "var(--ink)" }}>
+                    {gaps.length} of {totalRows} relationships not yet recorded:
+                  </p>
+                  <div className="vamshavali-gap-list">
+                    {gaps.map((g) => (
+                      <button type="button" key={g.id} className="vamshavali-gap-chip" onClick={() => jumpToGap(g.id)}>
+                        <span className="vamshavali-term-kn">{g.kannadaTerm}</span>
+                        <span className="vamshavali-term-en">{g.englishTerm}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {vamshavali.sections.map((section) => (
             <div key={section.key} className="vamshavali-section">
               <div className="vamshavali-section-head">
@@ -142,7 +192,10 @@ export default function VamshavaliView({ onClose }) {
                 <span className="vamshavali-row-gotra">Gotra</span>
                 <span className="vamshavali-row-rashi">Rashi</span>
               </div>
-              {section.rows.map((row, i) => <VamshavaliRow key={i} row={row} />)}
+              {section.rows.map((row, i) => {
+                const id = `vamshavali-row-${section.key}-${i}`;
+                return <VamshavaliRow key={i} row={row} id={id} highlighted={highlightedId === id} />;
+              })}
             </div>
           ))}
 

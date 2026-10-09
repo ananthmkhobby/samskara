@@ -7,6 +7,7 @@ export default function AddFamilyMemberModal({ request, onCancel, onSubmit, canM
   const modalA11y = useModalA11y(onCancel);
   const isSpouse = request.relation === "spouse";
   const isParent = request.relation === "parent";
+  const isSibling = request.relation === "sibling";
   const [name, setName] = useState("");
   const [birthYear, setBirthYear] = useState("");
   const [city, setCity] = useState("");
@@ -40,11 +41,13 @@ export default function AddFamilyMemberModal({ request, onCancel, onSubmit, canM
         <div className="modal-body">
           <span className="eyebrow">Add to the tree</span>
           <h2 style={{ fontSize: 20, marginTop: 6 }}>
-            {isSpouse ? `Add a spouse for ${request.anchorName}` : isParent ? `Add a parent for ${request.anchorName}` : `Add a son or daughter for ${request.anchorName}`}
+            {isSpouse ? `Add a spouse for ${request.anchorName}` : isParent ? `Add a parent for ${request.anchorName}` : isSibling ? `Add a brother or sister for ${request.anchorName}` : `Add a son or daughter for ${request.anchorName}`}
           </h2>
           <p className="form-hint" style={{ marginTop: 6 }}>
             {isParent
               ? "This grows the tree one generation further back — the new person becomes the root of this branch. Add one parent now, then open their folio to add their spouse (the other parent) the same way you'd add any spouse."
+              : isSibling
+              ? `They'll share the same parent${request.anchorName ? "s already on record for " + request.anchorName : "s"} — useful for documents like the Vamshavali, which looks for siblings by shared parents.`
               : canModerate ? "As an Admin/Family Head, they'll be added to the tree immediately." : "This goes to an admin for review. Once approved, they'll appear in the tree right away."}
           </p>
           <form onSubmit={submit}>
