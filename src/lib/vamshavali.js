@@ -140,14 +140,12 @@ export const ANCESTOR_SECTIONS = [
 const SIBLING_TERM = { elder: "ಅಣ್ಣ", younger: "ತಮ್ಮ", unknown: "ಸಹೋದರ" };
 const SIBLING_TERM_ENGLISH = { elder: "Elder Brother", younger: "Younger Brother", unknown: "Brother" };
 
-function personRow(person, kannadaTerm, englishTerm, mode) {
-  const alive = !isDeceased(person);
-  const nameHidden = mode === "pitru" && alive;
+function personRow(person, kannadaTerm, englishTerm) {
   return {
     kannadaTerm, englishTerm,
     personId: person.id,
-    name: nameHidden ? null : person.name,
-    isAlive: alive,
+    name: person.name,
+    isAlive: !isDeceased(person),
     gotra: person.gotra || null,
     rashi: person.rashi || null,
   };
@@ -159,9 +157,12 @@ function unresolvedRow(kannadaTerm, englishTerm, brokenAt) {
 
 // Builds the full document for `personId` as the ego. `mode`:
 // - "pitru" (Phase 1's only mode): a living resolved relative is shown
-//   with the alive-placeholder instead of their name, matching the
-//   ritual convention in the reference document — this document names
-//   the departed, not the living.
+//   `mode` is accepted for forward-compatibility with a later whole-family
+//   mode, but every person's real name is always shown regardless — an
+//   earlier version hid a living relative's name behind the alive-placeholder
+//   (matching the reference document's ritual convention), but that made the
+//   document read as mostly blank for anyone whose close relatives are still
+//   living, which defeated the point for most families using it day to day.
 // Returns { ego, sections: [{ key, title, titleEnglish, rows }] }, or
 // { ego: null, sections: [] } if personId isn't found.
 export function buildVamshavali(personId, allPeople, mode = "pitru") {
@@ -174,7 +175,7 @@ export function buildVamshavali(personId, allPeople, mode = "pitru") {
       const rows = section.rows.map((rowDef) => {
         const walked = walkPath(ego, byId, rowDef.path);
         return isResolved(walked)
-          ? personRow(walked, rowDef.kannadaTerm, rowDef.englishTerm, mode)
+          ? personRow(walked, rowDef.kannadaTerm, rowDef.englishTerm)
           : unresolvedRow(rowDef.kannadaTerm, rowDef.englishTerm, walked.brokenAt);
       });
       return { key: section.key, title: section.title, titleEnglish: section.titleEnglish, rows };
@@ -195,16 +196,14 @@ export function buildVamshavali(personId, allPeople, mode = "pitru") {
       rows.push(personRow(
         brother,
         `${section.relationPrefixKannada} ${SIBLING_TERM[order]}`,
-        `${section.relationPrefixEnglish} ${SIBLING_TERM_ENGLISH[order]}`,
-        mode
+        `${section.relationPrefixEnglish} ${SIBLING_TERM_ENGLISH[order]}`
       ));
       const spouse = findSpouse(brother, byId);
       if (spouse) {
         rows.push(personRow(
           spouse,
           `${section.relationPrefixKannada} ${SIBLING_TERM[order]}ನ ಹೆಂಡತಿ`,
-          `${section.relationPrefixEnglish} ${SIBLING_TERM_ENGLISH[order]}'s Wife`,
-          mode
+          `${section.relationPrefixEnglish} ${SIBLING_TERM_ENGLISH[order]}'s Wife`
         ));
       }
     }

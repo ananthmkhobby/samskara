@@ -38,10 +38,12 @@ function VamshavaliRow({ row }) {
         <span className="vamshavali-term-kn">{row.kannadaTerm}</span>
         <span className="vamshavali-term-en">{row.englishTerm}</span>
       </div>
-      <span className="vamshavali-row-name">{row.name === null ? "ಇದ್ದಾರೆ (alive)" : row.name}</span>
-      <span className={`vamshavali-row-status status-${status.toLowerCase()}`}>{status}</span>
-      <span className="vamshavali-row-gotra">{row.gotra || "—"}</span>
-      <span className="vamshavali-row-rashi">{row.rashi || "—"}</span>
+      <span className="vamshavali-row-name">{row.name}</span>
+      <span className={`vamshavali-row-status status-${status.toLowerCase()}`}>
+        <span className="vamshavali-cell-label">Status </span>{status}
+      </span>
+      <span className="vamshavali-row-gotra"><span className="vamshavali-cell-label">Gotra </span>{row.gotra || "—"}</span>
+      <span className="vamshavali-row-rashi"><span className="vamshavali-cell-label">Rashi </span>{row.rashi || "—"}</span>
     </div>
   );
 }
@@ -108,10 +110,10 @@ export default function VamshavaliView({ onClose }) {
         <button className="modal-close on-paper" onClick={onClose} aria-label="Close"><CloseIcon /></button>
         <div className="modal-body">
           <span className="eyebrow">ವಂಶಾವಳಿ — Vamshavali</span>
-          <h4 style={{ marginTop: 4 }}>Pitru form</h4>
+          <h4 style={{ marginTop: 4 }}>Father's and mother's line</h4>
           <p className="form-hint" style={{ marginTop: 0 }}>
-            The ritual convention: only those who have passed are named, by relationship and gotra. Anyone still living
-            is simply marked ಇದ್ದಾರೆ (alive), the same way this document has traditionally been kept.
+            Three to four generations each side, by relationship, gotra and rashi. The Status column shows who's
+            still living.
           </p>
 
           <div className="form-row">
@@ -132,6 +134,13 @@ export default function VamshavaliView({ onClose }) {
               <div className="vamshavali-section-head">
                 <span className="vamshavali-section-title-kn">{section.title}</span>
                 <span className="vamshavali-section-title-en">{section.titleEnglish}</span>
+              </div>
+              <div className="vamshavali-row vamshavali-header-row">
+                <span className="vamshavali-row-term">Relationship</span>
+                <span className="vamshavali-row-name">Name</span>
+                <span className="vamshavali-row-status">Status</span>
+                <span className="vamshavali-row-gotra">Gotra</span>
+                <span className="vamshavali-row-rashi">Rashi</span>
               </div>
               {section.rows.map((row, i) => <VamshavaliRow key={i} row={row} />)}
             </div>

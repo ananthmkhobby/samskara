@@ -117,26 +117,39 @@ const styles = StyleSheet.create({
   tocDot: { width: 6, height: 6, borderRadius: 3, marginRight: 8 },
   tocName: { fontSize: 11, color: COLOR.ink },
 
-  vTitleKannada: { fontFamily: "Noto Sans Kannada", fontSize: 22, color: COLOR.maroonDeep, textAlign: "center" },
-  vTitleEnglish: { fontSize: 11, color: COLOR.inkSoft, textAlign: "center", marginTop: 4, marginBottom: 4 },
+  // Sized up from the original pass — this document is read as often on a
+  // phone (fit-to-width, no separate zoom step most people think to take)
+  // as printed, so the baseline needs to hold up small, not just on paper.
+  vTitleKannada: { fontFamily: "Noto Sans Kannada", fontSize: 24, color: COLOR.maroonDeep, textAlign: "center" },
+  vTitleEnglish: { fontSize: 12, color: COLOR.inkSoft, textAlign: "center", marginTop: 4, marginBottom: 4 },
   // Noto Sans Kannada, not Times-Italic — this line mixes English and
   // Kannada mid-sentence, and the Standard-14 fonts have no Kannada
   // glyphs at all, which garbled the Kannada word when this was tried
   // with Times-Italic. Noto Sans Kannada covers Latin too, so one font
   // for the whole mixed-script line is both correct and simpler.
-  vSubhead: { fontFamily: "Noto Sans Kannada", fontSize: 9.5, color: COLOR.inkSoft, textAlign: "center", marginBottom: 18 },
+  vSubhead: { fontFamily: "Noto Sans Kannada", fontSize: 10, color: COLOR.inkSoft, textAlign: "center", marginBottom: 18 },
   vSection: { marginBottom: 16, border: `0.75pt solid ${COLOR.gold}`, borderRadius: 4 },
-  vSectionHead: { backgroundColor: COLOR.parchment, paddingVertical: 6, paddingHorizontal: 10 },
-  vSectionTitleKannada: { fontFamily: "Noto Sans Kannada", fontSize: 13, color: COLOR.maroonDeep },
-  vSectionTitleEnglish: { fontSize: 8.5, color: COLOR.inkSoft, marginTop: 1 },
-  vRow: { flexDirection: "row", paddingVertical: 5, paddingHorizontal: 10, borderTop: `0.5pt solid ${COLOR.parchment}` },
-  vRowTerm: { width: "32%" },
-  vRowTermKannada: { fontFamily: "Noto Sans Kannada", fontSize: 10.5, color: COLOR.ink },
+  vSectionHead: { backgroundColor: COLOR.parchment, paddingVertical: 7, paddingHorizontal: 10 },
+  vSectionTitleKannada: { fontFamily: "Noto Sans Kannada", fontSize: 14, color: COLOR.maroonDeep },
+  vSectionTitleEnglish: { fontSize: 9, color: COLOR.inkSoft, marginTop: 1 },
+  // Column proportions: Relationship / Name / Status / Gotra / Rashi —
+  // Name gets the most room since it's the one column that's genuinely
+  // variable-length and the thing a reader is actually looking for.
+  vHeaderRow: { flexDirection: "row", paddingVertical: 5, paddingHorizontal: 10, backgroundColor: COLOR.maroonDeep },
+  vHeaderCell: { fontFamily: "Times-Bold", fontSize: 8, color: "#F8ECE4", textTransform: "uppercase", letterSpacing: 0.5 },
+  vRow: { flexDirection: "row", paddingVertical: 7, paddingHorizontal: 10, borderTop: `0.5pt solid ${COLOR.parchment}` },
+  vRowTerm: { width: "26%" },
+  vRowTermKannada: { fontFamily: "Noto Sans Kannada", fontSize: 11, color: COLOR.ink },
   vRowTermEnglish: { fontSize: 7.5, color: COLOR.inkSoft, marginTop: 1 },
-  vRowName: { width: "34%", fontFamily: "Noto Sans Kannada", fontSize: 10.5, color: COLOR.ink },
-  vRowStatus: { width: "14%", fontSize: 9, color: COLOR.inkSoft },
-  vRowGotra: { width: "20%", fontSize: 9, color: COLOR.inkSoft },
+  vRowName: { width: "30%", fontFamily: "Noto Sans Kannada", fontSize: 11.5, color: COLOR.ink, fontWeight: 600 },
+  vRowStatus: { width: "14%", fontSize: 9.5, color: COLOR.inkSoft },
+  vRowGotra: { width: "15%", fontSize: 9.5, color: COLOR.inkSoft },
+  vRowRashi: { width: "15%", fontSize: 9.5, color: COLOR.inkSoft },
 });
+
+const V_HEADER_LABELS = [
+  ["26%", "Relationship"], ["30%", "Name"], ["14%", "Status"], ["15%", "Gotra"], ["15%", "Rashi"],
+];
 
 function PersonHeader({ person }) {
   const initials = (person.name || "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
@@ -242,12 +255,22 @@ export function PersonPage({ person, media, memories }) {
   );
 }
 
+function VamshavaliHeaderRow() {
+  return h(View, { style: styles.vHeaderRow },
+    V_HEADER_LABELS.map(([width, label]) => h(Text, { key: label, style: [styles.vHeaderCell, { width }] }, label))
+  );
+}
+
 // One row in a Vamshavali section — "unresolved"/"noneFound" render a
 // plain dash rather than guessing, matching buildVamshavali's own refusal
-// to guess anywhere the data doesn't support it.
+// to guess anywhere the data doesn't support it. Every resolved person's
+// real name is shown regardless of alive/departed status — status is its
+// own column, so naming someone doesn't imply anything about their gotra
+// shown alongside being right for the departed only.
 function VamshavaliRow({ row }) {
-  const displayName = row.unresolved || row.noneFound ? "—" : row.name === null ? "ಇದ್ದಾರೆ" : row.name;
+  const displayName = row.unresolved || row.noneFound ? "—" : row.name;
   const status = row.unresolved ? "Unknown" : row.noneFound ? "" : row.isAlive ? "Alive" : "Departed";
+  const blank = row.unresolved || row.noneFound;
   return h(View, { style: styles.vRow },
     h(View, { style: styles.vRowTerm },
       h(Text, { style: styles.vRowTermKannada }, row.kannadaTerm),
@@ -255,7 +278,8 @@ function VamshavaliRow({ row }) {
     ),
     h(Text, { style: styles.vRowName }, displayName),
     h(Text, { style: styles.vRowStatus }, status),
-    h(Text, { style: styles.vRowGotra }, row.gotra || (row.unresolved || row.noneFound ? "" : "—"))
+    h(Text, { style: styles.vRowGotra }, row.gotra || (blank ? "" : "—")),
+    h(Text, { style: styles.vRowRashi }, row.rashi || (blank ? "" : "—"))
   );
 }
 
@@ -265,6 +289,7 @@ function VamshavaliSection({ section }) {
       h(Text, { style: styles.vSectionTitleKannada }, section.title),
       h(Text, { style: styles.vSectionTitleEnglish }, section.titleEnglish)
     ),
+    h(VamshavaliHeaderRow, null),
     section.rows.map((row, i) => h(VamshavaliRow, { key: i, row }))
   );
 }
@@ -277,7 +302,7 @@ export function VamshavaliPage({ vamshavali, familyName }) {
   return h(Page, { size: "A4", style: styles.page },
     h(Text, { style: styles.vTitleKannada }, "ವಂಶಾವಳಿ"),
     h(Text, { style: styles.vTitleEnglish }, `Vamshavali — ${formatName(vamshavali.ego)}${familyName ? `, ${familyName}` : ""}`),
-    h(Text, { style: styles.vSubhead }, "Pitru form — only those who have passed are named; living relatives are marked ಇದ್ದಾರೆ (alive)."),
+    h(Text, { style: styles.vSubhead }, "Father's and mother's line, by relationship, gotra and rashi — the Status column shows who's still living."),
     vamshavali.sections.map((section) => h(VamshavaliSection, { key: section.key, section }))
   );
 }

@@ -50,7 +50,20 @@
 .vamshavali-row-gotra, .vamshavali-row-rashi { font-size: 12px; color: var(--ink-soft); }
 .vamshavali-row-unresolved { grid-template-columns: 1.5fr 1fr; }
 .vamshavali-row-unknown { font-size: 12px; color: var(--ink-faint); font-style: italic; }
+.vamshavali-header-row {
+  background: var(--maroon-deep); border-top: 0; padding-top: 6px; padding-bottom: 6px;
+}
+.vamshavali-header-row > span {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--parchment-paper);
+}
+/* Redundant with the header row at desktop widths (hidden there); the
+   header row itself is hidden once the grid collapses to two columns
+   below, where "which column is this" stops being visually obvious. */
+.vamshavali-cell-label { display: none; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-faint); }
 @media (max-width: 560px) {
-  .vamshavali-row { grid-template-columns: 1fr 1fr; row-gap: 2px; }
+  .vamshavali-row { grid-template-columns: 1fr 1fr; row-gap: 6px; padding: 12px 14px; }
   .vamshavali-row-term { grid-column: 1 / -1; }
+  .vamshavali-row-name { grid-column: 1 / -1; font-size: 15px; font-weight: 600; }
+  .vamshavali-header-row { display: none; }
+  .vamshavali-cell-label { display: block; }
 }
