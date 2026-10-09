@@ -163,6 +163,67 @@ export default async function handler(req, res) {
       return;
     }
 
+    // "Profile pic" shortcut — a self-contained action, never touches
+    // advanceConversation or whatsapp_conversations at all (same reasoning
+    // as the unsupported-media-type short-circuit just above): it can only
+    // ever change the SENDER's own photo, applies immediately regardless of
+    // role (confirmed scope — this is categorically narrower than the
+    // general edit-review rule it deliberately diverges from), and the
+    // outgoing photo is never lost — it becomes a private contribution for
+    // the same person, findable later only by that same sender under
+    // Gallery > Private to me.
+    if (numMedia > 0 && classifyMediaType(mediaContentType) === "image" && /profile\s*pic/i.test(textBody)) {
+      if (!identity.personId) {
+        await finishMessage({ processing_status: "completed" });
+        await reply(phoneNumber, "We don't know which person in the tree you are yet — ask your Family Head to link your account first (Admin → Members).");
+        ack(res);
+        return;
+      }
+      try {
+        const { data: personRow, error: personErr } = await supabase
+          .from("people").select("photo_path").eq("family_id", identity.familyId).eq("id", identity.personId).maybeSingle();
+        if (personErr) throw new Error(personErr.message);
+
+        if (personRow?.photo_path) {
+          const { error: archiveErr } = await supabase.from("contributions").insert({
+            family_id: identity.familyId, person_id: identity.personId, type: "photo", content: personRow.photo_path,
+            visibility: "private", contributor: identity.displayName, contributor_user_id: identity.userId,
+            status: "Verified", date: new Date().toISOString().slice(0, 10), source: "whatsapp", source_message_id: messageSid,
+          });
+          if (archiveErr) throw new Error(archiveErr.message);
+        }
+
+        const { buffer, ext, kind } = await fetchTwilioMedia(mediaUrl, mediaContentType);
+        const stored = await storeMedia(supabase, identity.familyId, identity.personId, buffer, ext, mediaContentType);
+        const { error: updateErr } = await supabase
+          .from("people").update({ photo_path: stored.path }).eq("family_id", identity.familyId).eq("id", identity.personId);
+        if (updateErr) throw new Error(updateErr.message);
+
+        log("PROFILE_PHOTO_UPDATED", { phone: maskPhone(phoneNumber), personId: identity.personId, hadOldPhoto: !!personRow?.photo_path });
+        // This photo was consumed by this shortcut, not by whatever the
+        // sender's conversation was doing before — clear any in-flight
+        // state (e.g. mid-way through a different photo's story prompt) so
+        // their next message isn't misread as an answer to a question about
+        // a photo this message had nothing to do with. Mirrors
+        // advanceConversation's own "new media mid-conversation starts
+        // fresh" rule (api/_whatsappConversation.js), just applied here
+        // since this path never calls into that function at all.
+        await supabase.from("whatsapp_conversations").upsert({
+          phone_number: phoneNumber, user_id: identity.userId, family_id: identity.familyId,
+          state: "IDLE", pending_person_id: null, context: {}, last_interaction_at: new Date().toISOString(),
+        });
+        await finishMessage({ processing_status: "completed", stored_media_path: stored.path });
+        await reply(phoneNumber, personRow?.photo_path
+          ? "Updated your profile photo ✅ — your old one is saved privately, just for you, under Gallery → Private to me."
+          : "Updated your profile photo ✅");
+      } catch (err) {
+        await finishMessage({ processing_status: "failed", error_message: `profile_photo_failed: ${err.message}` });
+        await reply(phoneNumber, "I couldn't update your profile photo right now. Please try sending it again.");
+      }
+      ack(res);
+      return;
+    }
+
     // A voice note sent while we're waiting for "what do you remember about
     // this" is a spoken answer to that question, not a new memory — talk
     // naturally, we'll transcribe it, same as if they'd typed it. Handled
@@ -280,6 +341,7 @@ export default async function handler(req, res) {
         status,
         source: "whatsapp",
         source_message_id: messageSid,
+        visibility: c.visibility ?? "shared",
       }));
       const { error: contribErr } = await supabase.from("contributions").insert(rows);
       if (contribErr) {

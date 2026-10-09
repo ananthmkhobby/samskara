@@ -21,6 +21,12 @@ const FAMILY_COMMAND = /^(family|families|switch family|switch)$/i;
 // opening line of a memory — without this, "Hi" became `memoryText: "Hi"`
 // and the bot asked "who is this about?", which reads as broken.
 const GREETING = /^(hi+|hello+|hey+|hola|yo|namaste|namaskara|namaskaram|help|menu|start)$/i;
+// "family" is deliberately not one of SHARE's words — FAMILY_COMMAND is
+// only ever checked in the IDLE entry branch below, never inside
+// WAITING_FOR_PRIVACY_CHOICE, so there's no real collision either way, but
+// keeping them visually distinct avoids the two ever being confused later.
+const PRIVATE_RE = /^(private|priv|just me|only me)$/i;
+const SHARE_RE = /^(share|shared|everyone|all|public)$/i;
 
 const MEDIA_PROMPT = {
   photo: "Beautiful memory ❤️\nWho is in this, or who is this about?",
@@ -97,15 +103,18 @@ function buildFamilySwitchPrompt(memberships) {
 // carry no caption field of their own.
 function buildContributions(ctx) {
   const rows = [];
-  if (ctx.mediaKind === "photo") rows.push({ type: "photo", content: ctx.mediaPath, image_hash: ctx.mediaImageHash ?? null });
-  else if (ctx.mediaKind === "document") rows.push({ type: "document", content: ctx.mediaPath, title: ctx.originalFilename || "Document" });
-  else if (ctx.mediaKind === "audio") rows.push({ type: "audio", content: ctx.mediaPath });
+  const visibility = ctx.visibility || "shared";
+  if (ctx.mediaKind === "photo") rows.push({ type: "photo", content: ctx.mediaPath, image_hash: ctx.mediaImageHash ?? null, visibility });
+  else if (ctx.mediaKind === "document") rows.push({ type: "document", content: ctx.mediaPath, title: ctx.originalFilename || "Document", visibility });
+  else if (ctx.mediaKind === "audio") rows.push({ type: "audio", content: ctx.mediaPath, visibility });
 
-  if (ctx.story) rows.push({ type: "memory", content: ctx.story });
-  else if (ctx.mediaKind === null && ctx.memoryText) rows.push({ type: "memory", content: ctx.memoryText });
+  if (ctx.story) rows.push({ type: "memory", content: ctx.story, visibility });
+  else if (ctx.mediaKind === null && ctx.memoryText) rows.push({ type: "memory", content: ctx.memoryText, visibility });
 
   return rows;
 }
+
+const PRIVACY_PROMPT = "Private to just you, or shared with the family? Reply PRIVATE or SHARE.";
 
 function confirmationSummary(ctx, personName) {
   const who = personName ? `*${personName}*` : "an unassigned family memory (not linked to anyone yet)";
@@ -113,21 +122,22 @@ function confirmationSummary(ctx, personName) {
   if (ctx.story) lines.push(`"${ctx.story}"`);
   else if (ctx.mediaKind === null && ctx.memoryText) lines.push(`"${ctx.memoryText}"`);
   else if (ctx.mediaKind === "audio") lines.push("(voice note)");
+  lines.push(ctx.visibility === "private" ? "(Private — only you'll see this)" : "(Shared with the family)");
   lines.push("", "Save this? Reply YES or NO.");
   return lines.join("\n");
 }
 
 // Shared tail once a person has been resolved (matched, confirmed, or
 // explicitly skipped) — branches on whether this memory still needs a story
-// (photo/document) or is ready to confirm straight away (audio/text,
-// matching the lighter Phase-1 voice-note flow in the spec).
+// (photo/document) or is ready for the privacy question straight away
+// (audio/text, matching the lighter Phase-1 voice-note flow in the spec).
 function advanceWithPerson({ ctx: base, personId, personName }) {
   const next = { ...base, personId, personName };
   delete next.allowSkip;
   if (next.mediaKind === "photo" || next.mediaKind === "document") {
     return { reply: STORY_PROMPT[next.mediaKind], nextState: "WAITING_FOR_STORY", pendingPersonId: personId, context: next, contributions: [] };
   }
-  return { reply: confirmationSummary(next, personName), nextState: "WAITING_FOR_CONFIRMATION", pendingPersonId: personId, context: next, contributions: [] };
+  return { reply: PRIVACY_PROMPT, nextState: "WAITING_FOR_PRIVACY_CHOICE", pendingPersonId: personId, context: next, contributions: [] };
 }
 
 export async function advanceConversation({ supabase, familyId, conversation, inbound, memberships }) {
@@ -227,7 +237,17 @@ export async function advanceConversation({ supabase, familyId, conversation, in
   if (state === "WAITING_FOR_STORY") {
     if (!text) return { reply: STORY_PROMPT[ctx.mediaKind] || "Tell me anything you remember about this.", nextState: "WAITING_FOR_STORY", pendingPersonId: ctx.personId || null, context: ctx, contributions: [] };
     const next = { ...ctx, story: text };
-    return { reply: confirmationSummary(next, ctx.personName), nextState: "WAITING_FOR_CONFIRMATION", pendingPersonId: ctx.personId || null, context: next, contributions: [] };
+    return { reply: PRIVACY_PROMPT, nextState: "WAITING_FOR_PRIVACY_CHOICE", pendingPersonId: ctx.personId || null, context: next, contributions: [] };
+  }
+
+  // ---- Private or shared? (every media/text kind passes through here,
+  // right before the final save confirmation) -----------------------------
+  if (state === "WAITING_FOR_PRIVACY_CHOICE") {
+    if (PRIVATE_RE.test(text) || SHARE_RE.test(text)) {
+      const next = { ...ctx, visibility: PRIVATE_RE.test(text) ? "private" : "shared" };
+      return { reply: confirmationSummary(next, ctx.personName), nextState: "WAITING_FOR_CONFIRMATION", pendingPersonId: ctx.personId || null, context: next, contributions: [] };
+    }
+    return { reply: "Sorry, just reply PRIVATE (only you see it) or SHARE (the whole family sees it).", nextState: "WAITING_FOR_PRIVACY_CHOICE", pendingPersonId: ctx.personId || null, context: ctx, contributions: [] };
   }
 
   // ---- Picking which family to switch to ---------------------------------

@@ -133,6 +133,10 @@ export async function resolveIdentity(supabase, phoneNumber) {
     familyId: active.family_id,
     role: active.role,
     displayName: displayName || "A family member",
+    // Already fetched above for the displayName fallback — surfaced here
+    // too for the "profile pic" shortcut, which needs to know exactly
+    // which person this sender IS, not just that they're a member.
+    personId: active.person_id || null,
     memberships: memberRows.map((m) => ({ familyId: m.family_id, familyName: m.families?.name || "Family", role: m.role })),
   };
 }

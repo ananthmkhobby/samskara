@@ -35,19 +35,23 @@ export default function TreeView({ contributions, onSelectPerson, onNav }) {
         },
         body: JSON.stringify({ action: "family", familyId: CURRENT_FAMILY_ID }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Couldn't generate the family photobook.");
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Couldn't generate the family photobook.");
+      // The server now returns a signed Storage link rather than the PDF
+      // bytes directly — a whole family's book can be tens of MB, well past
+      // Vercel's fixed 4.5MB response-body limit, so it's generated to
+      // Storage and handed back as a URL instead. Cross-origin, so the
+      // `download` attribute isn't honored by most browsers; target="_blank"
+      // keeps the app itself from navigating away either way (the PDF opens
+      // in its own tab, where the browser's own viewer offers Save/Download).
       const a = document.createElement("a");
-      a.href = url;
-      a.download = `${(CURRENT_FAMILY_NAME || "family").replace(/\s+/g, "-").toLowerCase()}-photobook.pdf`;
+      a.href = data.url;
+      a.download = data.filename || `${(CURRENT_FAMILY_NAME || "family").replace(/\s+/g, "-").toLowerCase()}-photobook.pdf`;
+      a.target = "_blank";
+      a.rel = "noreferrer";
       document.body.appendChild(a);
       a.click();
       a.remove();
-      URL.revokeObjectURL(url);
     } catch (err) {
       alert(err.message || "Couldn't generate the family photobook.");
     } finally {

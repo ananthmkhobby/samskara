@@ -5,6 +5,7 @@
 // Vamshavali plan). `action` in the POST body discriminates which PDF
 // gets built; each action's body is otherwise the original endpoint's
 // logic, unchanged.
+import { randomUUID } from "crypto";
 import { serviceClient, requireMember } from "./_memberAuth.js";
 import {
   Document, PersonPage, FamilyCoverPage, TableOfContentsPage, GenerationDividerPage,
@@ -16,9 +17,16 @@ const MAX_PHOTOS = 12;
 const MAX_MEMORIES = 4;
 const MAX_PHOTOS_PER_PERSON = 6;
 const MAX_MEMORIES_PER_PERSON = 4;
-const MAX_FAMILY_BOOK_PEOPLE = 80; // size guard — a deliberate, legible failure instead of a silent timeout
 const BUCKET = "family-media";
 const SIGNED_URL_TTL_SECONDS = 300; // fetched once by react-pdf's own image loader during render
+
+// Disposable generated PDFs (the family photobook), distinct from
+// family-media's permanent archive content — see its own migration for why
+// it carries no RLS policies. Longer TTL than SIGNED_URL_TTL_SECONDS above:
+// that one's for an image react-pdf fetches once during render, this one's
+// handed to the person's own browser to actually download a multi-MB file.
+const EXPORTS_BUCKET = "family-exports";
+const EXPORT_SIGNED_URL_TTL_SECONDS = 600;
 
 const pageStyle = StyleSheet.create({ page: { padding: 48, fontFamily: "Times-Roman" } }).page;
 
@@ -118,9 +126,11 @@ async function handleFamily(req, res, supabase) {
   const people = peopleRows.map(mapPersonRow);
   const included = people.filter((p) => personHasContent(contributionsByPerson, p));
   if (!included.length) throw new Error("No one in this family tree has any content yet — add a few photos or stories first.");
-  if (included.length > MAX_FAMILY_BOOK_PEOPLE) {
-    throw new Error(`This family tree is too large for a single-file export right now (${included.length} people, limit ${MAX_FAMILY_BOOK_PEOPLE}) — contact support.`);
-  }
+  // No headcount cap here anymore — that was standing in for the real
+  // constraint (the old direct-response download's 4.5MB Vercel platform
+  // limit), which routing through Storage (see the end of this function)
+  // removes. MAX_PHOTOS_PER_PERSON still bounds how much any one person
+  // contributes to the file's size.
 
   const minGen = Math.min(...included.map((p) => p.gen));
   const maxGen = Math.max(...included.map((p) => p.gen));
@@ -174,7 +184,20 @@ async function handleFamily(req, res, supabase) {
 
   const buffer = await renderToBuffer(h(Document, null, ...pages));
   const slug = (familyRow.name || "family").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-  sendPdf(res, buffer, `${slug}-photobook.pdf`);
+
+  // Routed through Storage rather than sent as the response body — a whole
+  // family's photobook can legitimately be tens of MB (up to 6 photos per
+  // person across however many people have content), well past Vercel's
+  // fixed 4.5MB response-body limit on every plan. The service role
+  // bypasses RLS for both the upload and the signing below, so this needs
+  // no new policy — the browser only ever receives the already-signed URL.
+  const exportPath = `${familyId}/${randomUUID()}.pdf`;
+  const { error: uploadErr } = await supabase.storage.from(EXPORTS_BUCKET).upload(exportPath, buffer, { contentType: "application/pdf" });
+  if (uploadErr) throw new Error(`Couldn't prepare the download: ${uploadErr.message}`);
+  const { data: signed, error: signErr } = await supabase.storage.from(EXPORTS_BUCKET).createSignedUrl(exportPath, EXPORT_SIGNED_URL_TTL_SECONDS);
+  if (signErr || !signed?.signedUrl) throw new Error("Couldn't prepare the download link.");
+
+  res.status(200).json({ url: signed.signedUrl, filename: `${slug}-photobook.pdf` });
 }
 
 async function handleVamshavali(req, res, supabase) {
