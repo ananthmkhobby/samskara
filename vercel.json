@@ -5,6 +5,9 @@
   "functions": {
     "api/photobook.js": {
       "includeFiles": "{node_modules/pdfkit/js/standard-fonts,node_modules/pdfkit/js/data,api/_fonts}/**"
+    },
+    "api/whatsapp-webhook.js": {
+      "maxDuration": 30
     }
   },
   "headers": [

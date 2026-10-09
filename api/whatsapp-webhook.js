@@ -163,65 +163,140 @@ export default async function handler(req, res) {
       return;
     }
 
-    // "Profile pic" shortcut — a self-contained action, never touches
-    // advanceConversation or whatsapp_conversations at all (same reasoning
-    // as the unsupported-media-type short-circuit just above): it can only
-    // ever change the SENDER's own photo, applies immediately regardless of
-    // role (confirmed scope — this is categorically narrower than the
-    // general edit-review rule it deliberately diverges from), and the
-    // outgoing photo is never lost — it becomes a private contribution for
-    // the same person, findable later only by that same sender under
-    // Gallery > Private to me.
-    if (numMedia > 0 && classifyMediaType(mediaContentType) === "image" && /profile\s*pic/i.test(textBody)) {
-      if (!identity.personId) {
-        await finishMessage({ processing_status: "completed" });
-        await reply(phoneNumber, "We don't know which person in the tree you are yet — ask your Family Head to link your account first (Admin → Members).");
+    // "Profile pic" shortcuts — self-contained actions, never touch
+    // advanceConversation or whatsapp_conversations' normal flow at all
+    // (same reasoning as the unsupported-media-type short-circuit just
+    // above). Two variants, checked in order:
+    //   "profile pic for <name>" / "... of <name>" — a Head/Admin updating
+    //   someone ELSE's tree photo on their behalf.
+    //   "profile pic" alone — anyone updating their OWN photo.
+    // The "for <name>" form is checked first since it's the more specific
+    // pattern; bare "profile pic" never matches it (no "for"/"of" + name).
+    const PROFILE_FOR_RE = /profile\s*(?:pic|picture|photo)?\s*(?:for|of)\s+(.+)/i;
+    if (numMedia > 0 && classifyMediaType(mediaContentType) === "image") {
+      const forMatch = textBody.match(PROFILE_FOR_RE);
+      if (forMatch) {
+        const isModerator = identity.role === "head" || identity.role === "admin";
+        if (!isModerator) {
+          await finishMessage({ processing_status: "completed" });
+          await reply(phoneNumber, "Only a Head or Admin can update someone else's profile photo. Send it without a name to update your own.");
+          ack(res);
+          return;
+        }
+        const targetName = forMatch[1].trim().replace(/[.!?]+$/, "");
+        const { data: matches, error: searchErr } = await supabase
+          .from("people").select("id, name").eq("family_id", identity.familyId).ilike("name", `%${targetName}%`).limit(6);
+        if (searchErr) {
+          await finishMessage({ processing_status: "failed", error_message: `profile_photo_search_failed: ${searchErr.message}` });
+          await reply(phoneNumber, "I couldn't look that person up right now. Please try again.");
+          ack(res);
+          return;
+        }
+        if (!matches?.length) {
+          await finishMessage({ processing_status: "completed" });
+          await reply(phoneNumber, `I couldn't find anyone named "${targetName}" in the family tree.`);
+          ack(res);
+          return;
+        }
+        if (matches.length > 1) {
+          await finishMessage({ processing_status: "completed" });
+          await reply(phoneNumber, `A few people match "${targetName}":\n${matches.map((m) => `• ${m.name}`).join("\n")}\n\nResend with their full name.`);
+          ack(res);
+          return;
+        }
+        const targetPersonId = matches[0].id;
+        const targetPersonName = matches[0].name;
+        try {
+          const { data: personRow, error: personErr } = await supabase
+            .from("people").select("photo_path").eq("family_id", identity.familyId).eq("id", targetPersonId).maybeSingle();
+          if (personErr) throw new Error(personErr.message);
+
+          if (personRow?.photo_path) {
+            // Shared, not private — unlike the self-update shortcut below,
+            // there's no single well-defined "owner" of a private copy
+            // here (the subject may have no WhatsApp login of their own,
+            // or several — confirmed to happen for real this session), so
+            // the previous photo goes back into the family's own Gallery
+            // instead, same trust level as every other moderator-applied
+            // edit, just preserved rather than orphaned.
+            const { error: archiveErr } = await supabase.from("contributions").insert({
+              family_id: identity.familyId, person_id: targetPersonId, type: "photo", content: personRow.photo_path,
+              visibility: "shared", contributor: identity.displayName, contributor_user_id: identity.userId,
+              status: "Verified", date: new Date().toISOString().slice(0, 10), source: "whatsapp", source_message_id: messageSid,
+            });
+            if (archiveErr) throw new Error(archiveErr.message);
+          }
+
+          const { buffer, ext } = await fetchTwilioMedia(mediaUrl, mediaContentType);
+          const stored = await storeMedia(supabase, identity.familyId, targetPersonId, buffer, ext, mediaContentType);
+          const { error: updateErr } = await supabase
+            .from("people").update({ photo_path: stored.path }).eq("family_id", identity.familyId).eq("id", targetPersonId);
+          if (updateErr) throw new Error(updateErr.message);
+
+          log("PROFILE_PHOTO_UPDATED_BY_ADMIN", { phone: maskPhone(phoneNumber), targetPersonId, hadOldPhoto: !!personRow?.photo_path });
+          await finishMessage({ processing_status: "completed", stored_media_path: stored.path });
+          await reply(phoneNumber, personRow?.photo_path
+            ? `Updated ${targetPersonName}'s profile photo ✅ — their previous one has been kept in the family gallery.`
+            : `Updated ${targetPersonName}'s profile photo ✅`);
+        } catch (err) {
+          await finishMessage({ processing_status: "failed", error_message: `profile_photo_for_failed: ${err.message}` });
+          await reply(phoneNumber, "I couldn't update that profile photo right now. Please try sending it again.");
+        }
         ack(res);
         return;
       }
-      try {
-        const { data: personRow, error: personErr } = await supabase
-          .from("people").select("photo_path").eq("family_id", identity.familyId).eq("id", identity.personId).maybeSingle();
-        if (personErr) throw new Error(personErr.message);
 
-        if (personRow?.photo_path) {
-          const { error: archiveErr } = await supabase.from("contributions").insert({
-            family_id: identity.familyId, person_id: identity.personId, type: "photo", content: personRow.photo_path,
-            visibility: "private", contributor: identity.displayName, contributor_user_id: identity.userId,
-            status: "Verified", date: new Date().toISOString().slice(0, 10), source: "whatsapp", source_message_id: messageSid,
-          });
-          if (archiveErr) throw new Error(archiveErr.message);
+      if (/profile\s*pic/i.test(textBody)) {
+        if (!identity.personId) {
+          await finishMessage({ processing_status: "completed" });
+          await reply(phoneNumber, "We don't know which person in the tree you are yet — ask your Family Head to link your account first (Admin → Members).");
+          ack(res);
+          return;
         }
+        try {
+          const { data: personRow, error: personErr } = await supabase
+            .from("people").select("photo_path").eq("family_id", identity.familyId).eq("id", identity.personId).maybeSingle();
+          if (personErr) throw new Error(personErr.message);
 
-        const { buffer, ext, kind } = await fetchTwilioMedia(mediaUrl, mediaContentType);
-        const stored = await storeMedia(supabase, identity.familyId, identity.personId, buffer, ext, mediaContentType);
-        const { error: updateErr } = await supabase
-          .from("people").update({ photo_path: stored.path }).eq("family_id", identity.familyId).eq("id", identity.personId);
-        if (updateErr) throw new Error(updateErr.message);
+          if (personRow?.photo_path) {
+            const { error: archiveErr } = await supabase.from("contributions").insert({
+              family_id: identity.familyId, person_id: identity.personId, type: "photo", content: personRow.photo_path,
+              visibility: "private", contributor: identity.displayName, contributor_user_id: identity.userId,
+              status: "Verified", date: new Date().toISOString().slice(0, 10), source: "whatsapp", source_message_id: messageSid,
+            });
+            if (archiveErr) throw new Error(archiveErr.message);
+          }
 
-        log("PROFILE_PHOTO_UPDATED", { phone: maskPhone(phoneNumber), personId: identity.personId, hadOldPhoto: !!personRow?.photo_path });
-        // This photo was consumed by this shortcut, not by whatever the
-        // sender's conversation was doing before — clear any in-flight
-        // state (e.g. mid-way through a different photo's story prompt) so
-        // their next message isn't misread as an answer to a question about
-        // a photo this message had nothing to do with. Mirrors
-        // advanceConversation's own "new media mid-conversation starts
-        // fresh" rule (api/_whatsappConversation.js), just applied here
-        // since this path never calls into that function at all.
-        await supabase.from("whatsapp_conversations").upsert({
-          phone_number: phoneNumber, user_id: identity.userId, family_id: identity.familyId,
-          state: "IDLE", pending_person_id: null, context: {}, last_interaction_at: new Date().toISOString(),
-        });
-        await finishMessage({ processing_status: "completed", stored_media_path: stored.path });
-        await reply(phoneNumber, personRow?.photo_path
-          ? "Updated your profile photo ✅ — your old one is saved privately, just for you, under Gallery → Private to me."
-          : "Updated your profile photo ✅");
-      } catch (err) {
-        await finishMessage({ processing_status: "failed", error_message: `profile_photo_failed: ${err.message}` });
-        await reply(phoneNumber, "I couldn't update your profile photo right now. Please try sending it again.");
+          const { buffer, ext } = await fetchTwilioMedia(mediaUrl, mediaContentType);
+          const stored = await storeMedia(supabase, identity.familyId, identity.personId, buffer, ext, mediaContentType);
+          const { error: updateErr } = await supabase
+            .from("people").update({ photo_path: stored.path }).eq("family_id", identity.familyId).eq("id", identity.personId);
+          if (updateErr) throw new Error(updateErr.message);
+
+          log("PROFILE_PHOTO_UPDATED", { phone: maskPhone(phoneNumber), personId: identity.personId, hadOldPhoto: !!personRow?.photo_path });
+          // This photo was consumed by this shortcut, not by whatever the
+          // sender's conversation was doing before — clear any in-flight
+          // state (e.g. mid-way through a different photo's story prompt) so
+          // their next message isn't misread as an answer to a question about
+          // a photo this message had nothing to do with. Mirrors
+          // advanceConversation's own "new media mid-conversation starts
+          // fresh" rule (api/_whatsappConversation.js), just applied here
+          // since this path never calls into that function at all.
+          await supabase.from("whatsapp_conversations").upsert({
+            phone_number: phoneNumber, user_id: identity.userId, family_id: identity.familyId,
+            state: "IDLE", pending_person_id: null, context: {}, last_interaction_at: new Date().toISOString(),
+          });
+          await finishMessage({ processing_status: "completed", stored_media_path: stored.path });
+          await reply(phoneNumber, personRow?.photo_path
+            ? "Updated your profile photo ✅ — your old one is saved privately, just for you, under Gallery → Private to me."
+            : "Updated your profile photo ✅");
+        } catch (err) {
+          await finishMessage({ processing_status: "failed", error_message: `profile_photo_failed: ${err.message}` });
+          await reply(phoneNumber, "I couldn't update your profile photo right now. Please try sending it again.");
+        }
+        ack(res);
+        return;
       }
-      ack(res);
-      return;
     }
 
     // A voice note sent while we're waiting for "what do you remember about
