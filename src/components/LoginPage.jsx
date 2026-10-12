@@ -1,44 +1,73 @@
 import AuthPanel from "./AuthPanel";
 
+// Each rotates through the hero panel on a slow crossfade (see .login-hero-slide
+// in login.css) — a mix of the kind of ordinary family objects that almost never
+// got photographed on their own: a letter, a scooter, a sewing machine, a phone.
+const HERO_IMAGES = [
+  "/images/heritage-letter.jpg",
+  "/images/login/scooter.jpg",
+  "/images/login/car.jpg",
+  "/images/login/kitchen.jpg",
+  "/images/login/sewing-machine.jpg",
+  "/images/login/telephone.jpg",
+  "/images/login/enfield.jpg",
+  "/images/login/gramophone.jpg",
+  "/images/login/brass-lamp.jpg",
+  "/images/login/radio.jpg",
+];
+
 export default function LoginPage({ onShowHelp, onShowPrivacy, onShowTerms }) {
   return (
-    <div className="login-page">
-      <button className="login-help-link" onClick={onShowHelp}>Help</button>
-      <button
-        type="button"
-        className="login-help-link login-demo-link"
-        onClick={() => { window.location.href = "/?demo=1"; }}
-      >
-        Try a live demo →
-      </button>
-      <div className="login-hero">
-        <div className="login-keepsake" aria-hidden="true">
-          <img src="/images/heritage-letter.jpg" alt="" loading="eager" />
-          <span className="login-keepsake-seal">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--parchment-paper)" strokeWidth="1.6">
-              <path d="M12 21v-9" strokeLinecap="round" />
-              <path d="M12 15 7 10" strokeLinecap="round" /><path d="M12 13 17 9" strokeLinecap="round" />
-              <path d="M12 11 8 7" strokeLinecap="round" /><path d="M12 10 16 6" strokeLinecap="round" />
-            </svg>
-          </span>
+    <div className="login-page login-page--hero">
+      <div className="login-hero-pane">
+        <div className="login-hero-slides" aria-hidden="true">
+          {HERO_IMAGES.map((src, i) => (
+            <img
+              key={src}
+              className="login-hero-slide"
+              src={src}
+              alt=""
+              style={{ animationDelay: `${i * -4}s` }}
+              loading={i === 0 ? "eager" : "lazy"}
+              fetchPriority={i === 0 ? "high" : undefined}
+            />
+          ))}
         </div>
-        <span className="brand-mark" />
-        <h1 className="login-wordmark">
-          संस्कार वंश वृक्ष
-          <span className="translit">Samskara Vamsha Vruksha</span>
-        </h1>
-        <p className="login-headline">Some letters were never meant to fade.</p>
-        <p className="login-tagline">
-          Your family's living record — every birth, marriage, memory, and hard-won lesson, kept in one place.
-        </p>
+        <div className="login-hero-scrim" />
+        <div className="login-hero-brand">
+          <div className="login-hero-devanagari">संस्कार वंश वृक्ष</div>
+          <div className="login-hero-translit">Samskara · Vamsha Vruksha</div>
+        </div>
+        <div className="login-hero-copy">
+          <p className="login-hero-caption">The ordinary things deserved to be kept too.</p>
+          <h1 className="login-hero-hook">Did your family have something like this? Almost no one thought to photograph it.</h1>
+          <p className="login-hero-sub">
+            Samskara is where you finally do — the scooter, the kitchen, the everyday things that made up a life, kept for good this time.
+          </p>
+        </div>
       </div>
-      <AuthPanel onShowPrivacy={onShowPrivacy} onShowTerms={onShowTerms} />
-      <p className="form-hint" style={{ textAlign: "center", marginTop: 16 }}>
-        By continuing, you agree to our{" "}
-        <button type="button" className="link-btn" onClick={onShowTerms}>Terms &amp; Conditions</button>
-        {" "}and{" "}
-        <button type="button" className="link-btn" onClick={onShowPrivacy}>Privacy Policy</button>.
-      </p>
+
+      <div className="login-form-pane">
+        <div className="login-form-topbar">
+          <button
+            type="button"
+            className="login-help-link login-demo-link"
+            onClick={() => { window.location.href = "/?demo=1"; }}
+          >
+            Try a live demo →
+          </button>
+          <button className="login-help-link" onClick={onShowHelp}>Help</button>
+        </div>
+        <div className="login-form-inner">
+          <AuthPanel onShowPrivacy={onShowPrivacy} onShowTerms={onShowTerms} />
+          <p className="form-hint" style={{ textAlign: "center", marginTop: 16 }}>
+            By continuing, you agree to our{" "}
+            <button type="button" className="link-btn" onClick={onShowTerms}>Terms &amp; Conditions</button>
+            {" "}and{" "}
+            <button type="button" className="link-btn" onClick={onShowPrivacy}>Privacy Policy</button>.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
