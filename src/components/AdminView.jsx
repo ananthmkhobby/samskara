@@ -1116,25 +1116,80 @@ function DuplicatePhotosTab({ contributions, onDeleteContribution, onOpenLightbo
   );
 }
 
+// Collapsible group for the Members page — was one unbroken stack of 11
+// cards with no way to jump to or hide any of them, which is exactly what
+// got reported as "one long page, hard to locate things in." Every child
+// card keeps its own internals, effects, and `.card` styling untouched;
+// this only changes how they're grouped and shown. Deliberately keeps
+// every section mounted (just visually collapsed via CSS grid-rows, not
+// conditionally rendered) so each card's own on-mount data fetch still
+// fires exactly when it did before — nothing about when data loads
+// changes, only whether it's visible.
+function AdminSection({ id, title, description, defaultOpen, children }) {
+  const storageKey = `admin-section-open:${id}`;
+  const [open, setOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved !== null) return saved === "1";
+    } catch { /* localStorage unavailable (private mode, etc.) — fall through */ }
+    return !!defaultOpen;
+  });
+
+  function toggle() {
+    setOpen((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(storageKey, next ? "1" : "0"); } catch { /* best-effort only */ }
+      return next;
+    });
+  }
+
+  return (
+    <div className="admin-section">
+      <button type="button" className="admin-section-head" onClick={toggle} aria-expanded={open}>
+        <span className="admin-section-head-text">
+          <h3>{title}</h3>
+          {description && <p>{description}</p>}
+        </span>
+        <span className={`collapse-chevron${open ? "" : " collapsed"}`}>▾</span>
+      </button>
+      <div className={`admin-section-collapse${open ? " open" : ""}`}>
+        <div className="admin-section-body" inert={!open || undefined}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
 function MembersPage() {
   const [invitesRefreshKey, setInvitesRefreshKey] = useState(0);
   const [membersRefreshKey, setMembersRefreshKey] = useState(0);
   const [galleryExportRefreshKey, setGalleryExportRefreshKey] = useState(0);
   return (
     <>
-      <FamilyNameCard />
-      <FamilyTaglineLogoCard />
-      <InviteCard onCreated={() => setInvitesRefreshKey((k) => k + 1)} />
-      <InvitesList refreshKey={invitesRefreshKey} />
-      <CreateLoginCard onCreated={() => setMembersRefreshKey((k) => k + 1)} />
-      <RosterCard key={membersRefreshKey} />
-      <GalleryExportCodeCard onCreated={() => setGalleryExportRefreshKey((k) => k + 1)} />
-      <GalleryExportCodesList refreshKey={galleryExportRefreshKey} />
-      <EditRelationshipsCard />
-      <ImportSharedStoryCard />
-      {/* Placed last — this is an occasional bulk action, not something a
-          Head/Admin needs on every visit to the Members page. */}
-      <AddPeopleCard />
+      <AdminSection id="roster" title="Members & roles" description="Who's joined, their role, and which person in the tree they are." defaultOpen>
+        <RosterCard key={membersRefreshKey} />
+      </AdminSection>
+      <AdminSection id="invites" title="Invite & create logins" description="Bring a new member in — by link, or by setting up a username and password directly.">
+        <InviteCard onCreated={() => setInvitesRefreshKey((k) => k + 1)} />
+        <InvitesList refreshKey={invitesRefreshKey} />
+        <CreateLoginCard onCreated={() => setMembersRefreshKey((k) => k + 1)} />
+      </AdminSection>
+      <AdminSection id="profile" title="Family profile" description="Name, tagline, and logo — shown across the app.">
+        <FamilyNameCard />
+        <FamilyTaglineLogoCard />
+      </AdminSection>
+      <AdminSection id="tree" title="Fix the tree" description="Correct who someone's parents are, or add several people at once.">
+        <EditRelationshipsCard />
+        {/* Placed last within this section — an occasional bulk action,
+            not something a Head/Admin needs on every visit. */}
+        <AddPeopleCard />
+      </AdminSection>
+      <AdminSection id="export" title="Gallery export" description="Share this family's verified photos with a partner tool like ScanJunction.">
+        <GalleryExportCodeCard onCreated={() => setGalleryExportRefreshKey((k) => k + 1)} />
+        <GalleryExportCodesList refreshKey={galleryExportRefreshKey} />
+      </AdminSection>
+      <AdminSection id="import" title="Import a shared story" description="Bring in one Parampare entry another family shared with you.">
+        <ImportSharedStoryCard />
+      </AdminSection>
     </>
   );
 }

@@ -1,4 +1,28 @@
-.admin-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.admin-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+
+/* Collapsible groups on the Members page — see AdminSection in
+   AdminView.jsx. .collapse-chevron/.collapsed themselves are already
+   defined in folio.css and reused as-is here for a consistent feel across
+   the app; only the heavier section-header "card" look is new. */
+.admin-section { margin-bottom: var(--space-5); }
+.admin-section-head {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  background: var(--parchment-paper); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: var(--space-4) var(--space-5); cursor: pointer; font-family: inherit; text-align: left; color: inherit;
+  box-shadow: var(--shadow-1); transition: border-color .15s, box-shadow .15s;
+}
+.admin-section-head:hover { border-color: var(--line-strong); }
+.admin-section-head:focus-visible { outline: 2px solid var(--maroon-ink); outline-offset: 2px; }
+.admin-section-head-text h3 { font-size: var(--text-lg); margin: 0; color: var(--maroon-deep); font-family: var(--font-display); font-weight: 700; }
+.admin-section-head-text p { font-size: var(--text-sm); color: var(--ink-faint); margin: 3px 0 0; }
+.admin-section-head .collapse-chevron { font-size: 16px; flex: none; }
+/* grid-template-rows 0fr -> 1fr is what gives this a real animated
+   collapse without needing JS to measure content height — the inner
+   wrapper's overflow:hidden is what makes the 0fr state actually clip
+   rather than just compress. */
+.admin-section-collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .28s ease; }
+.admin-section-collapse.open { grid-template-rows: 1fr; }
+.admin-section-body { overflow: hidden; padding-top: var(--space-4); }
 .gender-gen-heading {
   font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; font-weight: 700; color: var(--ink-faint);
   padding: 14px 16px 6px;
