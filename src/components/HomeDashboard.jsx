@@ -9,6 +9,7 @@ import { DateIcon, MemoryIcon, PhotoIcon, PeopleIcon } from "./Icons";
 import { TreeIcon, DiyaGlyph } from "./NavIcons";
 import AuthPanel from "./AuthPanel";
 import InstallAppCard from "./InstallAppCard";
+import BlogPromoCard from "./BlogPromoCard";
 import HeritageIntro, { FamilyBondIcon } from "./HeritageIntro";
 import FamilyFlame from "./FamilyFlame";
 import PersonAvatar from "./PersonAvatar";
@@ -264,6 +265,10 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
 
       <div className="cover-enter" style={{ "--enter-delay": "0.06s", marginTop: 24 }}>
         <InstallAppCard dismissible />
+      </div>
+
+      <div className="cover-enter" style={{ "--enter-delay": "0.08s" }}>
+        <BlogPromoCard onNav={onNav} />
       </div>
 
       <div className="counters">
