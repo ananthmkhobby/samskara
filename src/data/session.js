@@ -30,6 +30,13 @@ export let MY_FAMILIES = [];
 // a distinct, real state (e.g. an invite redemption that failed partway),
 // never silently treated as either "demo" or "a member".
 export let ACCOUNT_NEEDS_FAMILY = false;
+// True for a Samskara team blog-author login (blog_authors, not
+// family_members) — these accounts are real sessions with zero family
+// memberships by design, which would otherwise look identical to
+// ACCOUNT_NEEDS_FAMILY and trigger the "create/join a family" prompt. This
+// flag lets that gate (AuthPanel.jsx) tell the two apart and send a blog
+// author to the blog instead.
+export let IS_BLOG_AUTHOR = false;
 // True for a first-time, fully anonymous visitor (no session, and the demo
 // wasn't explicitly requested via ?demo=1) — shown the login page instead of
 // jumping straight into the public demo family's data.
@@ -66,6 +73,7 @@ export function setSession(next) {
   IS_DEMO = next.isDemo ?? true;
   MODULE_FLAGS = next.moduleFlags ?? {};
   ACCOUNT_NEEDS_FAMILY = next.needsFamily ?? false;
+  IS_BLOG_AUTHOR = next.isBlogAuthor ?? false;
   NEEDS_LOGIN = next.needsLogin ?? false;
   MY_FAMILIES = next.myFamilies ?? [];
   FAMILY_FLAME_STREAK = next.flameStreak ?? 0;

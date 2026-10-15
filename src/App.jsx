@@ -25,6 +25,7 @@ const AIInterviewModal = lazy(() => import("./components/AIInterviewModal"));
 const LibraryView = lazy(() => import("./components/LibraryView"));
 const ChitrashaleRoom = lazy(() => import("./components/ChitrashaleRoom"));
 const ChitrashaleAddModal = lazy(() => import("./components/ChitrashaleAddModal"));
+const BlogView = lazy(() => import("./components/BlogView"));
 import WelcomeIntro from "./components/WelcomeIntro";
 import FamilySplash from "./components/FamilySplash";
 import SuperAdminView from "./components/SuperAdminView";
@@ -67,7 +68,7 @@ async function withMediaUrl(contribution) {
   return { ...contribution, mediaUrl };
 }
 
-const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp" };
+const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp", blog: "/blog" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
 // Maps a view to its families.module_flags entitlement key — a view with no
 // entry here (Tree, Folios, Search, Gallery, Activity, Admin, ...) is never
@@ -76,7 +77,13 @@ const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) 
 // navigation, not just hidden nav); MoreMenu.jsx also hides disabled items.
 const VIEW_GATE_KEYS = { parampara: "parampara", library: "library", treasury: "treasury", map: "journey", japa: "japa", vault: "vault" };
 const pathForView = (v) => VIEW_PATHS[v] || "/";
-const viewForPath = (p) => PATH_TO_VIEW[p] || "cover";
+// VIEW_PATHS is a flat exact-match map (no params) — a single post's path
+// (/blog/some-slug) doesn't have its own entry, so any /blog/* path is
+// treated as the same "blog" view; BlogView.jsx reads the slug straight
+// out of window.location.pathname itself and manages its own list↔post
+// navigation, entirely independent of this app-level state machine (same
+// reasoning AuthPanel.jsx already uses for the ?code= query param).
+const viewForPath = (p) => (p === "/blog" || p.startsWith("/blog/") ? "blog" : (PATH_TO_VIEW[p] || "cover"));
 
 // Captured once at module load — before React 18 StrictMode's intentional
 // mount→unmount→remount cycle, and before the mount effect's
@@ -910,6 +917,15 @@ export default function App() {
     if (view === "help") return <HelpStandalone onBack={() => goTo("cover")} />;
     if (view === "privacy") return <PrivacyPolicyStandalone onBack={() => goTo("cover")} />;
     if (view === "terms") return <TermsOfServiceStandalone onBack={() => goTo("cover")} />;
+    // The blog is fully public — never gated by login, same reasoning as
+    // Help/Privacy/Terms above, so it must bypass this gate the same way.
+    if (view === "blog") {
+      return (
+        <Suspense fallback={null}>
+          <BlogView onNav={goTo} />
+        </Suspense>
+      );
+    }
     // /superadmin needs no family data either (it talks to its own API
     // route, not the Supabase family fetch) — it must bypass the login
     // gate the same way Help does, or the provisioning page becomes
@@ -990,6 +1006,7 @@ export default function App() {
         {view === "privacy" && <PrivacyPolicyView />}
         {view === "terms" && <TermsOfServiceView />}
         {view === "connectWhatsapp" && <ConnectWhatsAppView token={WHATSAPP_LINK_TOKEN_FROM_URL} onDone={() => goTo("cover")} />}
+        {view === "blog" && <BlogView onNav={goTo} />}
       </main>
       <BottomBar view={view} onNav={goTo} pendingCount={pendingCount} onContribute={openContribute} />
 

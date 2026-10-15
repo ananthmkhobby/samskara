@@ -56,6 +56,7 @@ export default function LoginPage({ onShowHelp, onShowPrivacy, onShowTerms }) {
           >
             Try a live demo →
           </button>
+          <button className="login-help-link" onClick={() => { window.location.href = "/blog"; }}>Blog</button>
           <button className="login-help-link" onClick={onShowHelp}>Help</button>
         </div>
         <div className="login-form-inner">

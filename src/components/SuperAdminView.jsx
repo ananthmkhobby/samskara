@@ -133,6 +133,90 @@ function AdClickLogSection({ adminSecret }) {
   );
 }
 
+// Creates a Samskara blog-author login — same shape as the family-side
+// "Create a login without email" tool (api/create-member-login.js), but
+// hitting api/create-blog-author.js, which inserts into blog_authors
+// instead of family_members. This is the ONLY way a blog author account
+// gets created — no self-signup, no invite link (see docs/AUDIT_BUNDLE.md
+// if that decision's reasoning needs re-checking later).
+function BlogTeamSection({ adminSecret }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState(null);
+  const [copied, setCopied] = useState("");
+
+  async function submit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    setResult(null);
+    try {
+      const data = await callApi("/api/create-blog-author", { adminSecret, username, password, displayName });
+      setResult(data);
+      setUsername("");
+      setPassword("");
+      setDisplayName("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copy(text, label) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(label);
+      window.setTimeout(() => setCopied(""), 2000);
+    } catch { /* clipboard unavailable */ }
+  }
+
+  return (
+    <div className="card" style={{ maxWidth: 460, padding: 20, marginTop: 24 }}>
+      <h4 style={{ marginTop: 0 }}>Blog team</h4>
+      <p className="form-hint" style={{ marginTop: 0 }}>
+        Create a login for a Samskara blog author (e.g. a ScanJunction collaborator) — no access to any family's data, only the public blog's editor at /blog/editor.
+      </p>
+      <form onSubmit={submit}>
+        <div className="form-row">
+          <label>Username</label>
+          <input type="text" required placeholder="e.g. priya-sj" value={username} onChange={(e) => setUsername(e.target.value)} />
+        </div>
+        <div className="form-row">
+          <label>Password</label>
+          <input type="text" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+        </div>
+        <div className="form-row">
+          <label>Display name (shown as the post's byline)</label>
+          <input type="text" required placeholder="e.g. Priya Raghavan" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+        </div>
+        {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+        <button type="submit" className="btn primary small" disabled={busy} style={{ marginTop: 8 }}>{busy ? "Creating…" : "Create login"}</button>
+      </form>
+      {result && (
+        <div style={{ marginTop: 14 }}>
+          <div className="tag-row" style={{ alignItems: "center", marginBottom: 8 }}>
+            <span style={{ minWidth: 90, fontSize: 13, color: "var(--ink-faint)" }}>Username</span>
+            <input type="text" readOnly value={result.username} style={{ flex: 1 }} />
+            <button type="button" className="btn small ghost" onClick={() => copy(result.username, "username")}>{copied === "username" ? "Copied!" : "Copy"}</button>
+          </div>
+          <div className="tag-row" style={{ alignItems: "center" }}>
+            <span style={{ minWidth: 90, fontSize: 13, color: "var(--ink-faint)" }}>Password</span>
+            <input type="text" readOnly value={result.password} style={{ flex: 1 }} />
+            <button type="button" className="btn small ghost" onClick={() => copy(result.password, "password")}>{copied === "password" ? "Copied!" : "Copy"}</button>
+          </div>
+          <p className="form-hint">
+            Hand these to them directly. They log in at the normal login screen using "No email? Log in with username", then go to <strong>oursamskara.com/blog/editor</strong>.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SuperAdminView() {
   const [adminSecret, setAdminSecret] = useState(() => sessionStorage.getItem(SECRET_SESSION_KEY) || "");
   const [familyName, setFamilyName] = useState("");
@@ -241,6 +325,7 @@ export default function SuperAdminView() {
         </div>
       )}
 
+      <BlogTeamSection adminSecret={adminSecret} />
       <PasswordResetRequestsSection adminSecret={adminSecret} />
       <AdClickLogSection adminSecret={adminSecret} />
     </section>

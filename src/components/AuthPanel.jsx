@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { redeemInvite, recordConsent, registerNewFamily } from "../data/familyDb";
-import { ACCOUNT_NEEDS_FAMILY } from "../data/session";
+import { ACCOUNT_NEEDS_FAMILY, IS_BLOG_AUTHOR } from "../data/session";
 import { POLICY_VERSION } from "../lib/policy";
 import { SHOW_GOOGLE_AUTH } from "../lib/featureFlags";
 import { callApi } from "../lib/apiFetch";
@@ -42,6 +42,24 @@ export default function AuthPanel({ onShowPrivacy, onShowTerms }) {
   const [code, setCode] = useState(INVITE_CODE_FROM_URL || "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  // Checked before ACCOUNT_NEEDS_FAMILY, since a blog author also has zero
+  // family_members rows — see the comment in data/people.js's
+  // resolveAuthAndFamily() for why these two states must stay distinct.
+  if (IS_BLOG_AUTHOR) {
+    return (
+      <div className="auth-panel card">
+        <span className="eyebrow">Samskara team</span>
+        <p className="form-hint" style={{ marginTop: 8 }}>
+          You're signed in as a blog author — not a family member.
+        </p>
+        <button type="button" className="btn primary" style={{ marginTop: 10 }} onClick={() => { window.location.href = "/blog/editor"; }}>
+          Go to the Blog editor →
+        </button>
+        <button className="link-btn" style={{ marginTop: 10, display: "block" }} onClick={handleSignOut}>Sign out</button>
+      </div>
+    );
+  }
 
   if (ACCOUNT_NEEDS_FAMILY) {
     return (

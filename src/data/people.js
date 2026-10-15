@@ -82,6 +82,17 @@ async function resolveAuthAndFamily() {
   const myFamilies = await fetchMyFamilies(session.user.id);
 
   if (!myFamilies.length) {
+    // A Samskara team blog-author login (see supabase/migrations/
+    // 20261015150000_blog_posts_and_authors.sql) is deliberately never a
+    // family_members row — check that before concluding this is the
+    // generic "account not linked" state, which would otherwise offer a
+    // blog author the "create/join a family" prompt and let them
+    // accidentally spin up an empty family.
+    const { data: blogAuthorRow } = await supabase
+      .from("blog_authors").select("user_id").eq("user_id", session.user.id).maybeSingle();
+    if (blogAuthorRow) {
+      return { userId: session.user.id, familyId: DEMO_FAMILY_ID, role: null, isDemo: true, needsFamily: false, myFamilies: [], isBlogAuthor: true };
+    }
     // A real account with no family yet — a distinct state, not silently
     // treated as an anonymous demo visitor.
     return { userId: session.user.id, familyId: DEMO_FAMILY_ID, role: null, isDemo: true, needsFamily: true, myFamilies: [] };
@@ -191,6 +202,7 @@ export async function initDataLayer() {
     role: resolved.role,
     isDemo: resolved.isDemo,
     needsFamily: resolved.needsFamily,
+    isBlogAuthor: resolved.isBlogAuthor,
     myFamilies: resolved.myFamilies,
     flameStreak,
     myPersonId,
