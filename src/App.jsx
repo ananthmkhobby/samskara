@@ -247,10 +247,17 @@ export default function App() {
   // pushed alongside each entry.
   useEffect(() => {
     const initialView = viewForPath(window.location.pathname);
+    // pathForView(initialView) would collapse a real deep URL like
+    // /blog/some-post or /blog/editor down to the generic "/blog" — every
+    // OTHER view is a flat 1:1 path (pathForView(viewForPath(p)) === p
+    // already), but "blog" isn't, since BlogView.jsx manages its own
+    // list↔post↔editor sub-paths independent of this app-level router (see
+    // its own comment for why). Keep whatever the browser actually has for
+    // that one case, so a direct visit or refresh never loses the slug.
     window.history.replaceState(
       { view: initialView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null, addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null, paramparaContributeOpen: false, openBookId: null, addBookOpen: false, libraryEntryRequest: null, roomPersonId: null, chitrashaleAddSpot: null, japaLogOpen: false },
       "",
-      pathForView(initialView)
+      initialView === "blog" ? window.location.pathname : pathForView(initialView)
     );
 
     function onPopState(e) {
@@ -956,6 +963,19 @@ export default function App() {
     );
   }
 
+  // Same early-return shape as the NEEDS_LOGIN-block bypass above, so the
+  // blog looks and behaves identically whether signed in or not — without
+  // this, a signed-in visitor would get BlogView's own standalone shell
+  // rendered a second time INSIDE the normal app's TopBar/BottomBar frame
+  // below, doubling up the chrome.
+  if (view === "blog") {
+    return (
+      <Suspense fallback={null}>
+        <BlogView onNav={goTo} />
+      </Suspense>
+    );
+  }
+
   const viewGateKey = VIEW_GATE_KEYS[view];
   const moduleBlocked = viewGateKey && !isModuleEnabled(viewGateKey);
 
@@ -1006,7 +1026,8 @@ export default function App() {
         {view === "privacy" && <PrivacyPolicyView />}
         {view === "terms" && <TermsOfServiceView />}
         {view === "connectWhatsapp" && <ConnectWhatsAppView token={WHATSAPP_LINK_TOKEN_FROM_URL} onDone={() => goTo("cover")} />}
-        {view === "blog" && <BlogView onNav={goTo} />}
+        {/* view === "blog" is handled by its own early return above this
+            whole TopBar/BottomBar frame — never reaches here. */}
       </main>
       <BottomBar view={view} onNav={goTo} pendingCount={pendingCount} onContribute={openContribute} />
 
