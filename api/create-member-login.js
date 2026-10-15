@@ -2,6 +2,13 @@
 // login for someone with no email (most elders, per the request this came
 // from), instead of the invite-link flow which requires one. Server-side
 // only: holds the service-role key needed for auth.admin.createUser.
+//
+// Also handles creating a Samskara blog-author login (`kind: "blog"`) —
+// originally its own api/create-blog-author.js, folded in here to stay
+// under Vercel Hobby's 12-serverless-function-per-deployment cap (hit
+// 2026-10-15 adding the blog feature; see docs/CHANGELOG.md). Same
+// synthetic-email + auth.admin.createUser() mechanics either way; only the
+// auth gate and which table gets the new row differ, branched on `kind`.
 import { serviceClient, requireModerator, usernameToEmail } from "./_memberAuth.js";
 
 export default async function handler(req, res) {
@@ -10,9 +17,10 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { familyId, username, password, displayName, personId } = req.body || {};
-  if (!familyId || !username?.trim() || !password) {
-    res.status(400).json({ error: "Family, username, and password are required." });
+  const { kind, adminSecret, familyId, username, password, displayName, personId } = req.body || {};
+
+  if (!username?.trim() || !password) {
+    res.status(400).json({ error: "Username and password are required." });
     return;
   }
   if (!/^[a-z0-9._-]{3,32}$/i.test(username.trim())) {
@@ -21,6 +29,16 @@ export default async function handler(req, res) {
   }
   if (password.length < 6) {
     res.status(400).json({ error: "Password must be at least 6 characters." });
+    return;
+  }
+
+  if (kind === "blog") {
+    await createBlogAuthor(req, res, { adminSecret, username, password, displayName });
+    return;
+  }
+
+  if (!familyId) {
+    res.status(400).json({ error: "Family is required." });
     return;
   }
 
@@ -61,6 +79,50 @@ export default async function handler(req, res) {
     }
 
     await supabase.from("user_preferences").upsert({ user_id: userData.user.id, active_family_id: familyId });
+
+    res.status(200).json({ username: username.trim(), password });
+  } catch (err) {
+    res.status(500).json({ error: err.message || "Couldn't create that login." });
+  }
+}
+
+// Superadmin-secret gated (same gate as api/provision-family.js) instead of
+// requireModerator — a blog author isn't scoped to any family, so there's
+// no Head/Admin to delegate this to.
+async function createBlogAuthor(req, res, { adminSecret, username, password, displayName }) {
+  const secret = process.env.ADMIN_PROVISION_SECRET;
+  if (!secret) {
+    res.status(500).json({ error: "Not configured on this deployment — missing ADMIN_PROVISION_SECRET." });
+    return;
+  }
+  if (adminSecret !== secret) {
+    res.status(401).json({ error: "Incorrect admin secret." });
+    return;
+  }
+  if (!displayName?.trim()) {
+    res.status(400).json({ error: "Display name is required." });
+    return;
+  }
+
+  const supabase = serviceClient();
+  const email = usernameToEmail(username);
+  try {
+    const { data: userData, error: userErr } = await supabase.auth.admin.createUser({
+      email, password, email_confirm: true,
+    });
+    if (userErr) {
+      throw new Error(userErr.message.includes("already been registered")
+        ? `The username "${username.trim()}" is already taken — try another.`
+        : userErr.message);
+    }
+
+    const { error: authorErr } = await supabase.from("blog_authors").insert({
+      user_id: userData.user.id, display_name: displayName.trim(),
+    });
+    if (authorErr) {
+      await supabase.auth.admin.deleteUser(userData.user.id);
+      throw new Error(authorErr.message);
+    }
 
     res.status(200).json({ username: username.trim(), password });
   } catch (err) {

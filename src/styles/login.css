@@ -75,6 +75,14 @@
   line-height: 1.22; color: #FBF4E2;
 }
 .login-hero-sub { margin: 16px 0 0; font-size: 15px; line-height: 1.6; color: rgba(251,244,226,.82); max-width: 460px; }
+.login-hero-blog-cta {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 22px; padding: 11px 20px;
+  border-radius: 999px; border: 1px solid rgba(251,244,226,.5); background: rgba(251,244,226,.08);
+  color: #FBF4E2; font-size: 13.5px; font-weight: 700; font-family: inherit; cursor: pointer;
+  backdrop-filter: blur(4px); transition: background .15s ease, transform .15s ease;
+}
+.login-hero-blog-cta:hover { background: rgba(251,244,226,.18); transform: translateY(-1px); }
+.login-hero-blog-cta .login-hero-blog-cta-icon { font-size: 15px; }
 
 .login-form-pane {
   position: relative; flex: 1 1 440px; min-width: 320px; display: flex; flex-direction: column;

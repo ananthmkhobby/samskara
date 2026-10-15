@@ -44,6 +44,10 @@ export default function LoginPage({ onShowHelp, onShowPrivacy, onShowTerms }) {
           <p className="login-hero-sub">
             Samskara is where you finally do — the scooter, the kitchen, the everyday things that made up a life, kept for good this time.
           </p>
+          <button type="button" className="login-hero-blog-cta" onClick={() => { window.location.href = "/blog"; }}>
+            <span className="login-hero-blog-cta-icon" aria-hidden="true">📖</span>
+            Read our stories on the Blog →
+          </button>
         </div>
       </div>
 
@@ -56,6 +60,7 @@ export default function LoginPage({ onShowHelp, onShowPrivacy, onShowTerms }) {
           >
             Try a live demo →
           </button>
+          <button className="login-help-link" onClick={() => { window.location.href = "/blog"; }}>Blog</button>
           <button className="login-help-link" onClick={onShowHelp}>Help</button>
         </div>
         <div className="login-form-inner">

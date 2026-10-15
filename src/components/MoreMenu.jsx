@@ -45,6 +45,8 @@ export default function MoreMenu({ onNav, canModerate }) {
       {/* Until now these were only linked from the sign-in screen, so anyone
           already signed in had no way to reach them at all. */}
       <div className="more-menu-legal">
+        <button type="button" onClick={() => onNav("blog")}>Blog</button>
+        <span aria-hidden="true">·</span>
         <button type="button" onClick={() => onNav("privacy")}>Privacy Policy</button>
         <span aria-hidden="true">·</span>
         <button type="button" onClick={() => onNav("terms")}>Terms of Use</button>

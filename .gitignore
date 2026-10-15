@@ -32,3 +32,8 @@ backups/
 # Data-migration output (new account passwords, migration reports) — real
 # secrets and real family data, same reasoning as backups/ above.
 migration-output/
+
+# Standing admin reference material (credentials, support notes) — same
+# reasoning as migration-output/ above, but longer-lived rather than a
+# one-time migration artifact.
+admin-private/
