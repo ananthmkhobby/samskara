@@ -1,0 +1,24 @@
+name: CI
+
+# Runs on every push to dev/main and every PR targeting them — the required
+# status check referenced in docs/GIT_WORKFLOW.md. Lint + build only today;
+# `npm test` is added to this job the day an automated suite exists
+# (see the gaps list in docs/SDLC.md).
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build

@@ -28,3 +28,7 @@ dev-dist
 # Local backup snapshots — real family names, photos and recordings.
 # This repository is public; these must never be committed.
 backups/
+
+# Data-migration output (new account passwords, migration reports) — real
+# secrets and real family data, same reasoning as backups/ above.
+migration-output/
