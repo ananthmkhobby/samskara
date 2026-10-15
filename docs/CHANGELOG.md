@@ -11,6 +11,19 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.15.3 — The Samskara Blog ships to production
+
+A new public, team-authored blog ([PR #3](https://github.com/ananthmkhobby/samskara/pull/3)) — built to drive traffic, separate from any family's data:
+
+- `blog_authors` + `blog_posts`, RLS via a new `is_blog_team()` helper (no family scoping at all — a blog author has zero `family_members` rows by design). A genuinely public `blog-media` Storage bucket.
+- Team logins via the existing admin-created-login pattern, folded into `api/create-member-login.js` (`kind: "blog"`) after the original separate endpoint pushed this project to 13 serverless functions — one over Vercel Hobby's 12-function cap.
+- `/blog/editor` (Tiptap, image/audio/video upload, reached directly by URL like `/superadmin`), public `/blog` (search, author/date filtering) and `/blog/:slug` (server-rendered `<title>`/meta/OG tags via `api/blog-post.js`, browser-native read-aloud with adjustable speed).
+- Four discovery points for every visitor, logged in or not: a persistent top-bar icon, a dismissible Home dashboard card, the More-menu footer, and a hero CTA on the login page.
+
+**Pre-merge step worth recording**: the schema migration was applied to production via `supabase db query --linked` (the Management API) rather than `supabase db push`, since this session had no production database password — only the CLI's own authenticated access and the Supabase service-role key. Verified the tables/bucket exist and the migration is recorded in `supabase_migrations.schema_migrations` before the code merge, so the deploy wouldn't hit a missing-table error.
+
+Verified post-deploy: production build `Ready`; `oursamskara.com/blog` loads correctly, empty state as expected (no posts published yet).
+
 ## v2026.10.15.2 — Documentation release: audit bundle, released via standard PR
 
 Promoted `dev` → `main` ([PR #2](https://github.com/ananthmkhobby/samskara/pull/2))
