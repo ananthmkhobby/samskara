@@ -1,4 +1,4 @@
-import { TreeIcon, VaultIcon, GalleryIcon, SearchIcon, MoreIcon, MenuIcon, BellIcon, DiyaGlyph } from "./NavIcons";
+import { TreeIcon, VaultIcon, GalleryIcon, SearchIcon, MoreIcon, MenuIcon, BellIcon, BlogIcon, DiyaGlyph } from "./NavIcons";
 import { IS_DEMO } from "../data/session";
 import FamilySwitcher from "./FamilySwitcher";
 
@@ -40,6 +40,11 @@ export default function TopBar({ view, onNav, pendingCount, unseenCount = 0, onJ
           <BellIcon />
           {unseenCount > 0 && <span className="badge-count" style={{ top: -3, right: -3 }}>{unseenCount}</span>}
         </button>
+        {/* A persistent, always-visible shortcut — the footer link in More
+            and the Home dashboard's dismissible promo card are the other
+            two discovery points, but neither is on screen all the time the
+            way this top bar is. */}
+        <button className="icon-only" style={{ width: 34, height: 34 }} onClick={() => onNav("blog")} aria-label="Blog"><BlogIcon /></button>
         <button className="icon-only" style={{ width: 34, height: 34 }} onClick={() => onNav("help")} aria-label="Help">?</button>
         {IS_DEMO ? (
           <button className="btn small ghost" onClick={() => {
