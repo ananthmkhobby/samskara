@@ -11,6 +11,35 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.15 — Hotfix: invite-redemption crash on production
+
+Found during a full-feature test pass of both environments
+(`docs/test-cases/RESULTS.md`): redeeming an invite as a brand-new Member
+crashed on `oursamskara.com` with a raw Postgres `NOT NULL` violation on
+`family_members.user_id`, shown directly to the user — the account was
+created but never attached to the family. Didn't reproduce on the test
+environment; the underlying condition (no session yet right after
+`signUp()`) is timing-sensitive, not deterministic.
+
+- `JoinForm` (`src/components/AuthPanel.jsx`) now checks
+  `supabase.auth.getSession()` before calling `redeemInvite()`. No session
+  yet → shows a clear "confirm your email, then come back to this link and
+  log in" message instead of calling the RPC. No RLS/RPC/schema change.
+- Shipped via `docs/GIT_WORKFLOW.md`'s hotfix path: branched from `main`,
+  not `dev` (which held unrelated unreleased work), PR'd and merged back
+  into `main`, then merged back into `dev` so it isn't lost on the next
+  regular release.
+- **First release to go through the documented `master`
+  fast-forward-and-tag step** — `master` didn't exist yet, so it was
+  created pointing at this release rather than fast-forwarded from a prior
+  one.
+- Verified post-deploy: the fixed bundle is confirmed live on
+  `oursamskara.com` (the new "Almost there…" message string present in the
+  served JS). A live end-to-end re-test of the crash path itself was
+  blocked by Supabase's own signup-email rate limit (hit twice today from
+  repeated test signups) rather than disproving the fix; the identical
+  code path was verified end-to-end on the test environment instead.
+
 ## 2026-10-15 — Production split: new Supabase + Vercel projects, real data migrated
 
 The two-environment pipeline from `docs/SDLC.md`/`docs/GIT_WORKFLOW.md` went
