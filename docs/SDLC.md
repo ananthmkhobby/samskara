@@ -66,6 +66,18 @@ one with a plan. Current state, as of this document:
 - **Supabase Auth isn't covered by the backup script** — already known and
   documented in `docs/BACKUPS.md`; matters more now that production holds
   the real data.
+- **GitHub branch protection on `main` and `master` isn't enabled yet** —
+  decided 2026-10-15 to defer rather than overlook: for now, direct pushes
+  to either are still technically possible, relying on `docs/GIT_WORKFLOW.md`
+  being followed by discipline rather than enforced by GitHub. Enable via
+  Settings → Branches → require a PR and the CI status check before merge,
+  no force-push, no direct push — before this project has more than one
+  committer, or sooner if convenient.
+- **Test and production currently share one WhatsApp Business number**
+  (decided 2026-10-15, not an oversight) — both environments' WhatsApp
+  traffic flows through the same Twilio sender. Revisit if test traffic
+  volume ever makes this noisy, or before onboarding real production
+  families in volume.
 
 ## Roles, at this team's current size
 
