@@ -1,16 +1,20 @@
-# React + Vite
+# Samskara Vamsha Vruksha
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A living family archive — React + Vite frontend, Supabase (Postgres + Auth +
+Storage) backend, deployed on Vercel.
 
-Currently, two official plugins are available:
+```bash
+npm install
+npm run dev
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Process documentation
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+- [docs/SDLC.md](docs/SDLC.md) — how a change goes from idea to production, and what evidence each step leaves behind
+- [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) — branch model, release and rollback commands
+- [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) — test vs. production: domains, projects, what's shared and what isn't
+- [SECURITY.md](SECURITY.md) — what's in place, how to report a vulnerability
+- [docs/BACKUPS.md](docs/BACKUPS.md) — backup/restore process and its known limits
+- [docs/WHATSAPP_GUIDE.md](docs/WHATSAPP_GUIDE.md) — the WhatsApp contribution integration
+- [docs/CHANGELOG.md](docs/CHANGELOG.md) — one entry per production release
+- [docs/test-cases/](docs/test-cases/) — manual verification log for the parts of the app without automated tests yet
