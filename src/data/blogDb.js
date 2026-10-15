@@ -48,6 +48,18 @@ export async function fetchPublishedPosts() {
   return data;
 }
 
+// Atomic, anonymous-safe (see the migration for the actual trust model) —
+// increment_blog_post_likes() is a security-definer RPC grantable to
+// `anon`, so this works identically whether the reader is signed in or
+// not, matching the rest of the blog's "no login wall" design. Returns
+// the new total so the UI can update without a second fetch.
+export async function likePost(postId) {
+  const db = requireClient();
+  const { data, error } = await db.rpc("increment_blog_post_likes", { p_post_id: postId });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 export async function fetchPostBySlug(slug) {
   const db = requireClient();
   const { data, error } = await db
