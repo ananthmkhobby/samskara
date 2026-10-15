@@ -11,6 +11,28 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.15.2 — Documentation release: audit bundle, released via standard PR
+
+Promoted `dev` → `main` ([PR #2](https://github.com/ananthmkhobby/samskara/pull/2))
+through the normal (non-hotfix) release path — the first time that path
+has been exercised end-to-end through this pipeline. No application
+runtime code changed beyond what `v2026.10.15` already shipped; this
+release carries:
+
+- `docs/AUDIT_BUNDLE.md` — the full requirement-through-deployment audit
+  evidence bundle, cross-referencing every other doc in this list.
+- This changelog's own `v2026.10.15` hotfix entry, `docs/SDLC.md`,
+  `docs/GIT_WORKFLOW.md`, `docs/ENVIRONMENTS.md`, `SECURITY.md`,
+  the CI workflow and PR template, and `scripts/migrate-to-prod.mjs` —
+  all previously on `dev`/`main` only, now also on `master`/tagged.
+- Second release on the same calendar day as `v2026.10.15` — tagged
+  `v2026.10.15.2` rather than colliding; `docs/GIT_WORKFLOW.md` updated
+  with the same-day-release tagging convention this forced.
+
+Verified post-deploy: CI green (5/5) before merge; production build
+confirmed `Ready`; `oursamskara.com` loads correctly post-deploy
+(unauthenticated landing page, as expected for a docs-only release).
+
 ## v2026.10.15 — Hotfix: invite-redemption crash on production
 
 Found during a full-feature test pass of both environments

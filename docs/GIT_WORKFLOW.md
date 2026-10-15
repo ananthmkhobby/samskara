@@ -55,6 +55,10 @@ git tag v$(date +%Y.%m.%d) main
 git push origin --tags
 ```
 
+A second release on the same calendar day (it happens) needs a distinct
+tag — `git tag -l` first, and if `vYYYY.MM.DD` is already taken, append
+`.2`, `.3`, etc. (`v2026.10.15.2`).
+
 If `--ff-only` refuses, `master` has diverged from a straight line of
 releases — stop and figure out why before forcing anything; it means either
 someone pushed directly to `master` (shouldn't happen) or a release was
