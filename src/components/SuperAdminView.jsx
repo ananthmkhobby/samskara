@@ -139,6 +139,63 @@ function AdClickLogSection({ adminSecret }) {
 // gated instead of requireModerator since a blog author isn't scoped to
 // any family. This is the ONLY way a blog author account gets created —
 // no self-signup, no invite link.
+// Grants blog access to an account that already exists — a family member,
+// or anyone who self-signed-up with their own email/password — instead of
+// minting a brand-new login just for the blog. No password to generate or
+// hand over; they keep using whatever they already log in with.
+function GrantBlogAccessSection({ adminSecret }) {
+  const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState(null);
+
+  async function submit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    setResult(null);
+    try {
+      const data = await callApi("/api/create-member-login", { kind: "blog", mode: "grant", adminSecret, email, displayName });
+      setResult(data);
+      setEmail("");
+      setDisplayName("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ maxWidth: 460, padding: 20, marginTop: 16 }}>
+      <h4 style={{ marginTop: 0 }}>Add an existing account to the blog team</h4>
+      <p className="form-hint" style={{ marginTop: 0 }}>
+        For someone who already has a login — a family member, or anyone who signed up themselves. Finds their account by email and flips on blog access; they keep their existing password, nothing new to hand them.
+      </p>
+      <form onSubmit={submit}>
+        <div className="form-row">
+          <label>Their email (whatever they already sign in with)</label>
+          <input type="email" required placeholder="them@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <div className="form-row">
+          <label>Display name (shown as the post's byline, optional — defaults to their email)</label>
+          <input type="text" placeholder="e.g. Priya Raghavan" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+        </div>
+        {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+        <button type="submit" className="btn primary small" disabled={busy} style={{ marginTop: 8 }}>{busy ? "Granting…" : "Grant blog access"}</button>
+      </form>
+      {result && (
+        <p className="form-hint" style={{ marginTop: 12 }}>
+          {result.alreadyOnTeam
+            ? <>{result.email} was already on the blog team — nothing to do.</>
+            : <>Done — {result.email} can now log in as usual and reach <strong>oursamskara.com/blog/editor</strong>.</>}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function BlogTeamSection({ adminSecret }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -175,45 +232,48 @@ function BlogTeamSection({ adminSecret }) {
   }
 
   return (
-    <div className="card" style={{ maxWidth: 460, padding: 20, marginTop: 24 }}>
-      <h4 style={{ marginTop: 0 }}>Blog team</h4>
-      <p className="form-hint" style={{ marginTop: 0 }}>
-        Create a login for a Samskara blog author (e.g. a ScanJunction collaborator) — no access to any family's data, only the public blog's editor at /blog/editor.
-      </p>
-      <form onSubmit={submit}>
-        <div className="form-row">
-          <label>Username</label>
-          <input type="text" required placeholder="e.g. priya-sj" value={username} onChange={(e) => setUsername(e.target.value)} />
-        </div>
-        <div className="form-row">
-          <label>Password</label>
-          <input type="text" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
-        </div>
-        <div className="form-row">
-          <label>Display name (shown as the post's byline)</label>
-          <input type="text" required placeholder="e.g. Priya Raghavan" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-        </div>
-        {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
-        <button type="submit" className="btn primary small" disabled={busy} style={{ marginTop: 8 }}>{busy ? "Creating…" : "Create login"}</button>
-      </form>
-      {result && (
-        <div style={{ marginTop: 14 }}>
-          <div className="tag-row" style={{ alignItems: "center", marginBottom: 8 }}>
-            <span style={{ minWidth: 90, fontSize: 13, color: "var(--ink-faint)" }}>Username</span>
-            <input type="text" readOnly value={result.username} style={{ flex: 1 }} />
-            <button type="button" className="btn small ghost" onClick={() => copy(result.username, "username")}>{copied === "username" ? "Copied!" : "Copy"}</button>
+    <>
+      <div className="card" style={{ maxWidth: 460, padding: 20, marginTop: 24 }}>
+        <h4 style={{ marginTop: 0 }}>Blog team — create a new login</h4>
+        <p className="form-hint" style={{ marginTop: 0 }}>
+          For someone with no account at all (e.g. a ScanJunction collaborator with no email they want to use here) — no access to any family's data, only the public blog's editor at /blog/editor. If they already have a login, use "Add an existing account" below instead — no new password needed.
+        </p>
+        <form onSubmit={submit}>
+          <div className="form-row">
+            <label>Username</label>
+            <input type="text" required placeholder="e.g. priya-sj" value={username} onChange={(e) => setUsername(e.target.value)} />
           </div>
-          <div className="tag-row" style={{ alignItems: "center" }}>
-            <span style={{ minWidth: 90, fontSize: 13, color: "var(--ink-faint)" }}>Password</span>
-            <input type="text" readOnly value={result.password} style={{ flex: 1 }} />
-            <button type="button" className="btn small ghost" onClick={() => copy(result.password, "password")}>{copied === "password" ? "Copied!" : "Copy"}</button>
+          <div className="form-row">
+            <label>Password</label>
+            <input type="text" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
-          <p className="form-hint">
-            Hand these to them directly. They log in at the normal login screen using "No email? Log in with username", then go to <strong>oursamskara.com/blog/editor</strong>.
-          </p>
-        </div>
-      )}
-    </div>
+          <div className="form-row">
+            <label>Display name (shown as the post's byline)</label>
+            <input type="text" required placeholder="e.g. Priya Raghavan" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+          </div>
+          {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+          <button type="submit" className="btn primary small" disabled={busy} style={{ marginTop: 8 }}>{busy ? "Creating…" : "Create login"}</button>
+        </form>
+        {result && (
+          <div style={{ marginTop: 14 }}>
+            <div className="tag-row" style={{ alignItems: "center", marginBottom: 8 }}>
+              <span style={{ minWidth: 90, fontSize: 13, color: "var(--ink-faint)" }}>Username</span>
+              <input type="text" readOnly value={result.username} style={{ flex: 1 }} />
+              <button type="button" className="btn small ghost" onClick={() => copy(result.username, "username")}>{copied === "username" ? "Copied!" : "Copy"}</button>
+            </div>
+            <div className="tag-row" style={{ alignItems: "center" }}>
+              <span style={{ minWidth: 90, fontSize: 13, color: "var(--ink-faint)" }}>Password</span>
+              <input type="text" readOnly value={result.password} style={{ flex: 1 }} />
+              <button type="button" className="btn small ghost" onClick={() => copy(result.password, "password")}>{copied === "password" ? "Copied!" : "Copy"}</button>
+            </div>
+            <p className="form-hint">
+              Hand these to them directly. They log in at the normal login screen using "No email? Log in with username", then go to <strong>oursamskara.com/blog/editor</strong>.
+            </p>
+          </div>
+        )}
+      </div>
+      <GrantBlogAccessSection adminSecret={adminSecret} />
+    </>
   );
 }
 
