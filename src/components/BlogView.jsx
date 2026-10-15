@@ -127,6 +127,13 @@ function BlogList({ onOpen }) {
         <span className="eyebrow">Samskara</span>
         <h1>The Blog</h1>
         <p>Stories about keeping a family's record — and the ordinary things worth keeping too.</p>
+        {/* Visible to every reader (harmless either way — the editor itself
+            checks real blog-team membership via RLS), this is just the
+            discoverability path: a team member browsing the public blog
+            shouldn't need a bookmarked URL to find their own editor. */}
+        <button type="button" className="blog-team-link" onClick={() => { window.location.href = "/blog/editor"; }}>
+          Samskara team? Write a post →
+        </button>
       </div>
 
       {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
