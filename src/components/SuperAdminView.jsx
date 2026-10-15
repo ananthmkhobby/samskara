@@ -133,12 +133,12 @@ function AdClickLogSection({ adminSecret }) {
   );
 }
 
-// Creates a Samskara blog-author login — same shape as the family-side
-// "Create a login without email" tool (api/create-member-login.js), but
-// hitting api/create-blog-author.js, which inserts into blog_authors
-// instead of family_members. This is the ONLY way a blog author account
-// gets created — no self-signup, no invite link (see docs/AUDIT_BUNDLE.md
-// if that decision's reasoning needs re-checking later).
+// Creates a Samskara blog-author login — api/create-member-login.js's
+// `kind: "blog"` branch (folded into that one endpoint rather than its own
+// file, to stay under Vercel Hobby's 12-function cap), superadmin-secret
+// gated instead of requireModerator since a blog author isn't scoped to
+// any family. This is the ONLY way a blog author account gets created —
+// no self-signup, no invite link.
 function BlogTeamSection({ adminSecret }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -154,7 +154,7 @@ function BlogTeamSection({ adminSecret }) {
     setError("");
     setResult(null);
     try {
-      const data = await callApi("/api/create-blog-author", { adminSecret, username, password, displayName });
+      const data = await callApi("/api/create-member-login", { kind: "blog", adminSecret, username, password, displayName });
       setResult(data);
       setUsername("");
       setPassword("");
