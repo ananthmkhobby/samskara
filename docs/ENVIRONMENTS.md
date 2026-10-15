@@ -38,6 +38,28 @@ production Supabase project gets created in the first place, and it's how
 the two stay structurally identical even though their data diverges
 completely. See `docs/GIT_WORKFLOW.md` for when schema changes go out.
 
+## A real gotcha, already hit and fixed (2026-10-15)
+
+`samskara-koaham.vercel.app` was originally set up as a loose `vercel alias
+set` pointer, not a domain registered on the project. A registered domain
+(like `oursamskara.com`) auto-follows every new Production deployment
+forever; a loose alias is a static pointer that does **not** — it silently
+keeps serving whatever deployment it was last pointed at, even after the
+project's Production Branch changes and a genuinely new Production deploy
+goes out. This is exactly what happened when `samskara`'s Production Branch
+was switched to `dev`: the branch-tracking setting was correct and new
+Production deploys built correctly, but the domain itself kept serving a
+two-day-old build until this was caught and fixed.
+
+**Fixed** by registering it as a proper project domain via the API (the
+same mechanism the dashboard's "Add Domain" uses), so it now behaves
+exactly like `oursamskara.com` — auto-follows Production, no manual
+re-aliasing ever needed again. Lesson for next time: after any Vercel
+domain/alias setup, confirm via `GET /v9/projects/<id>/domains/<name>`
+that `verified: true` comes back — a 404 there means it's just a loose
+alias, not a real tracked domain, regardless of how normal it looks in a
+browser.
+
 ## What's deliberately different
 
 - **Supabase plan**: test can stay on Free; production is Pro (daily
