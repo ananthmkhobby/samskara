@@ -94,13 +94,32 @@ function ReadAloudBar({ title, textRef }) {
   );
 }
 
+const SORTS = [
+  { key: "newest", label: "Newest first" },
+  { key: "oldest", label: "Oldest first" },
+];
+
 function BlogList({ onOpen }) {
   const [posts, setPosts] = useState(null);
   const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [author, setAuthor] = useState("all");
+  const [sort, setSort] = useState("newest");
 
   useEffect(() => {
     fetchPublishedPosts().then(setPosts).catch((err) => setError(err.message));
   }, []);
+
+  const authors = posts ? [...new Set(posts.map((p) => p.author_display_name))].sort() : [];
+
+  const q = query.trim().toLowerCase();
+  let visible = posts || [];
+  if (author !== "all") visible = visible.filter((p) => p.author_display_name === author);
+  if (q) visible = visible.filter((p) => p.title.toLowerCase().includes(q) || (p.excerpt || "").toLowerCase().includes(q));
+  visible = [...visible].sort((a, b) => {
+    const diff = new Date(a.published_at) - new Date(b.published_at);
+    return sort === "newest" ? -diff : diff;
+  });
 
   return (
     <div className="blog-list">
@@ -109,13 +128,42 @@ function BlogList({ onOpen }) {
         <h1>The Blog</h1>
         <p>Stories about keeping a family's record — and the ordinary things worth keeping too.</p>
       </div>
+
       {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
       {!posts && !error && <p className="form-hint">Loading…</p>}
+
+      {posts && posts.length > 0 && (
+        <div className="blog-filters">
+          <input
+            type="search" className="blog-search" placeholder="Search posts…"
+            value={query} onChange={(e) => setQuery(e.target.value)}
+          />
+          <div className="blog-filter-row">
+            <select value={author} onChange={(e) => setAuthor(e.target.value)} aria-label="Filter by author">
+              <option value="all">All authors</option>
+              {authors.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort by date">
+              {SORTS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+            </select>
+          </div>
+        </div>
+      )}
+
       {posts && posts.length === 0 && <p className="form-hint">Nothing published yet — check back soon.</p>}
+      {posts && posts.length > 0 && visible.length === 0 && <p className="form-hint">No posts match that search.</p>}
+
       <div className="blog-grid">
-        {posts && posts.map((p) => (
+        {visible.map((p) => (
           <button key={p.id} type="button" className="blog-card" onClick={() => onOpen(p.slug)}>
-            {p.cover_image_path && <img className="blog-card-cover" src={blogMediaUrl(p.cover_image_path)} alt="" />}
+            <div className="blog-card-cover-wrap">
+              {p.cover_image_path ? (
+                <img className="blog-card-cover" src={blogMediaUrl(p.cover_image_path)} alt="" />
+              ) : (
+                <div className="blog-card-cover blog-card-cover-placeholder" aria-hidden="true">संस्कार</div>
+              )}
+              {p.language && <span className="blog-card-lang">{p.language.toUpperCase()}</span>}
+            </div>
             <div className="blog-card-body">
               <h3>{p.title}</h3>
               {p.excerpt && <p className="blog-card-excerpt">{p.excerpt}</p>}
