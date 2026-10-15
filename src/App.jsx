@@ -51,7 +51,7 @@ import ConsentGate from "./components/ConsentGate";
 import { PEOPLE, INITIAL_CONTRIBUTIONS, BOOKS, BOOK_OWNERSHIP, BOOK_READERS, PRACTICE_LOGS, addPerson, addBook, makeUniquePersonId } from "./data/people";
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
 import { verifiedObjectsBySpot, hasAnyRoomObjects } from "./lib/chitrashale";
-import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, NEEDS_LOGIN, NEEDS_CONSENT, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL, isModuleEnabled } from "./data/session";
+import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, IS_BLOG_AUTHOR, NEEDS_LOGIN, NEEDS_CONSENT, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL, isModuleEnabled } from "./data/session";
 import { insertContribution, updateContribution, updateContributionStatus, deleteContribution as dbDeleteContribution, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus, insertPracticeLog } from "./data/familyDb";
 import { resolveMediaUrl, uploadFamilyMedia } from "./lib/mediaUpload";
 import { parseParamparaContent } from "./lib/parampara";
@@ -952,6 +952,37 @@ export default function App() {
   // not render behind it, or "they saw it" becomes arguable.
   if (needsConsent) {
     return <ConsentGate userId={CURRENT_USER_ID} onAccepted={() => setNeedsConsent(false)} />;
+  }
+
+  // A blog-author session resolves isDemo:true (see data/people.js) so the
+  // rest of the app has somewhere harmless to point at — but that meant
+  // this gate used to only ever render as a small card at the very BOTTOM
+  // of the full demo family's dashboard (AuthPanel, embedded inside
+  // HomeDashboard), below a long scroll of unrelated content. A real team
+  // member reported exactly that: logged in, saw no sign the editor
+  // existed. This is now a real top-level gate, same tier as needsConsent,
+  // so it's the first and only thing a blog author sees — never the demo
+  // family content at all. Doesn't apply once they've actually navigated
+  // into /blog itself (reading or the editor), which must still render
+  // normally for them.
+  if (IS_BLOG_AUTHOR && view !== "blog") {
+    return (
+      <div className="login-page login-page-scroll">
+        <div className="login-help-wrap">
+          <div className="auth-panel card" style={{ maxWidth: 420, margin: "0 auto" }}>
+            <span className="eyebrow">Samskara team</span>
+            <h3 style={{ marginTop: 10 }}>You're signed in as a blog author</h3>
+            <p className="form-hint">Not a family member — this account only reaches the public blog and its editor.</p>
+            <button type="button" className="btn primary" style={{ marginTop: 14 }} onClick={() => { window.location.href = "/blog/editor"; }}>
+              Go to the Blog editor →
+            </button>
+            <button className="link-btn" style={{ marginTop: 10, display: "block" }} onClick={async () => { await supabase?.auth.signOut(); window.location.reload(); }}>
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (showFamilySplash && (CURRENT_FAMILY_LOGO_URL || CURRENT_FAMILY_TAGLINE)) {
