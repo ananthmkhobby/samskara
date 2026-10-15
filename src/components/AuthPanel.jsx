@@ -294,6 +294,12 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
   // already consented when it was made, and re-asking at every sign-in
   // teaches people to click through without reading.
   const [agreed, setAgreed] = useState(false);
+  // Set instead of reloading when a brand-new signup leaves no session
+  // behind (email confirmation required on this project) — redeemInvite()
+  // needs a real auth.uid() server-side, so it must never be called before
+  // one exists. Shown in place of the form rather than as an error, since
+  // nothing actually failed yet.
+  const [pendingConfirmation, setPendingConfirmation] = useState(false);
 
   async function submit(e) {
     e.preventDefault();
@@ -306,13 +312,24 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
             email: email.trim(), password, options: { data: { display_name: name.trim() || undefined } },
           });
           if (signUpErr) throw signUpErr;
+          // getSession() (not getUser()) is the only reliable way to tell
+          // whether the client actually holds a usable JWT right now — a
+          // freshly-resolved signUp() doesn't guarantee one yet (e.g. this
+          // project requiring email confirmation, or the SDK not having
+          // finished attaching the new session internally). redeemInvite()
+          // below depends on auth.uid() being set server-side; calling it
+          // without a confirmed session here is exactly what used to
+          // produce a raw "null value in column user_id" database error
+          // instead of a clear message.
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            setPendingConfirmation(true);
+            setBusy(false);
+            return;
+          }
           // Recorded here so consent is on file from the moment the account
-          // exists. If this write fails (or the project ever turns email
-          // confirmation back on, leaving no session yet), the boot-time
-          // consent gate catches them instead — hence the swallowed error
-          // rather than blocking the join over it.
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) await recordConsent(user.id, POLICY_VERSION).catch(() => {});
+          // exists.
+          await recordConsent(session.user.id, POLICY_VERSION).catch(() => {});
         } else {
           const { error: signInErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
           if (signInErr) throw signInErr;
@@ -324,6 +341,17 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
       setError(err.message);
       setBusy(false);
     }
+  }
+
+  if (pendingConfirmation) {
+    return (
+      <div className="form-row">
+        <p className="form-hint">
+          Almost there — we've sent a confirmation link to <strong>{email.trim()}</strong>. Click it, then come back to{" "}
+          <strong>this same invite link</strong> and log in to finish joining the family.
+        </p>
+      </div>
+    );
   }
 
   return (
