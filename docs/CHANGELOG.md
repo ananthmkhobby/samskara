@@ -11,6 +11,15 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.15.5 — Fix: blog-author sign-in card was unreachable without scrolling
+
+Reported live from Srichand's real account: logged in, saw no editor, no sign the account worked. Root cause: the "signed in as a blog author" message only ever rendered via `AuthPanel`, embedded at the very bottom of `HomeDashboard` — below a full scroll of the public demo family's content (a blog-author session resolves `isDemo: true`, so the rest of the app has somewhere harmless to point at). Backend was correct the whole time — account, zero family rows, RLS self-read — confirmed directly before touching any code.
+
+- Promoted to a real top-level gate in `App.jsx`, same tier as `needsConsent` — a blog author now sees this immediately, never the demo content, with a direct button to `/blog/editor`.
+- Added a quiet "Samskara team? Write a post →" link on the public `/blog` page itself, so a team member browsing their own blog doesn't need a bookmarked URL to find the editor.
+
+Verified post-deploy: logged in as Srichand's actual production account — the gate now appears immediately, confirmed before telling him it was fixed.
+
 ## v2026.10.15.4 — Grant blog access to an existing account, no new password
 
 [PR #4](https://github.com/ananthmkhobby/samskara/pull/4): `api/create-member-login.js` gets a `mode: "grant"` branch alongside the original `kind: "blog"` create-a-new-login path — looks up an existing account by email and adds it to `blog_authors` directly, instead of always minting a new username/password. For a family member, or anyone who self-signs-up, this removes the credential-generation step entirely; they keep whatever login they already have. New "Add an existing account to the blog team" form in SuperAdmin, alongside the original.

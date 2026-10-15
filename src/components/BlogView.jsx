@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, lazy, Suspense } from "react";
-import { fetchPublishedPosts, fetchPostBySlug, blogMediaUrl } from "../data/blogDb";
+import { fetchPublishedPosts, fetchPostBySlug, blogMediaUrl, likePost } from "../data/blogDb";
 import "../styles/blog.css";
 
 // Only the Samskara team ever needs Tiptap's weight (editor, starter-kit,
@@ -90,6 +90,121 @@ function ReadAloudBar({ title, textRef }) {
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+const LIKED_KEY = "vamsha.likedBlogPosts";
+
+function getLikedIds() {
+  try { return new Set(JSON.parse(localStorage.getItem(LIKED_KEY) || "[]")); } catch { return new Set(); }
+}
+function rememberLiked(id) {
+  try {
+    const ids = getLikedIds();
+    ids.add(id);
+    localStorage.setItem(LIKED_KEY, JSON.stringify([...ids]));
+  } catch { /* storage unavailable */ }
+}
+
+// No accounts for ordinary readers (the blog has no login wall at all), so
+// there's no real identity to dedupe a like against server-side — see the
+// migration's own comment for the honor-system reasoning. This just stops
+// an accidental double-click/tap from counting twice in the SAME browser,
+// nothing stronger.
+function LikeButton({ postId, initialCount }) {
+  const [count, setCount] = useState(initialCount);
+  const [liked, setLiked] = useState(() => getLikedIds().has(postId));
+  const [busy, setBusy] = useState(false);
+
+  async function handleLike() {
+    if (liked || busy) return;
+    setBusy(true);
+    setLiked(true);
+    setCount((c) => c + 1);
+    rememberLiked(postId);
+    try {
+      const serverCount = await likePost(postId);
+      if (typeof serverCount === "number") setCount(serverCount);
+    } catch {
+      // Keep the optimistic bump — losing a like over a flaky request
+      // isn't worth confusing the reader with a rollback.
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button type="button" className={`blog-like-btn${liked ? " liked" : ""}`} onClick={handleLike} disabled={liked} aria-pressed={liked}>
+      <span className="blog-like-icon" aria-hidden="true">{liked ? "❤️" : "🤍"}</span>
+      <span>{count > 0 ? count : ""} {liked ? "Liked" : "Like this"}</span>
+    </button>
+  );
+}
+
+// Native share sheet where it exists (most mobile browsers); every
+// browser — mobile or not — still gets Copy link and the quick social
+// links, so "share outside Samskara" always has a real path.
+function ShareRow({ title, url }) {
+  const [copied, setCopied] = useState(false);
+  const canNativeShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+
+  async function nativeShare() {
+    try { await navigator.share({ title, url }); } catch { /* cancelled — nothing to do */ }
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard unavailable */ }
+  }
+
+  const enc = encodeURIComponent;
+  const links = [
+    { key: "whatsapp", label: "WhatsApp", href: `https://wa.me/?text=${enc(`${title} — ${url}`)}` },
+    { key: "x", label: "X", href: `https://twitter.com/intent/tweet?text=${enc(title)}&url=${enc(url)}` },
+    { key: "facebook", label: "Facebook", href: `https://www.facebook.com/sharer/sharer.php?u=${enc(url)}` },
+    { key: "linkedin", label: "LinkedIn", href: `https://www.linkedin.com/sharing/share-offsite/?url=${enc(url)}` },
+  ];
+
+  return (
+    <div className="blog-share-row">
+      <span className="blog-share-label">Share</span>
+      {canNativeShare && <button type="button" className="blog-share-btn" onClick={nativeShare}>Share →</button>}
+      {links.map((l) => (
+        <a key={l.key} className="blog-share-btn" href={l.href} target="_blank" rel="noopener noreferrer">{l.label}</a>
+      ))}
+      <button type="button" className="blog-share-btn" onClick={copyLink}>{copied ? "Copied!" : "Copy link"}</button>
+    </div>
+  );
+}
+
+// A thin progress bar across the top of the viewport, filling as the
+// reader scrolls through the article body — the one "reading experience"
+// touch that actually needs JS rather than just typography/CSS.
+function ReadingProgress({ targetRef }) {
+  const [pct, setPct] = useState(0);
+
+  useEffect(() => {
+    function onScroll() {
+      const el = targetRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const total = rect.height - window.innerHeight;
+      const scrolled = -rect.top;
+      const ratio = total > 0 ? Math.min(1, Math.max(0, scrolled / total)) : 0;
+      setPct(Math.round(ratio * 100));
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [targetRef]);
+
+  return (
+    <div className="blog-reading-progress" aria-hidden="true">
+      <div className="blog-reading-progress-fill" style={{ width: `${pct}%` }} />
     </div>
   );
 }
@@ -187,6 +302,7 @@ function BlogPost({ slug, onBack }) {
   const [post, setPost] = useState(null);
   const [error, setError] = useState("");
   const bodyRef = useRef(null);
+  const articleRef = useRef(null);
 
   useEffect(() => {
     setPost(null);
@@ -208,20 +324,29 @@ function BlogPost({ slug, onBack }) {
   if (!post) return <p className="form-hint">Loading…</p>;
 
   const coverUrl = post.cover_image_path ? blogMediaUrl(post.cover_image_path) : null;
+  const shareUrl = `${window.location.origin}/blog/${encodeURIComponent(post.slug)}`;
 
   return (
-    <article className="blog-post">
-      <button type="button" className="link-btn" onClick={onBack}>← Back to Blog</button>
-      {coverUrl && <img className="blog-post-cover" src={coverUrl} alt="" />}
-      <h1>{post.title}</h1>
-      <p className="blog-post-meta">By {post.author_display_name} · {formatDate(post.published_at)}</p>
-      <ReadAloudBar title={post.title} textRef={bodyRef} />
-      {/* Trusted markup — only blog_authors (a small, admin-created team,
-          see supabase/migrations/20261015150000_blog_posts_and_authors.sql)
-          can ever write body_html, via Tiptap's own serializer, never
-          arbitrary visitor input. */}
-      <div ref={bodyRef} className="blog-post-body" dangerouslySetInnerHTML={{ __html: post.body_html }} />
-    </article>
+    <>
+      <ReadingProgress targetRef={articleRef} />
+      <article className="blog-post blog-post--book" ref={articleRef}>
+        <button type="button" className="link-btn" onClick={onBack}>← Back to Blog</button>
+        {coverUrl && <img className="blog-post-cover" src={coverUrl} alt="" />}
+        <h1>{post.title}</h1>
+        <p className="blog-post-meta">By {post.author_display_name} · {formatDate(post.published_at)}</p>
+        <ReadAloudBar title={post.title} textRef={bodyRef} />
+        <div className="blog-post-divider" aria-hidden="true"><span>॥</span></div>
+        {/* Trusted markup — only blog_authors (a small, admin-created team,
+            see supabase/migrations/20261015150000_blog_posts_and_authors.sql)
+            can ever write body_html, via Tiptap's own serializer, never
+            arbitrary visitor input. */}
+        <div ref={bodyRef} className="blog-post-body blog-post-body--dropcap" dangerouslySetInnerHTML={{ __html: post.body_html }} />
+        <div className="blog-post-footer">
+          <LikeButton postId={post.id} initialCount={post.like_count || 0} />
+          <ShareRow title={post.title} url={shareUrl} />
+        </div>
+      </article>
+    </>
   );
 }
 

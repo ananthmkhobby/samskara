@@ -245,7 +245,19 @@ function SignUpForm({ email, setEmail, password, setPassword, name, setName, bus
     setError("");
     try {
       const { error: signUpErr } = await supabase.auth.signUp({
-        email: email.trim(), password, options: { data: { display_name: name.trim() || undefined } },
+        email: email.trim(), password, options: {
+          data: { display_name: name.trim() || undefined },
+          // Without this, Supabase falls back to the project's own Auth
+          // "Site URL" setting for the confirmation email's link — which is
+          // easy to leave at its local-dev default (a real incident: both
+          // this project's Supabase projects had it stuck on
+          // http://localhost:3000, silently locking out every real
+          // self-registered signup until caught and fixed directly in
+          // Supabase's dashboard). Passing it explicitly here means a
+          // correct redirect no longer depends on that project setting
+          // ever being right.
+          emailRedirectTo: window.location.origin,
+        },
       });
       if (signUpErr) throw signUpErr;
       // Best-effort, same reasoning as JoinForm's identical call: if this
@@ -327,7 +339,15 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
       if (!alreadySignedIn) {
         if (isNewAccount) {
           const { error: signUpErr } = await supabase.auth.signUp({
-            email: email.trim(), password, options: { data: { display_name: name.trim() || undefined } },
+            email: email.trim(), password, options: {
+              data: { display_name: name.trim() || undefined },
+              // Explicit for the same reason as SignUpForm's identical
+              // option (see its comment) — and here, the full current URL
+              // rather than just the origin, so confirming the email
+              // returns them to this same invite link with ?code= intact
+              // instead of just the site's root.
+              emailRedirectTo: window.location.href,
+            },
           });
           if (signUpErr) throw signUpErr;
           // getSession() (not getUser()) is the only reliable way to tell
