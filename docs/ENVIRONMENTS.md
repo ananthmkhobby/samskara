@@ -60,6 +60,36 @@ that `verified: true` comes back — a 404 there means it's just a loose
 alias, not a real tracked domain, regardless of how normal it looks in a
 browser.
 
+## A second real gotcha — Supabase Auth's Site URL (2026-10-15)
+
+Both Supabase projects' **Auth → URL Configuration → Site URL** had
+silently been left at the project-creation default, `http://localhost:3000`
+(or `http://127.0.0.1:3000`), with an empty redirect allow-list. Every
+confirmation/magic-link email Supabase Auth sends is built from this
+setting whenever the calling code doesn't pass its own `emailRedirectTo` —
+and the app's main sign-up call didn't. Caught when a real self-registered
+user clicked their confirmation email and landed on an unreachable
+`localhost:3000` — meaning **every real self-registration on production
+was silently broken** from the moment the production Supabase project was
+created until this was found and fixed, not a recent regression.
+
+**Fixed two ways, deliberately redundant:**
+- Both projects' `site_url`/`uri_allow_list` corrected via the Management
+  API (`PATCH /v1/projects/<ref>/config/auth`) to their real domain —
+  `oursamskara.com` for production, `samskara-koaham.vercel.app` for test.
+- `AuthPanel.jsx`'s two `signUp()` calls now pass `emailRedirectTo`
+  explicitly (`window.location.origin`, or the full `window.location.href`
+  for the invite-redemption path, so confirming returns someone straight to
+  their invite link rather than just the site root) — so a correct
+  redirect no longer depends on the project-level setting ever being right
+  again.
+
+Lesson for next time: **after creating any new Supabase project, check
+Auth → URL Configuration before the first real signup happens** — this is
+exactly the kind of setting that works perfectly in local dev (where
+`localhost:3000` *is* correct) and so is never caught until exercised for
+real, by a real external user, which is the worst time to find out.
+
 ## What's deliberately different
 
 - **Supabase plan**: test can stay on Free; production is Pro (daily
