@@ -44,6 +44,10 @@ export default function LoginPage({ onShowHelp, onShowPrivacy, onShowTerms }) {
           <p className="login-hero-sub">
             Samskara is where you finally do — the scooter, the kitchen, the everyday things that made up a life, kept for good this time.
           </p>
+          <button type="button" className="login-hero-blog-cta" onClick={() => { window.location.href = "/blog"; }}>
+            <span className="login-hero-blog-cta-icon" aria-hidden="true">📖</span>
+            Read our stories on the Blog →
+          </button>
         </div>
       </div>
 
