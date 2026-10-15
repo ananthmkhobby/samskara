@@ -11,6 +11,14 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.15.4 — Grant blog access to an existing account, no new password
+
+[PR #4](https://github.com/ananthmkhobby/samskara/pull/4): `api/create-member-login.js` gets a `mode: "grant"` branch alongside the original `kind: "blog"` create-a-new-login path — looks up an existing account by email and adds it to `blog_authors` directly, instead of always minting a new username/password. For a family member, or anyone who self-signs-up, this removes the credential-generation step entirely; they keep whatever login they already have. New "Add an existing account to the blog team" form in SuperAdmin, alongside the original.
+
+Verified on `dev` before merge: grant against a real account (row created), re-grant on an already-granted one (correctly idempotent, no duplicate), grant against a non-existent email (clear error). All test data cleaned up.
+
+Verified post-deploy: production build `Ready`; `oursamskara.com/blog` loads correctly.
+
 ## v2026.10.15.3 — The Samskara Blog ships to production
 
 A new public, team-authored blog ([PR #3](https://github.com/ananthmkhobby/samskara/pull/3)) — built to drive traffic, separate from any family's data:
