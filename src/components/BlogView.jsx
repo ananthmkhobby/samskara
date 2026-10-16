@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, Suspense } from "react";
 import { lazyWithReload as lazy } from "../lib/lazyWithReload";
 import { fetchPublishedPosts, fetchPostBySlug, blogMediaUrl, likePost } from "../data/blogDb";
 import "../styles/blog.css";
+import { SHOW_BLOG_READ_ALOUD } from "../lib/featureFlags";
 
 // Only the Samskara team ever needs Tiptap's weight (editor, starter-kit,
 // image/link extensions) — lazy so every ordinary reader's bundle skips it
@@ -335,7 +336,7 @@ function BlogPost({ slug, onBack }) {
         {coverUrl && <img className="blog-post-cover" src={coverUrl} alt="" />}
         <h1>{post.title}</h1>
         <p className="blog-post-meta">By {post.author_display_name} · {formatDate(post.published_at)}</p>
-        <ReadAloudBar title={post.title} textRef={bodyRef} />
+        {SHOW_BLOG_READ_ALOUD && <ReadAloudBar title={post.title} textRef={bodyRef} />}
         <div className="blog-post-divider" aria-hidden="true"><span>॥</span></div>
         {/* Trusted markup — only blog_authors (a small, admin-created team,
             see supabase/migrations/20261015150000_blog_posts_and_authors.sql)

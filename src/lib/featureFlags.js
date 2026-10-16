@@ -15,6 +15,13 @@ export const SHOW_AI_FEATURES = false;
 // elsewhere in the app (Tree, Search, etc.) — only this section's display.
 export const SHOW_DATE_OF_DEATH = false;
 
+// Hides the public blog post's "Listen to this post" read-aloud bar
+// (browser-native Web Speech API, not AI-backed — separate from
+// SHOW_AI_FEATURES above). Requested alongside hiding the editor's own
+// Audio-upload button; the component and its speed controls stay fully
+// built, just not rendered.
+export const SHOW_BLOG_READ_ALOUD = false;
+
 // Hides the "Continue with Google" button on the login/sign-up panel. The
 // code path is fully built (see signInWithGoogle in AuthPanel.jsx) but
 // Google sign-in is disabled in the Supabase Dashboard until a real OAuth
