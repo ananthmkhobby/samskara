@@ -1037,20 +1037,17 @@ export default function App() {
     );
   }
 
-  if (showFamilySplash && (CURRENT_FAMILY_LOGO_URL || CURRENT_FAMILY_TAGLINE)) {
-    return (
-      <FamilySplash
-        logoUrl={CURRENT_FAMILY_LOGO_URL} tagline={CURRENT_FAMILY_TAGLINE}
-        familyName={CURRENT_FAMILY_NAME} onDone={() => setShowFamilySplash(false)}
-      />
-    );
-  }
-
   // Same early-return shape as the NEEDS_LOGIN-block bypass above, so the
   // blog looks and behaves identically whether signed in or not — without
   // this, a signed-in visitor would get BlogView's own standalone shell
   // rendered a second time INSIDE the normal app's TopBar/BottomBar frame
-  // below, doubling up the chrome.
+  // below, doubling up the chrome. Checked BEFORE showFamilySplash
+  // (previously after — a real bug: showFamilySplash defaults true on
+  // every mount, so navigating straight to Blog from a family with a logo/
+  // tagline showed the family's own splash screen instead of Blog, and the
+  // transition out of it went blank until a manual reload. Blog/Plans are
+  // standalone public surfaces with no reason to ever show a specific
+  // family's splash at all.
   if (view === "blog") {
     return (
       <Suspense fallback={null}>
@@ -1063,6 +1060,15 @@ export default function App() {
       <Suspense fallback={null}>
         <PlansView />
       </Suspense>
+    );
+  }
+
+  if (showFamilySplash && (CURRENT_FAMILY_LOGO_URL || CURRENT_FAMILY_TAGLINE)) {
+    return (
+      <FamilySplash
+        logoUrl={CURRENT_FAMILY_LOGO_URL} tagline={CURRENT_FAMILY_TAGLINE}
+        familyName={CURRENT_FAMILY_NAME} onDone={() => setShowFamilySplash(false)}
+      />
     );
   }
 
