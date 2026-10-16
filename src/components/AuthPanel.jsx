@@ -5,6 +5,8 @@ import { ACCOUNT_NEEDS_FAMILY, IS_BLOG_AUTHOR } from "../data/session";
 import { POLICY_VERSION } from "../lib/policy";
 import { SHOW_GOOGLE_AUTH } from "../lib/featureFlags";
 import { callApi } from "../lib/apiFetch";
+import PrivacyPolicyView from "./PrivacyPolicyView";
+import TermsOfServiceView from "./TermsOfServiceView";
 
 // Reads a `?code=` invite link once at module load (mirrors App.jsx's
 // FORCE_INTRO pattern) — if present, the join form opens pre-filled instead
@@ -89,9 +91,9 @@ export default function AuthPanel({ onShowPrivacy, onShowTerms }) {
       {mode === "login" ? (
         <LoginForm email={email} setEmail={setEmail} password={password} setPassword={setPassword} busy={busy} setBusy={setBusy} error={error} setError={setError} />
       ) : mode === "signup" ? (
-        <SignUpForm email={email} setEmail={setEmail} password={password} setPassword={setPassword} name={name} setName={setName} busy={busy} setBusy={setBusy} error={error} setError={setError} onShowPrivacy={onShowPrivacy} onShowTerms={onShowTerms} />
+        <SignUpForm email={email} setEmail={setEmail} password={password} setPassword={setPassword} name={name} setName={setName} busy={busy} setBusy={setBusy} error={error} setError={setError} />
       ) : (
-        <JoinForm email={email} setEmail={setEmail} password={password} setPassword={setPassword} name={name} setName={setName} code={code} setCode={setCode} busy={busy} setBusy={setBusy} error={error} setError={setError} onShowPrivacy={onShowPrivacy} onShowTerms={onShowTerms} />
+        <JoinForm email={email} setEmail={setEmail} password={password} setPassword={setPassword} name={name} setName={setName} code={code} setCode={setCode} busy={busy} setBusy={setBusy} error={error} setError={setError} />
       )}
     </div>
   );
@@ -236,8 +238,21 @@ function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, erro
 // family/role here. What happens next (start a new family vs. join one with
 // a code) is decided one screen later, by FamilyIntentGate, the same place a
 // first-time Google sign-in lands too — one funnel for both, not two.
-function SignUpForm({ email, setEmail, password, setPassword, name, setName, busy, setBusy, error, setError, onShowPrivacy, onShowTerms }) {
+function SignUpForm({ email, setEmail, password, setPassword, name, setName, busy, setBusy, error, setError }) {
   const [agreed, setAgreed] = useState(false);
+  // Shown inline (not via onShowPrivacy/onShowTerms's full view-switch) so
+  // opening either document doesn't wipe the name/email/password already
+  // typed into this form — same reasoning as ConsentGate's own "viewed
+  // before checkable" requirement, just without losing in-progress state.
+  const [reading, setReading] = useState(null); // null | "privacy" | "terms"
+  const [viewedPrivacy, setViewedPrivacy] = useState(false);
+  const [viewedTerms, setViewedTerms] = useState(false);
+  const bothViewed = viewedPrivacy && viewedTerms;
+  // Set instead of reloading when this project requires email confirmation
+  // and signUp() leaves no session behind yet — same reasoning and pattern
+  // as JoinForm's identical state. Without this, a plain reload lands the
+  // new account in NEEDS_LOGIN with zero explanation of what just happened.
+  const [pendingConfirmation, setPendingConfirmation] = useState(false);
 
   async function submit(e) {
     e.preventDefault();
@@ -260,16 +275,41 @@ function SignUpForm({ email, setEmail, password, setPassword, name, setName, bus
         },
       });
       if (signUpErr) throw signUpErr;
-      // Best-effort, same reasoning as JoinForm's identical call: if this
-      // fails (or email confirmation is ever turned on, leaving no session
-      // yet), the boot-time ConsentGate catches it instead.
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) await recordConsent(user.id, POLICY_VERSION).catch(() => {});
+      // getSession() (not getUser()) is the only reliable way to tell
+      // whether the client actually holds a usable JWT right now — see
+      // JoinForm's identical check for the full reasoning.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setPendingConfirmation(true);
+        setBusy(false);
+        return;
+      }
+      await recordConsent(session.user.id, POLICY_VERSION).catch(() => {});
       window.location.reload();
     } catch (err) {
       setError(err.message);
       setBusy(false);
     }
+  }
+
+  if (pendingConfirmation) {
+    return (
+      <div className="form-row">
+        <p className="form-hint">
+          Almost there — we've sent a confirmation link to <strong>{email.trim()}</strong>. Click it, then come back
+          here and log in to start your family's archive.
+        </p>
+      </div>
+    );
+  }
+
+  if (reading) {
+    return (
+      <div>
+        <button type="button" className="link-btn" onClick={() => setReading(null)}>← Back</button>
+        {reading === "privacy" ? <PrivacyPolicyView /> : <TermsOfServiceView />}
+      </div>
+    );
   }
 
   return (
@@ -286,15 +326,16 @@ function SignUpForm({ email, setEmail, password, setPassword, name, setName, bus
         <label>Choose a password</label>
         <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
-      <label className="consent-check" style={{ marginTop: 14, marginBottom: 4 }}>
-        <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+      <label className="consent-check" style={{ marginTop: 14, marginBottom: 4, ...(!bothViewed ? { opacity: 0.5, cursor: "not-allowed" } : {}) }}>
+        <input type="checkbox" checked={agreed} disabled={!bothViewed} onChange={(e) => setAgreed(e.target.checked)} />
         <span>
           I agree to the{" "}
-          <button type="button" className="link-btn" onClick={onShowPrivacy}>Privacy Policy</button>
+          <button type="button" className="link-btn" onClick={() => { setViewedPrivacy(true); setReading("privacy"); }}>Privacy Policy{viewedPrivacy ? " ✓" : ""}</button>
           {" "}and{" "}
-          <button type="button" className="link-btn" onClick={onShowTerms}>Terms &amp; Conditions</button>
+          <button type="button" className="link-btn" onClick={() => { setViewedTerms(true); setReading("terms"); }}>Terms &amp; Conditions{viewedTerms ? " ✓" : ""}</button>
         </span>
       </label>
+      {!bothViewed && <p className="form-hint">Open both above at least once to check this box.</p>}
       {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
       <button type="submit" className="btn primary small" disabled={busy || !agreed} style={{ marginTop: 10 }}>
         {busy ? "Creating account…" : "Create account →"}
@@ -306,7 +347,7 @@ function SignUpForm({ email, setEmail, password, setPassword, name, setName, bus
   );
 }
 
-function JoinForm({ email, setEmail, password, setPassword, name, setName, code, setCode, busy, setBusy, error, setError, alreadySignedIn, onShowPrivacy, onShowTerms }) {
+function JoinForm({ email, setEmail, password, setPassword, name, setName, code, setCode, busy, setBusy, error, setError, alreadySignedIn }) {
   // Someone opening an invite link isn't necessarily new — they might
   // already have an account (e.g. from joining a different family
   // earlier). Asking explicitly, rather than inferring it from a failed
@@ -324,6 +365,13 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
   // already consented when it was made, and re-asking at every sign-in
   // teaches people to click through without reading.
   const [agreed, setAgreed] = useState(false);
+  // Shown inline rather than navigating away, same reasoning as
+  // SignUpForm's identical state — opening either document shouldn't wipe
+  // the invite code/email/password already typed into this form.
+  const [reading, setReading] = useState(null); // null | "privacy" | "terms"
+  const [viewedPrivacy, setViewedPrivacy] = useState(false);
+  const [viewedTerms, setViewedTerms] = useState(false);
+  const bothViewed = viewedPrivacy && viewedTerms;
   // Set instead of reloading when a brand-new signup leaves no session
   // behind (email confirmation required on this project) — redeemInvite()
   // needs a real auth.uid() server-side, so it must never be called before
@@ -392,6 +440,15 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
     );
   }
 
+  if (reading) {
+    return (
+      <div>
+        <button type="button" className="link-btn" onClick={() => setReading(null)}>← Back</button>
+        {reading === "privacy" ? <PrivacyPolicyView /> : <TermsOfServiceView />}
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={submit}>
       {!alreadySignedIn && (
@@ -428,15 +485,18 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
         </p>
       )}
       {!alreadySignedIn && isNewAccount && (
-        <label className="consent-check" style={{ marginTop: 14, marginBottom: 4 }}>
-          <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
-          <span>
-            I agree to the{" "}
-            <button type="button" className="link-btn" onClick={onShowPrivacy}>Privacy Policy</button>
-            {" "}and{" "}
-            <button type="button" className="link-btn" onClick={onShowTerms}>Terms &amp; Conditions</button>
-          </span>
-        </label>
+        <>
+          <label className="consent-check" style={{ marginTop: 14, marginBottom: 4, ...(!bothViewed ? { opacity: 0.5, cursor: "not-allowed" } : {}) }}>
+            <input type="checkbox" checked={agreed} disabled={!bothViewed} onChange={(e) => setAgreed(e.target.checked)} />
+            <span>
+              I agree to the{" "}
+              <button type="button" className="link-btn" onClick={() => { setViewedPrivacy(true); setReading("privacy"); }}>Privacy Policy{viewedPrivacy ? " ✓" : ""}</button>
+              {" "}and{" "}
+              <button type="button" className="link-btn" onClick={() => { setViewedTerms(true); setReading("terms"); }}>Terms &amp; Conditions{viewedTerms ? " ✓" : ""}</button>
+            </span>
+          </label>
+          {!bothViewed && <p className="form-hint">Open both above at least once to check this box.</p>}
+        </>
       )}
       {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
       <button

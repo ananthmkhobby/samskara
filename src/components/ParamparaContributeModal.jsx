@@ -5,6 +5,7 @@ import { uploadFamilyMedia } from "../lib/mediaUpload";
 import { CloseIcon } from "./Icons";
 import { CURRENT_FAMILY_ID } from "../data/session";
 import { useModalA11y } from "../hooks/useModalA11y";
+import { useMediaLimit } from "../hooks/useMediaLimit";
 
 const CATEGORY_CHOICES = [...PARAMPARA_CATEGORIES, LINEAGE_CATEGORY];
 
@@ -14,6 +15,7 @@ const CATEGORY_CHOICES = [...PARAMPARA_CATEGORIES, LINEAGE_CATEGORY];
 // to update the row instead of inserting one.
 export default function ParamparaContributeModal({ editEntry, existingPhotoUrl, onCancel, onSubmit, canModerate }) {
   const modalA11y = useModalA11y(onCancel);
+  const photoLimit = useMediaLimit("photos");
   const editedContent = editEntry ? parseParamparaContent(editEntry.content) : {};
   const [category, setCategory] = useState(editEntry?.field || PARAMPARA_CATEGORIES[0].key);
   const [title, setTitle] = useState(editEntry?.title || "");
@@ -145,9 +147,20 @@ export default function ParamparaContributeModal({ editEntry, existingPhotoUrl, 
                     </div>
                   )}
                   {removePhoto && <p className="form-hint" style={{ marginTop: 0 }}>Photo will be removed unless you choose a new one below.</p>}
-                  <input type="file" accept="image/*" onChange={(e) => { setRemovePhoto(false); handlePhotoFile(e); }} />
+                  <input type="file" accept="image/*" onChange={(e) => { setRemovePhoto(false); handlePhotoFile(e); }} disabled={photoLimit.atLimit} />
                   {photoDataUrl && <img src={photoDataUrl} alt="" style={{ width: 120, height: 120, objectFit: "cover", borderRadius: 8, marginTop: 10, border: "1px solid var(--line-strong)" }} />}
                   {photoError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{photoError}</p>}
+                  {photoLimit.usageLabel && (
+                    <p className="form-hint" style={{ color: photoLimit.atLimit ? "var(--maroon-ink)" : undefined }}>
+                      {photoLimit.usageLabel}
+                      {photoLimit.atLimit && (
+                        <>
+                          {" — "}
+                          <button type="button" className="link-btn" onClick={() => { window.location.href = "/plans"; }}>see plans{photoLimit.upgradeTierLabel ? ` (${photoLimit.upgradeTierLabel})` : ""} →</button>
+                        </>
+                      )}
+                    </p>
+                  )}
                 </div>
               </>
             )}

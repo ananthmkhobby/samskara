@@ -5,10 +5,23 @@ import PersonAvatar from "./PersonAvatar";
 import PhotoLightbox from "./PhotoLightbox";
 import { resizeImage } from "../lib/imageResize";
 import { uploadFamilyMedia, resolveMediaUrl } from "../lib/mediaUpload";
-import { CURRENT_FAMILY_ID } from "../data/session";
+import { CURRENT_FAMILY_ID, CURRENT_FAMILY_PLAN_TIER, CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES, isModuleEnabled } from "../data/session";
 import { useModalA11y } from "../hooks/useModalA11y";
 import { supabase } from "../lib/supabaseClient";
 import { SHOW_AI_FEATURES, SHOW_DATE_OF_DEATH } from "../lib/featureFlags";
+import { getEffectiveLimits, minimumTierForFlag, PLAN_TIERS } from "../lib/planTiers";
+import { useMediaLimit } from "../hooks/useMediaLimit";
+
+// api/photobook.js enforces this server-side regardless — this is purely
+// so Starter sees an honest, disabled button instead of one that's
+// guaranteed to fail with a 403 after a wait.
+const PDF_EXPORT_ALLOWED = getEffectiveLimits({ plan_tier: CURRENT_FAMILY_PLAN_TIER, plan_limit_overrides: CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES }).pdfExport;
+// SHOW_AI_FEATURES is a separate, global "not ready to ship yet" switch —
+// unrelated to plan, so it still hides the button outright when off. Once
+// it's on, AI_MODULE_ENABLED is the actual plan gate: visible-but-disabled
+// for Starter (never hidden), rather than vanishing the way it used to.
+const AI_MODULE_ENABLED = isModuleEnabled("aiFeatures");
+const AI_MIN_TIER = minimumTierForFlag("aiFeatures", true);
 
 // Anubhava Chitrashale ("their room") is built and working, but held back
 // from release for now — flip this back on when it's ready to ship. Kept
@@ -26,6 +39,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
   const relationship = relationshipCaption(person);
   const widowed = widowedLabel(person);
   const photoInputRef = useRef(null);
+  const photoLimit = useMediaLimit("photos");
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [expCollapsed, setExpCollapsed] = useState(false);
   // Starts collapsed once the list is long enough to be worth collapsing —
@@ -76,8 +90,13 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
       const path = await uploadFamilyMedia(CURRENT_FAMILY_ID, person.id, blob, "jpg");
       const url = await resolveMediaUrl(path);
       onChangePhoto(person.id, path, url);
-    } catch {
-      // ignore unreadable file / failed upload; input stays empty
+    } catch (err) {
+      // A genuinely unreadable file throws a generic browser error, but a
+      // blocked plan limit (see enforce_media_limit in supabase/migrations/
+      // 20261017120000_plan_enforcement.sql) throws a real, actionable
+      // message — either way the person picking a photo deserves to know
+      // it didn't actually save, not silence.
+      alert(err.message || "Couldn't upload that photo — please try again.");
     }
     e.target.value = "";
   }
@@ -91,16 +110,26 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
             <button
               type="button"
               className="avatar-view-btn"
-              onClick={() => (hasPhoto ? setLightboxSrc(person.photoUrl) : photoInputRef.current?.click())}
-              aria-label={hasPhoto ? `View ${person.name}'s photo` : "Add profile photo"}
+              onClick={() => (hasPhoto ? setLightboxSrc(person.photoUrl) : !photoLimit.atLimit && photoInputRef.current?.click())}
+              aria-label={hasPhoto ? `View ${person.name}'s photo` : photoLimit.atLimit ? "Photo limit reached — tap to see plans" : "Add profile photo"}
             >
               <PersonAvatar person={person} size={96} minGen={MIN_GEN} maxGen={MAX_GEN} variant="band" className="avatar" />
             </button>
-            <button type="button" className="avatar-edit-fab" onClick={() => photoInputRef.current?.click()} aria-label="Change profile photo">
+            <button
+              type="button" className="avatar-edit-fab"
+              onClick={() => { if (photoLimit.atLimit) window.location.href = "/plans"; else photoInputRef.current?.click(); }}
+              aria-label={photoLimit.atLimit ? "Photo limit reached — tap to see plans" : "Change profile photo"}
+              title={photoLimit.atLimit ? `Your plan allows up to ${photoLimit.limit} photos — ask a Head/Admin to upgrade` : undefined}
+            >
               <EditPencilIcon />
             </button>
           </div>
-          <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoFile} />
+          {photoLimit.usageLabel && (
+            <p className="form-hint" style={{ textAlign: "center", color: photoLimit.atLimit ? "var(--maroon-ink)" : undefined, marginTop: -8, marginBottom: 10 }}>
+              {photoLimit.usageLabel}{photoLimit.atLimit && photoLimit.upgradeTierLabel ? ` — see plans (${photoLimit.upgradeTierLabel})` : ""}
+            </p>
+          )}
+          <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoFile} disabled={photoLimit.atLimit} />
           <h2 className="folio-name-line">
             {formatName(person)}
             <button
@@ -134,11 +163,19 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
             </span>
           </button>
           {SHOW_AI_FEATURES && (
-            <button type="button" className="interview-cta" onClick={onOpenInterview}>
+            <button
+              type="button" className="interview-cta" style={!AI_MODULE_ENABLED ? { opacity: 0.6 } : undefined}
+              onClick={AI_MODULE_ENABLED ? onOpenInterview : () => { window.location.href = "/plans"; }}
+              title={AI_MODULE_ENABLED ? undefined : `Included from ${AI_MIN_TIER ? PLAN_TIERS[AI_MIN_TIER].label : "a paid plan"} — tap to see plans`}
+            >
               <span className="interview-cta-icon">🎙️</span>
               <span>
-                <b>Record {person.name.split(" ")[0]}'s story, AI-guided</b>
-                <span className="interview-cta-sub">A few spoken questions — the AI drafts a biography chapter from the conversation</span>
+                <b>Record {person.name.split(" ")[0]}'s story, AI-guided{!AI_MODULE_ENABLED && AI_MIN_TIER && <span className="tag" style={{ marginLeft: 8, fontSize: 11 }}>{PLAN_TIERS[AI_MIN_TIER].label}</span>}</b>
+                <span className="interview-cta-sub">
+                  {AI_MODULE_ENABLED
+                    ? "A few spoken questions — the AI drafts a biography chapter from the conversation"
+                    : `Included from ${AI_MIN_TIER ? PLAN_TIERS[AI_MIN_TIER].label : "a paid plan"} — tap to see plans`}
+                </span>
               </span>
             </button>
           )}
@@ -471,7 +508,12 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
           <div className="folio-actions">
             <button className="btn" onClick={() => onShare(person.id)}>Share what you know</button>
             <button className="btn primary" onClick={onOpenBiography}>Open full biography</button>
-            <button className="btn ghost" onClick={handleDownloadPdf} disabled={pdfDownloading}>{pdfDownloading ? "Preparing PDF…" : "Download PDF"}</button>
+            <button
+              className="btn ghost" onClick={PDF_EXPORT_ALLOWED ? handleDownloadPdf : () => window.location.href = "/plans"}
+              disabled={pdfDownloading} title={PDF_EXPORT_ALLOWED ? undefined : "Not included in your family's current plan — tap to see plans"}
+            >
+              {pdfDownloading ? "Preparing PDF…" : PDF_EXPORT_ALLOWED ? "Download PDF" : "Download PDF (upgrade to export)"}
+            </button>
           </div>
         </div>
       </div>

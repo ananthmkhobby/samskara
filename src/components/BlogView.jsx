@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, lazy, Suspense } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
+import { lazyWithReload as lazy } from "../lib/lazyWithReload";
 import { fetchPublishedPosts, fetchPostBySlug, blogMediaUrl, likePost } from "../data/blogDb";
 import "../styles/blog.css";
 

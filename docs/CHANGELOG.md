@@ -11,6 +11,19 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.15.6 — Email-redirect fix, confirmation emails; blog likes, share, reading redesign
+
+Two pieces, both landed on the same `dev` → `main` PR ([#6](https://github.com/ananthmkhobby/samskara/pull/6)):
+
+**Fix: real self-signups were broken.** Both Supabase projects' Auth Site URL had been left at the `localhost:3000` project-creation default since each project was created — every real self-registration confirmation email on production was pointing nowhere reachable, not a recent regression. The urgent part (both projects' Site URL/redirect allow-list) was corrected directly via the Management API the moment this was confirmed, ahead of any code deploy. This release adds the code-level half: `AuthPanel.jsx`'s two `signUp()` calls now pass `emailRedirectTo` explicitly, so a correct redirect no longer depends on the project setting staying right. Retested end-to-end on production with real confirmation links after the fix: sign-up → new family, and sign-up via invite → join existing family — both passed, DB state verified directly.
+
+**Blog: likes, share, and a book-like reading redesign.**
+- Likes — `like_count` + an atomic, `anon`-callable RPC (`increment_blog_post_likes`), matching the blog's own no-login-wall design. Verified working for a fully anonymous client with zero session.
+- Share — native Web Share API plus Copy link and WhatsApp/X/Facebook/LinkedIn quick links.
+- Reading redesign — scroll-progress bar, a manuscript-style divider, a drop cap on the opening paragraph, larger serif body type.
+
+Verified post-deploy: production build `Ready`; a real published post on `oursamskara.com/blog` confirmed showing the new Like button and share row correctly.
+
 ## v2026.10.15.5 — Fix: blog-author sign-in card was unreachable without scrolling
 
 Reported live from Srichand's real account: logged in, saw no editor, no sign the account worked. Root cause: the "signed in as a blog author" message only ever rendered via `AuthPanel`, embedded at the very bottom of `HomeDashboard` — below a full scroll of the public demo family's content (a blog-author session resolves `isDemo: true`, so the rest of the app has somewhere harmless to point at). Backend was correct the whole time — account, zero family rows, RLS self-read — confirmed directly before touching any code.

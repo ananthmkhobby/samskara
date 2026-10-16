@@ -1,7 +1,10 @@
-import { lazy, Suspense, useEffect, useReducer, useRef, useState } from "react";
+import { Suspense, useEffect, useReducer, useRef, useState } from "react";
+import { lazyWithReload as lazy } from "./lib/lazyWithReload";
 import TopBar from "./components/TopBar";
 import BottomBar from "./components/BottomBar";
 import HomeDashboard from "./components/HomeDashboard";
+import AuthPanel from "./components/AuthPanel";
+import { minimumTierForFlag, PLAN_TIERS } from "./lib/planTiers";
 import MoreMenu from "./components/MoreMenu";
 import SearchView from "./components/SearchView";
 import TreeView from "./components/TreeView";
@@ -26,6 +29,7 @@ const LibraryView = lazy(() => import("./components/LibraryView"));
 const ChitrashaleRoom = lazy(() => import("./components/ChitrashaleRoom"));
 const ChitrashaleAddModal = lazy(() => import("./components/ChitrashaleAddModal"));
 const BlogView = lazy(() => import("./components/BlogView"));
+const PlansView = lazy(() => import("./components/PlansView"));
 import WelcomeIntro from "./components/WelcomeIntro";
 import FamilySplash from "./components/FamilySplash";
 import SuperAdminView from "./components/SuperAdminView";
@@ -68,7 +72,7 @@ async function withMediaUrl(contribution) {
   return { ...contribution, mediaUrl };
 }
 
-const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp", blog: "/blog" };
+const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp", blog: "/blog", plans: "/plans" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
 // Maps a view to its families.module_flags entitlement key — a view with no
 // entry here (Tree, Folios, Search, Gallery, Activity, Admin, ...) is never
@@ -603,6 +607,22 @@ export default function App() {
   // themselves or approve someone else's proposal. Each branch updates the
   // in-memory PEOPLE entry immediately (for instant UI feedback) and fires
   // the matching Supabase write in the background.
+  // addPerson() pushes to the in-memory PEOPLE array optimistically, before
+  // its Supabase insert has actually resolved — so if that insert is
+  // rejected (most commonly the family's people-count plan limit, see
+  // supabase/migrations/20261017120000_plan_enforcement.sql), the tree is
+  // already showing a person that was never actually saved, with no
+  // feedback at all beyond a console.error. A full in-place rollback would
+  // need to unwind per-relation side effects (spouse/parent links, sibling
+  // parent arrays) that already ran synchronously before this promise even
+  // settled — reloading from the server is simpler and guarantees the tree
+  // matches what's actually persisted, same as the bulk-import paths
+  // (FamilyBuilderView.jsx, AddPeopleCard.jsx) already do on success.
+  function handlePersonPersistFailure(err) {
+    window.alert(err.message || "Couldn't save that person — please try again.");
+    window.location.reload();
+  }
+
   function applyContributionEffects(c) {
     const familyId = CURRENT_FAMILY_ID;
     if (c.type === "newPerson" && c.anchorPersonId) {
@@ -635,7 +655,7 @@ export default function App() {
           addPerson(newPerson)
             .then(() => updatePersonSpouse(familyId, anchor.id, id))
             .then(() => Promise.all(anchorChildren.map((child) => updatePersonFields(familyId, child.id, { parents: child.parents }))))
-            .catch((err) => console.error("Failed to persist spouse link:", err.message));
+            .catch(handlePersonPersistFailure);
         } else if (c.relation === "parent") {
           // Growing the tree upward: this person becomes a new root above
           // the anchor, rather than the anchor gaining a child below it.
@@ -644,7 +664,7 @@ export default function App() {
           // the new top row — no other tree code needs to change.
           newPerson.gen = anchor.gen - 1;
           newPerson.parents = [];
-          addPerson(newPerson).catch((err) => console.error("Failed to persist new parent:", err.message));
+          addPerson(newPerson).catch(handlePersonPersistFailure);
           if (!anchor.parents.includes(id)) {
             anchor.parents = [...anchor.parents, id];
             updatePersonFields(familyId, anchor.id, { parents: anchor.parents }).catch((err) => console.error("Failed to link parent:", err.message));
@@ -655,11 +675,11 @@ export default function App() {
           // least one, so there's always something to share here.
           newPerson.gen = anchor.gen;
           newPerson.parents = [...anchor.parents];
-          addPerson(newPerson).catch((err) => console.error("Failed to persist new sibling:", err.message));
+          addPerson(newPerson).catch(handlePersonPersistFailure);
         } else {
           newPerson.gen = anchor.gen + 1;
           newPerson.parents = anchor.spouse ? [anchor.id, anchor.spouse] : [anchor.id];
-          addPerson(newPerson).catch((err) => console.error("Failed to persist new person:", err.message));
+          addPerson(newPerson).catch(handlePersonPersistFailure);
         }
       }
     }
@@ -933,6 +953,14 @@ export default function App() {
         </Suspense>
       );
     }
+    // The Plans page is fully public too, same reasoning as the blog.
+    if (view === "plans") {
+      return (
+        <Suspense fallback={null}>
+          <PlansView />
+        </Suspense>
+      );
+    }
     // /superadmin needs no family data either (it talks to its own API
     // route, not the Supabase family fetch) — it must bypass the login
     // gate the same way Help does, or the provisioning page becomes
@@ -952,6 +980,30 @@ export default function App() {
   // not render behind it, or "they saw it" becomes arguable.
   if (needsConsent) {
     return <ConsentGate userId={CURRENT_USER_ID} onAccepted={() => setNeedsConsent(false)} />;
+  }
+
+  // A self-registered account with zero family_members rows resolves
+  // isDemo:true/familyId:DEMO_FAMILY_ID (see data/people.js's
+  // resolveAuthAndFamily) purely so the rest of the app has somewhere
+  // harmless to point at while they decide — not because they're actually
+  // meant to land inside the demo family. Without this gate, that "harmless
+  // default" IS the entire experience: the full Rao Family demo renders as
+  // their landing page, TopBar still shows "Log in" (keyed on IS_DEMO), and
+  // the real "start a new family" prompt (AuthPanel's FamilyIntentGate) is
+  // buried as a small card at the bottom of Home — exactly the same shape
+  // of bug the IS_BLOG_AUTHOR gate below was added to fix. Same tier,
+  // same reasoning, checked first since a blog author can never also be in
+  // this state (zero family_members rows means different things for each,
+  // but both resolve through the same fallback — see IS_BLOG_AUTHOR's own
+  // check in resolveAuthAndFamily for how they're told apart).
+  if (ACCOUNT_NEEDS_FAMILY) {
+    return (
+      <div className="login-page login-page-scroll">
+        <div className="login-help-wrap">
+          <AuthPanel onShowPrivacy={() => goTo("privacy")} onShowTerms={() => goTo("terms")} />
+        </div>
+      </div>
+    );
   }
 
   // A blog-author session resolves isDemo:true (see data/people.js) so the
@@ -1006,6 +1058,13 @@ export default function App() {
       </Suspense>
     );
   }
+  if (view === "plans") {
+    return (
+      <Suspense fallback={null}>
+        <PlansView />
+      </Suspense>
+    );
+  }
 
   const viewGateKey = VIEW_GATE_KEYS[view];
   const moduleBlocked = viewGateKey && !isModuleEnabled(viewGateKey);
@@ -1031,7 +1090,15 @@ export default function App() {
           <section className="wrap">
             <div className="section-head">
               <h2>Not included in your family's plan</h2>
-              <p>This feature isn't part of your family's current plan. Contact Samskara to add it.</p>
+              <p>
+                {(() => {
+                  const minTier = minimumTierForFlag(viewGateKey, true);
+                  return minTier
+                    ? `This is included from ${PLAN_TIERS[minTier].label} — ask a Head/Admin to request an upgrade from the Plans page.`
+                    : "This isn't part of your family's current plan — ask a Head/Admin to request an upgrade from the Plans page.";
+                })()}
+              </p>
+              <button type="button" className="btn primary" style={{ marginTop: 10 }} onClick={() => goTo("plans")}>See plans →</button>
             </div>
           </section>
         )}

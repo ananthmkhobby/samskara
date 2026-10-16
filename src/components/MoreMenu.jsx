@@ -1,5 +1,6 @@
 import { ParamparaIcon, LibraryIcon, TreasuryIcon, MapIcon, JapaIcon, AdminIcon } from "./NavIcons";
 import { IS_DEMO, isModuleEnabled } from "../data/session";
+import { minimumTierForFlag, PLAN_TIERS } from "../lib/planTiers";
 
 // Redesign v2 — everything that doesn't fit in the six-item bottom nav
 // anymore lives here instead. One extra tap instead of permanent crowding.
@@ -14,7 +15,6 @@ const ITEMS = [
 ];
 
 export default function MoreMenu({ onNav, canModerate }) {
-  const visibleItems = ITEMS.filter((item) => isModuleEnabled(item.gateKey));
   return (
     <section className="wrap">
       <div className="section-head">
@@ -22,15 +22,25 @@ export default function MoreMenu({ onNav, canModerate }) {
         <p>Everything else the archive holds.</p>
       </div>
       <div className="more-menu-grid">
-        {visibleItems.map(({ key, label, sub, Icon }) => (
-          <button key={key} type="button" className="card more-menu-item" onClick={() => onNav(key)}>
-            <span className="more-menu-icon"><Icon /></span>
-            <span className="more-menu-text">
-              <b>{label}</b>
-              <span>{sub}</span>
-            </span>
-          </button>
-        ))}
+        {ITEMS.map(({ key, label, sub, Icon, gateKey }) => {
+          const enabled = isModuleEnabled(gateKey);
+          // Named rather than a vague "upgrade required" — the tier whose
+          // own default actually turns this on, same reasoning as every
+          // other gated button in the app (PDF export, AI features, etc).
+          const minTier = enabled ? null : minimumTierForFlag(gateKey, true);
+          return (
+            <button
+              key={key} type="button" className="card more-menu-item" onClick={() => onNav(key)}
+              style={!enabled ? { opacity: 0.6 } : undefined}
+            >
+              <span className="more-menu-icon"><Icon /></span>
+              <span className="more-menu-text">
+                <b>{label}{!enabled && minTier && <span className="tag" style={{ marginLeft: 8, fontSize: 11 }}>{PLAN_TIERS[minTier].label}</span>}</b>
+                <span>{enabled ? sub : `Included from ${minTier ? PLAN_TIERS[minTier].label : "a paid plan"} — tap to see plans`}</span>
+              </span>
+            </button>
+          );
+        })}
         {!IS_DEMO && (
           <button type="button" className="card more-menu-item" onClick={() => onNav("admin")}>
             <span className="more-menu-icon"><AdminIcon /></span>

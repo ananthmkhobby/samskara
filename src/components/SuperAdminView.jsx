@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { callApi } from "../lib/apiFetch";
+import { PLAN_TIERS, PLAN_ORDER, LIMIT_LABELS } from "../lib/planTiers";
 
 const SECRET_SESSION_KEY = "vamsha.superadminSecret";
 
@@ -277,6 +278,249 @@ function BlogTeamSection({ adminSecret }) {
   );
 }
 
+// Numeric limit keys an admin can override per family — mirrors
+// planTiers.js's `limits` shape minus the boolean ones (handled separately
+// below). printedBook stays out of scope — no code enforces it, it's a
+// physical-fulfillment process, not a software gate.
+const OVERRIDABLE_LIMIT_KEYS = Object.keys(LIMIT_LABELS);
+const OVERRIDABLE_BOOLEAN_KEYS = ["pdfExport"];
+const BOOLEAN_LABELS = { pdfExport: "PDF export" };
+
+function emptyOverrides() {
+  return {
+    ...Object.fromEntries(OVERRIDABLE_LIMIT_KEYS.map((k) => [k, ""])),
+    // "" = inherit the tier default, "true"/"false" = forced — a plain
+    // checkbox can't represent "unset," so this is a tri-state select.
+    ...Object.fromEntries(OVERRIDABLE_BOOLEAN_KEYS.map((k) => [k, ""])),
+  };
+}
+
+// "Manage a family's plan" — search a family, change its plan_tier, reuse
+// the same GATABLE_MODULES checkboxes as the provisioning form above (this
+// is already exactly "pick and choose a feature, on/off"), add numeric
+// limit overrides, and review/resolve that family's upgrade requests.
+function ManagePlanSection({ adminSecret }) {
+  const [query, setQuery] = useState("");
+  const [families, setFamilies] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const [planTier, setPlanTier] = useState("starter");
+  const [enabledModules, setEnabledModules] = useState(() => Object.fromEntries(GATABLE_MODULES.map((m) => [m.key, true])));
+  const [overrides, setOverrides] = useState(emptyOverrides);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [requests, setRequests] = useState(null);
+  const [resolvingId, setResolvingId] = useState(null);
+
+  async function search(e) {
+    e.preventDefault();
+    if (!adminSecret) { setError("Enter the admin secret above first."); return; }
+    setBusy(true);
+    setError("");
+    try {
+      const data = await callApi("/api/provision-family", { adminSecret, action: "search-families", query });
+      setFamilies(data.families);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function selectFamily(family) {
+    setSelected(family);
+    setSaved(false);
+    const tier = family.plan_tier || "starter";
+    setPlanTier(tier);
+    const tierModules = PLAN_TIERS[tier].modules;
+    const moduleFlags = family.module_flags || {};
+    // A module explicitly flagged (true or false) wins; otherwise fall back
+    // to the tier default — matches getEffectiveModules()' own semantics.
+    // Loading this family's ACTUAL current flags here (not just the tier
+    // default) is what makes "Save plan" an edit instead of a silent reset
+    // of whatever an earlier admin session already set.
+    setEnabledModules(Object.fromEntries(GATABLE_MODULES.map((m) =>
+      [m.key, m.key in moduleFlags ? moduleFlags[m.key] !== false : tierModules[m.key] !== false]
+    )));
+    const overrides = family.plan_limit_overrides || {};
+    setOverrides({
+      ...Object.fromEntries(OVERRIDABLE_LIMIT_KEYS.map((k) => [k, k in overrides && overrides[k] !== null ? String(overrides[k]) : ""])),
+      ...Object.fromEntries(OVERRIDABLE_BOOLEAN_KEYS.map((k) => [k, k in overrides && overrides[k] !== null ? String(overrides[k]) : ""])),
+    });
+  }
+
+  // Re-filling to the new tier's defaults on change, same as the plan's
+  // intent — admin can still edit before saving, nothing auto-submits.
+  function changeTier(tier) {
+    setPlanTier(tier);
+    const tierModules = PLAN_TIERS[tier].modules;
+    setEnabledModules(Object.fromEntries(GATABLE_MODULES.map((m) => [m.key, tierModules[m.key] !== false])));
+    setOverrides(emptyOverrides());
+  }
+
+  function toggleModule(key) {
+    setEnabledModules((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  async function savePlan(e) {
+    e.preventDefault();
+    if (!selected) return;
+    setBusy(true);
+    setError("");
+    setSaved(false);
+    try {
+      const moduleFlags = Object.fromEntries(
+        Object.entries(enabledModules).filter(([, enabled]) => !enabled).map(([key]) => [key, false])
+      );
+      const numericOverrides = Object.fromEntries(
+        OVERRIDABLE_LIMIT_KEYS.filter((k) => overrides[k] !== "").map((k) => [k, Number(overrides[k])])
+      );
+      const booleanOverrides = Object.fromEntries(
+        OVERRIDABLE_BOOLEAN_KEYS.filter((k) => overrides[k] !== "").map((k) => [k, overrides[k] === "true"])
+      );
+      const limitOverrides = { ...numericOverrides, ...booleanOverrides };
+      const data = await callApi("/api/provision-family", {
+        adminSecret, action: "update-plan", familyId: selected.id, planTier, moduleFlags, limitOverrides,
+      });
+      setSelected(data.family);
+      setSaved(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadRequests() {
+    if (!adminSecret) { setError("Enter the admin secret above first."); return; }
+    setBusy(true);
+    setError("");
+    try {
+      const data = await callApi("/api/provision-family", { adminSecret, action: "list-upgrade-requests" });
+      setRequests(data.requests);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resolveRequest(id) {
+    setResolvingId(id);
+    try {
+      await callApi("/api/provision-family", { adminSecret, action: "resolve-upgrade-request", id });
+      setRequests((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setResolvingId(null);
+    }
+  }
+
+  return (
+    <div className="card" style={{ maxWidth: 520, padding: 20, marginTop: 24 }}>
+      <h4 style={{ marginTop: 0 }}>Manage a family's plan</h4>
+      <p className="form-hint" style={{ marginTop: 0 }}>
+        Move a family between Starter/Rooted/Legacy, toggle individual features, or override a numeric limit for that family specifically.
+      </p>
+      <form onSubmit={search} className="tag-row" style={{ alignItems: "center" }}>
+        <input type="text" placeholder="Search family by name" value={query} onChange={(e) => setQuery(e.target.value)} style={{ flex: 1 }} />
+        <button type="submit" className="btn ghost small" disabled={busy}>{busy ? "…" : "Search"}</button>
+      </form>
+      {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+      {families && families.length === 0 && <p className="form-hint">No families matched.</p>}
+      {families && families.length > 0 && !selected && (
+        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 4 }}>
+          {families.map((f) => (
+            <button key={f.id} type="button" className="btn ghost small" style={{ justifyContent: "flex-start" }} onClick={() => selectFamily(f)}>
+              {f.name} <span className="form-hint" style={{ marginLeft: 6 }}>({f.plan_tier})</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {selected && (
+        <form onSubmit={savePlan} style={{ marginTop: 16, borderTop: "1px solid var(--line)", paddingTop: 16 }}>
+          <div className="tag-row" style={{ alignItems: "center", marginBottom: 10 }}>
+            <strong>{selected.name}</strong>
+            <button type="button" className="btn ghost small" onClick={() => { setSelected(null); setFamilies(null); }}>Change family</button>
+          </div>
+          <div className="form-row">
+            <label>Plan</label>
+            <select value={planTier} onChange={(e) => changeTier(e.target.value)}>
+              {PLAN_ORDER.map((t) => <option key={t} value={t}>{PLAN_TIERS[t].label}</option>)}
+            </select>
+          </div>
+          <div className="form-row">
+            <label>Modules included</label>
+            {GATABLE_MODULES.map(({ key, label }) => (
+              <label key={key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 400, textTransform: "none", padding: "4px 0" }}>
+                <input type="checkbox" checked={enabledModules[key]} onChange={() => toggleModule(key)} />
+                {label}
+              </label>
+            ))}
+          </div>
+          <div className="form-row">
+            <label>Limit overrides (blank = use {PLAN_TIERS[planTier].label}'s default)</label>
+            {OVERRIDABLE_LIMIT_KEYS.map((key) => (
+              <div key={key} className="tag-row" style={{ alignItems: "center", marginBottom: 6 }}>
+                <span style={{ minWidth: 140, fontSize: 13, color: "var(--ink-faint)" }}>{LIMIT_LABELS[key]}</span>
+                <input
+                  type="number" min={0}
+                  placeholder={String(PLAN_TIERS[planTier].limits[key] ?? "Unlimited")}
+                  value={overrides[key]}
+                  onChange={(e) => setOverrides((prev) => ({ ...prev, [key]: e.target.value }))}
+                  style={{ flex: 1 }}
+                />
+              </div>
+            ))}
+            {OVERRIDABLE_BOOLEAN_KEYS.map((key) => (
+              <div key={key} className="tag-row" style={{ alignItems: "center", marginBottom: 6 }}>
+                <span style={{ minWidth: 140, fontSize: 13, color: "var(--ink-faint)" }}>{BOOLEAN_LABELS[key]}</span>
+                <select
+                  value={overrides[key]}
+                  onChange={(e) => setOverrides((prev) => ({ ...prev, [key]: e.target.value }))}
+                  style={{ flex: 1 }}
+                >
+                  <option value="">Use {PLAN_TIERS[planTier].label}'s default ({PLAN_TIERS[planTier].limits[key] ? "On" : "Off"})</option>
+                  <option value="true">Force on</option>
+                  <option value="false">Force off</option>
+                </select>
+              </div>
+            ))}
+          </div>
+          <button type="submit" className="btn primary small" disabled={busy} style={{ marginTop: 4 }}>{busy ? "Saving…" : "Save plan"}</button>
+          {saved && <span className="form-hint" style={{ marginLeft: 10, color: "var(--maroon-ink)" }}>Saved.</span>}
+        </form>
+      )}
+
+      <div style={{ marginTop: 18, borderTop: "1px solid var(--line)", paddingTop: 14 }}>
+        <div className="tag-row" style={{ alignItems: "center" }}>
+          <strong style={{ fontSize: 14 }}>Open upgrade requests</strong>
+          <button type="button" className="btn ghost small" disabled={busy} onClick={loadRequests}>{busy ? "Loading…" : "Load"}</button>
+        </div>
+        {requests && requests.length === 0 && <p className="form-hint">Nothing open right now.</p>}
+        {requests && requests.length > 0 && (
+          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+            {requests.map((r) => (
+              <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+                <div>
+                  <strong>{r.familyName}</strong> → {PLAN_TIERS[r.requestedTier]?.label || r.requestedTier}
+                  {r.note && <p className="form-hint" style={{ margin: "2px 0" }}>{r.note}</p>}
+                  <span className="form-hint">{new Date(r.createdAt).toLocaleString()}</span>
+                </div>
+                <button type="button" className="btn small ghost" disabled={resolvingId === r.id} onClick={() => resolveRequest(r.id)}>
+                  {resolvingId === r.id ? "…" : "Mark resolved"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SuperAdminView() {
   const [adminSecret, setAdminSecret] = useState(() => sessionStorage.getItem(SECRET_SESSION_KEY) || "");
   const [familyName, setFamilyName] = useState("");
@@ -385,6 +629,7 @@ export default function SuperAdminView() {
         </div>
       )}
 
+      <ManagePlanSection adminSecret={adminSecret} />
       <BlogTeamSection adminSecret={adminSecret} />
       <PasswordResetRequestsSection adminSecret={adminSecret} />
       <AdClickLogSection adminSecret={adminSecret} />

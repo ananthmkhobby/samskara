@@ -46,9 +46,12 @@ export async function fetchMyPrivateContributions(familyId, userId) {
 
 export async function fetchFamilyDetails(familyId) {
   const db = requireClient();
-  const { data, error } = await db.from("families").select("name, tagline, logo_path, module_flags").eq("id", familyId).maybeSingle();
-  if (error || !data) return { name: null, tagline: null, logoPath: null, moduleFlags: {} };
-  return { name: data.name, tagline: data.tagline, logoPath: data.logo_path, moduleFlags: data.module_flags || {} };
+  const { data, error } = await db.from("families").select("name, tagline, logo_path, module_flags, plan_tier, plan_limit_overrides").eq("id", familyId).maybeSingle();
+  if (error || !data) return { name: null, tagline: null, logoPath: null, moduleFlags: {}, planTier: "starter", planLimitOverrides: {} };
+  return {
+    name: data.name, tagline: data.tagline, logoPath: data.logo_path, moduleFlags: data.module_flags || {},
+    planTier: data.plan_tier || "starter", planLimitOverrides: data.plan_limit_overrides || {},
+  };
 }
 
 // ---- Multi-family membership -----------------------------------------------
