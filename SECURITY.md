@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Email **whyvasupport@gmail.com**. This is a small project — expect a
+Email **support@oursamskara.com**. This is a small project — expect a
 personal reply, not an automated ticket system.
 
 ## What's already in place

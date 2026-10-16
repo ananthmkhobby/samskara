@@ -133,7 +133,7 @@ export default function TermsOfServiceView() {
           the courts of Bangalore, India.
         </p>
         <p className="folio-summary">
-          Questions about these terms: <b>whyvasupport@gmail.com</b>
+          Questions about these terms: <b>support@oursamskara.com</b>
         </p>
       </div>
     </section>

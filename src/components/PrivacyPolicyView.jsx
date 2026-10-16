@@ -22,7 +22,7 @@ export default function PrivacyPolicyView() {
           memories, traditions (Parampare), family library, and anything else contributed through the app.
         </p>
         <p className="folio-summary" style={{ marginTop: 10 }}>
-          Contact for any privacy question or request: <b>whyvasupport@gmail.com</b>
+          Contact for any privacy question or request: <b>support@oursamskara.com</b>
         </p>
       </div>
 
@@ -150,7 +150,7 @@ export default function PrivacyPolicyView() {
       <div className="card" style={{ marginBottom: 18, padding: 20 }}>
         <h4 style={{ fontSize: 15, marginBottom: 10 }}>Deleting your account or your family's data</h4>
         <p className="folio-summary">
-          Contact <b>whyvasupport@gmail.com</b> with your family name and what you'd like deleted (your own account
+          Contact <b>support@oursamskara.com</b> with your family name and what you'd like deleted (your own account
           only, or the whole family's archive — the latter requires confirmation from a Family Head or Admin).
           We'll confirm the request and expected timeline before proceeding.
         </p>
@@ -166,7 +166,7 @@ export default function PrivacyPolicyView() {
         </p>
         <p className="folio-summary">
           If we make a material change to this policy, we'll update it and, where significant, notify Family
-          Heads/Admins directly before it takes effect. Questions: <b>whyvasupport@gmail.com</b>
+          Heads/Admins directly before it takes effect. Questions: <b>support@oursamskara.com</b>
         </p>
       </div>
     </section>
