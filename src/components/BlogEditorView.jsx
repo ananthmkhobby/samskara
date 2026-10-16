@@ -41,13 +41,10 @@ function Toolbar({ editor, onInsertAudio, onInsertVideo, busyMedia }) {
           if (file) await onInsertAudio(file, "image");
         }} />
       </label>
-      <label className="btn-file" style={{ display: "inline-block" }}>
-        {busyMedia === "audio" ? "Uploading…" : "Audio"}
-        <input type="file" accept="audio/*" hidden disabled={!!busyMedia} onChange={async (e) => {
-          const file = e.target.files[0]; e.target.value = "";
-          if (file) await onInsertAudio(file, "audio");
-        }} />
-      </label>
+      {/* Audio upload hidden for now (hard disabled, not removed) — the
+          underlying insertImageOrAudio "audio" branch and the
+          .blog-post-body audio CSS stay in place, so re-enabling this is
+          just re-adding this label block. */}
       <label className="btn-file" style={{ display: "inline-block" }}>
         {busyMedia === "video" ? "Uploading…" : "Video"}
         <input type="file" accept="video/*" hidden disabled={!!busyMedia} onChange={async (e) => {

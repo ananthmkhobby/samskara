@@ -26,6 +26,7 @@ const LibraryView = lazy(() => import("./components/LibraryView"));
 const ChitrashaleRoom = lazy(() => import("./components/ChitrashaleRoom"));
 const ChitrashaleAddModal = lazy(() => import("./components/ChitrashaleAddModal"));
 const BlogView = lazy(() => import("./components/BlogView"));
+const PlansView = lazy(() => import("./components/PlansView"));
 import WelcomeIntro from "./components/WelcomeIntro";
 import FamilySplash from "./components/FamilySplash";
 import SuperAdminView from "./components/SuperAdminView";
@@ -68,7 +69,7 @@ async function withMediaUrl(contribution) {
   return { ...contribution, mediaUrl };
 }
 
-const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp", blog: "/blog" };
+const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp", blog: "/blog", plans: "/plans" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
 // Maps a view to its families.module_flags entitlement key — a view with no
 // entry here (Tree, Folios, Search, Gallery, Activity, Admin, ...) is never
@@ -933,6 +934,14 @@ export default function App() {
         </Suspense>
       );
     }
+    // The Plans page is fully public too, same reasoning as the blog.
+    if (view === "plans") {
+      return (
+        <Suspense fallback={null}>
+          <PlansView />
+        </Suspense>
+      );
+    }
     // /superadmin needs no family data either (it talks to its own API
     // route, not the Supabase family fetch) — it must bypass the login
     // gate the same way Help does, or the provisioning page becomes
@@ -1003,6 +1012,13 @@ export default function App() {
     return (
       <Suspense fallback={null}>
         <BlogView onNav={goTo} />
+      </Suspense>
+    );
+  }
+  if (view === "plans") {
+    return (
+      <Suspense fallback={null}>
+        <PlansView />
       </Suspense>
     );
   }
