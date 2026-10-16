@@ -3,11 +3,22 @@ import { makeNode, flattenFamily, countPeople, hydrateNode } from "../lib/family
 import { updateNode, addChild, removeChild } from "../lib/familyTreeOps";
 import { PEOPLE } from "../data/people";
 import { bulkInsertFamily } from "../data/familyDb";
-import { CURRENT_FAMILY_ID } from "../data/session";
+import { CURRENT_FAMILY_ID, CURRENT_FAMILY_PLAN_TIER, CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES, isModuleEnabled } from "../data/session";
 import { callApi } from "../lib/apiFetch";
 import { downloadTemplate, parseTemplateWorkbook } from "../lib/familyTemplate";
 import FamilyNodeEditor from "./FamilyNodeEditor";
 import { SHOW_AI_FEATURES } from "../lib/featureFlags";
+import { getEffectiveLimits } from "../lib/planTiers";
+
+// This wizard only ever runs on a brand-new, empty tree (see
+// alreadyHasPeople below), so the existing-people count is always 0 here —
+// the parsed/built count alone is what matters against the plan's limit.
+// null = unlimited.
+const PEOPLE_LIMIT = getEffectiveLimits({ plan_tier: CURRENT_FAMILY_PLAN_TIER, plan_limit_overrides: CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES }).people;
+// api/ai-tools.js's "scan" action enforces this server-side regardless —
+// see FolioModal.jsx's identical constant for why this matters even while
+// SHOW_AI_FEATURES is globally off today.
+const AI_FEATURES_ALLOWED = SHOW_AI_FEATURES && isModuleEnabled("aiFeatures");
 
 export default function FamilyBuilderView({ onNav }) {
   const [root, setRoot] = useState(null);
@@ -140,7 +151,7 @@ export default function FamilyBuilderView({ onNav }) {
             </div>
             <button type="submit" className="btn primary" disabled={!starterName.trim()}>Begin building</button>
           </form>
-          {SHOW_AI_FEATURES && (
+          {AI_FEATURES_ALLOWED && (
             <div className="card fam-builder-path">
               <h3>Or scan a photo of an existing chart</h3>
               <p className="form-hint" style={{ marginTop: 0 }}>Already have a family tree drawn on paper or a photo of one? Upload it and AI will read the names and relationships to get you started — you'll still be able to fix anything it gets wrong before saving.</p>
@@ -174,9 +185,16 @@ export default function FamilyBuilderView({ onNav }) {
                         {excelPreview.warnings.map((w, i) => <li key={i}>{w}</li>)}
                       </ul>
                     )}
-                    <button type="button" className="btn primary small" onClick={handleExcelImport} disabled={excelImporting} style={{ marginTop: 8 }}>
-                      {excelImporting ? "Importing…" : `Import ${excelPreview.people.length} ${excelPreview.people.length === 1 ? "person" : "people"}`}
-                    </button>
+                    {PEOPLE_LIMIT !== null && excelPreview.people.length > PEOPLE_LIMIT ? (
+                      <p className="form-hint" style={{ color: "var(--maroon-ink)", marginTop: 8 }}>
+                        This file has {excelPreview.people.length} people, but your plan allows up to {PEOPLE_LIMIT}.
+                        Trim the file and re-upload, or ask a Head/Admin to request an upgrade from the Plans page.
+                      </p>
+                    ) : (
+                      <button type="button" className="btn primary small" onClick={handleExcelImport} disabled={excelImporting} style={{ marginTop: 8 }}>
+                        {excelImporting ? "Importing…" : `Import ${excelPreview.people.length} ${excelPreview.people.length === 1 ? "person" : "people"}`}
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -189,6 +207,7 @@ export default function FamilyBuilderView({ onNav }) {
   }
 
   const total = countPeople(root);
+  const overLimit = PEOPLE_LIMIT !== null && total > PEOPLE_LIMIT;
 
   return (
     <section className="wrap">
@@ -200,9 +219,15 @@ export default function FamilyBuilderView({ onNav }) {
         <span className="eyebrow tnum">{total} {total === 1 ? "person" : "people"} so far</span>
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" className="btn ghost" onClick={() => setRoot(null)}>Start over</button>
-          <button type="button" className="btn primary" onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save & view my family tree"}</button>
+          <button type="button" className="btn primary" onClick={handleSave} disabled={saving || overLimit}>{saving ? "Saving…" : "Save & view my family tree"}</button>
         </div>
       </div>
+      {overLimit && (
+        <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>
+          You have {total} people, but your plan allows up to {PEOPLE_LIMIT}. Remove some before saving, or ask a
+          Head/Admin to request an upgrade from the Plans page.
+        </p>
+      )}
       {saveError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{saveError}</p>}
       <FamilyNodeEditor node={root} depth={0} onUpdate={handleUpdate} onAddChild={handleAddChild} onRemove={handleRemove} />
     </section>

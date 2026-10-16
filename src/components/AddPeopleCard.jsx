@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import { PEOPLE } from "../data/people";
-import { CURRENT_FAMILY_ID, CURRENT_USER_ID, CURRENT_ROLE } from "../data/session";
+import { CURRENT_FAMILY_ID, CURRENT_USER_ID, CURRENT_ROLE, CURRENT_FAMILY_PLAN_TIER, CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES } from "../data/session";
 import { bulkInsertFamily, linkExistingSpouses, deletePerson, insertContribution, fetchFamilyMembers } from "../data/familyDb";
 import { downloadTemplate, parseTemplateWorkbook } from "../lib/familyTemplate";
 import { todayStr } from "../data/helpers";
+import { getEffectiveLimits } from "../lib/planTiers";
 
 // The bulk-upload path in FamilyBuilderView only ever worked once, on a
 // completely empty tree (PEOPLE.length > 0 replaced the whole wizard with a
@@ -109,6 +110,13 @@ export default function AddPeopleCard() {
   const genCount = preview ? new Set(preview.people.map((p) => p.gen)).size : 0;
   const linkCount = preview?.spouseLinks.length ?? 0;
   const skippedCount = preview?.skipped.length ?? 0;
+  // Checked up front, right after parsing — the backend's own trigger
+  // (enforce_people_limit, supabase/migrations/20261017120000_plan_enforcement.sql)
+  // would reject the whole import atomically anyway, but finding that out
+  // only after uploading a file, waiting on parsing, and clicking "Add N
+  // people" is a wholly avoidable round trip. null limit = unlimited.
+  const peopleLimit = getEffectiveLimits({ plan_tier: CURRENT_FAMILY_PLAN_TIER, plan_limit_overrides: CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES }).people;
+  const wouldExceedLimit = peopleLimit !== null && PEOPLE.length + newCount > peopleLimit;
 
   if (justAdded) {
     return (
@@ -215,9 +223,17 @@ export default function AddPeopleCard() {
                       {preview.warnings.map((w, i) => <li key={i}>{w}</li>)}
                     </ul>
                   )}
-                  <button type="button" className="btn primary small" onClick={handleImport} disabled={importing} style={{ marginTop: 8 }}>
-                    {importing ? "Importing…" : `Add ${newCount} ${newCount === 1 ? "person" : "people"}`}
-                  </button>
+                  {wouldExceedLimit ? (
+                    <p className="form-hint" style={{ color: "var(--maroon-ink)", marginTop: 8 }}>
+                      This would bring your family to {PEOPLE.length + newCount} people, but your plan allows up to{" "}
+                      {peopleLimit}. Remove some rows and re-upload, or ask a Head/Admin to request an upgrade from
+                      the Plans page.
+                    </p>
+                  ) : (
+                    <button type="button" className="btn primary small" onClick={handleImport} disabled={importing} style={{ marginTop: 8 }}>
+                      {importing ? "Importing…" : `Add ${newCount} ${newCount === 1 ? "person" : "people"}`}
+                    </button>
+                  )}
                 </>
               )}
             </>

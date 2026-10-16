@@ -5,6 +5,12 @@ import { speakQuestion, hasVoiceFor } from "../lib/speech";
 import { AudioIcon, CloseIcon } from "./Icons";
 import { useModalA11y } from "../hooks/useModalA11y";
 import { SHOW_AI_FEATURES } from "../lib/featureFlags";
+import { isModuleEnabled } from "../data/session";
+
+// api/interview.js enforces this server-side regardless — see
+// FolioModal.jsx's identical constant for why this matters even while
+// SHOW_AI_FEATURES is globally off today.
+const AI_FEATURES_ALLOWED = SHOW_AI_FEATURES && isModuleEnabled("aiFeatures");
 
 const SPEECH_LANGS = [
   { code: "en-IN", label: "English" },
@@ -190,10 +196,10 @@ export default function FolioVoiceWizard({ request, onSubmitField, onFinish, onO
             ) : (
               <p className="form-hint" style={{ marginTop: 6 }}>Nothing new was captured this time — that's fine, it'll ask again next time you run the walkthrough.</p>
             )}
-            {SHOW_AI_FEATURES && <p className="form-hint">Want to go deeper? The AI-guided interview has a longer conversation and drafts a full biography chapter.</p>}
+            {AI_FEATURES_ALLOWED && <p className="form-hint">Want to go deeper? The AI-guided interview has a longer conversation and drafts a full biography chapter.</p>}
             <div className="folio-actions">
-              {SHOW_AI_FEATURES && <button className="btn primary" onClick={onOpenInterview}>Continue to AI interview →</button>}
-              <button className={SHOW_AI_FEATURES ? "btn ghost" : "btn primary"} onClick={onFinish}>Done</button>
+              {AI_FEATURES_ALLOWED && <button className="btn primary" onClick={onOpenInterview}>Continue to AI interview →</button>}
+              <button className={AI_FEATURES_ALLOWED ? "btn ghost" : "btn primary"} onClick={onFinish}>Done</button>
             </div>
           </div>
         </div>

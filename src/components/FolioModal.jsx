@@ -5,10 +5,21 @@ import PersonAvatar from "./PersonAvatar";
 import PhotoLightbox from "./PhotoLightbox";
 import { resizeImage } from "../lib/imageResize";
 import { uploadFamilyMedia, resolveMediaUrl } from "../lib/mediaUpload";
-import { CURRENT_FAMILY_ID } from "../data/session";
+import { CURRENT_FAMILY_ID, CURRENT_FAMILY_PLAN_TIER, CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES, isModuleEnabled } from "../data/session";
 import { useModalA11y } from "../hooks/useModalA11y";
 import { supabase } from "../lib/supabaseClient";
 import { SHOW_AI_FEATURES, SHOW_DATE_OF_DEATH } from "../lib/featureFlags";
+import { getEffectiveLimits } from "../lib/planTiers";
+
+// api/photobook.js enforces this server-side regardless — this is purely
+// so Starter sees an honest, disabled button instead of one that's
+// guaranteed to fail with a 403 after a wait.
+const PDF_EXPORT_ALLOWED = getEffectiveLimits({ plan_tier: CURRENT_FAMILY_PLAN_TIER, plan_limit_overrides: CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES }).pdfExport;
+// api/_aiAuth.js enforces this server-side regardless — this is so a
+// Starter family doesn't see AI entry points that are guaranteed to 429
+// (currently moot while SHOW_AI_FEATURES is globally off, but this is the
+// per-family half of that gate so it's correct the moment it flips on).
+const AI_FEATURES_ALLOWED = SHOW_AI_FEATURES && isModuleEnabled("aiFeatures");
 
 // Anubhava Chitrashale ("their room") is built and working, but held back
 // from release for now — flip this back on when it's ready to ship. Kept
@@ -138,7 +149,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
               <span className="interview-cta-sub">A few quick spoken questions — heritage, life lesson, summary, places. Skip anything, pick up later.</span>
             </span>
           </button>
-          {SHOW_AI_FEATURES && (
+          {AI_FEATURES_ALLOWED && (
             <button type="button" className="interview-cta" onClick={onOpenInterview}>
               <span className="interview-cta-icon">🎙️</span>
               <span>
@@ -476,7 +487,12 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
           <div className="folio-actions">
             <button className="btn" onClick={() => onShare(person.id)}>Share what you know</button>
             <button className="btn primary" onClick={onOpenBiography}>Open full biography</button>
-            <button className="btn ghost" onClick={handleDownloadPdf} disabled={pdfDownloading}>{pdfDownloading ? "Preparing PDF…" : "Download PDF"}</button>
+            <button
+              className="btn ghost" onClick={PDF_EXPORT_ALLOWED ? handleDownloadPdf : () => window.location.href = "/plans"}
+              disabled={pdfDownloading} title={PDF_EXPORT_ALLOWED ? undefined : "Not included in your family's current plan — tap to see plans"}
+            >
+              {pdfDownloading ? "Preparing PDF…" : PDF_EXPORT_ALLOWED ? "Download PDF" : "Download PDF (upgrade to export)"}
+            </button>
           </div>
         </div>
       </div>

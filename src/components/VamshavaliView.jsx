@@ -1,10 +1,16 @@
 import { useMemo, useState } from "react";
 import { PEOPLE, MIN_GEN } from "../data/people";
-import { CURRENT_FAMILY_ID, MY_PERSON_ID } from "../data/session";
+import { CURRENT_FAMILY_ID, MY_PERSON_ID, CURRENT_FAMILY_PLAN_TIER, CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES } from "../data/session";
 import { buildVamshavali } from "../lib/vamshavali";
 import { supabase } from "../lib/supabaseClient";
 import { useModalA11y } from "../hooks/useModalA11y";
 import { CloseIcon } from "./Icons";
+import { getEffectiveLimits } from "../lib/planTiers";
+
+// api/photobook.js enforces this server-side regardless — this is purely
+// so Starter sees an honest, disabled button instead of one that's
+// guaranteed to fail with a 403 after a wait.
+const PDF_EXPORT_ALLOWED = getEffectiveLimits({ plan_tier: CURRENT_FAMILY_PLAN_TIER, plan_limit_overrides: CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES }).pdfExport;
 
 const ROW_LABELS = { alive: "Alive", departed: "Departed", unknown: "Unknown" };
 
@@ -207,8 +213,12 @@ export default function VamshavaliView({ onClose }) {
           </p>
 
           {downloadError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{downloadError}</p>}
-          <button type="button" className="btn primary" disabled={downloading || !egoId} onClick={handleDownload} style={{ marginTop: 10 }}>
-            {downloading ? "Preparing PDF…" : "Download PDF"}
+          <button
+            type="button" className="btn primary"
+            disabled={downloading || !egoId} onClick={PDF_EXPORT_ALLOWED ? handleDownload : () => window.location.href = "/plans"}
+            style={{ marginTop: 10 }} title={PDF_EXPORT_ALLOWED ? undefined : "Not included in your family's current plan — tap to see plans"}
+          >
+            {downloading ? "Preparing PDF…" : PDF_EXPORT_ALLOWED ? "Download PDF" : "Download PDF (upgrade to export)"}
           </button>
         </div>
       </div>
