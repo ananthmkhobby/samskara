@@ -62,7 +62,7 @@ export async function allowAiRequest(req) {
           });
           if (error) throw new Error("Couldn't check AI usage for this month — please try again.");
           if (!allowed) {
-            throw new Error(`Your family's plan includes ${limit} AI calls a month, and that's been used up for this month. Ask a Head/Admin to upgrade for more.`);
+            throw new Error(`Your family's plan includes ${limit} AI calls a month, and that's been used up for this month. Ask a Head/Admin to request an upgrade from the Plans page.`);
           }
         }
         return;

@@ -604,6 +604,22 @@ export default function App() {
   // themselves or approve someone else's proposal. Each branch updates the
   // in-memory PEOPLE entry immediately (for instant UI feedback) and fires
   // the matching Supabase write in the background.
+  // addPerson() pushes to the in-memory PEOPLE array optimistically, before
+  // its Supabase insert has actually resolved — so if that insert is
+  // rejected (most commonly the family's people-count plan limit, see
+  // supabase/migrations/20261017120000_plan_enforcement.sql), the tree is
+  // already showing a person that was never actually saved, with no
+  // feedback at all beyond a console.error. A full in-place rollback would
+  // need to unwind per-relation side effects (spouse/parent links, sibling
+  // parent arrays) that already ran synchronously before this promise even
+  // settled — reloading from the server is simpler and guarantees the tree
+  // matches what's actually persisted, same as the bulk-import paths
+  // (FamilyBuilderView.jsx, AddPeopleCard.jsx) already do on success.
+  function handlePersonPersistFailure(err) {
+    window.alert(err.message || "Couldn't save that person — please try again.");
+    window.location.reload();
+  }
+
   function applyContributionEffects(c) {
     const familyId = CURRENT_FAMILY_ID;
     if (c.type === "newPerson" && c.anchorPersonId) {
@@ -636,7 +652,7 @@ export default function App() {
           addPerson(newPerson)
             .then(() => updatePersonSpouse(familyId, anchor.id, id))
             .then(() => Promise.all(anchorChildren.map((child) => updatePersonFields(familyId, child.id, { parents: child.parents }))))
-            .catch((err) => console.error("Failed to persist spouse link:", err.message));
+            .catch(handlePersonPersistFailure);
         } else if (c.relation === "parent") {
           // Growing the tree upward: this person becomes a new root above
           // the anchor, rather than the anchor gaining a child below it.
@@ -645,7 +661,7 @@ export default function App() {
           // the new top row — no other tree code needs to change.
           newPerson.gen = anchor.gen - 1;
           newPerson.parents = [];
-          addPerson(newPerson).catch((err) => console.error("Failed to persist new parent:", err.message));
+          addPerson(newPerson).catch(handlePersonPersistFailure);
           if (!anchor.parents.includes(id)) {
             anchor.parents = [...anchor.parents, id];
             updatePersonFields(familyId, anchor.id, { parents: anchor.parents }).catch((err) => console.error("Failed to link parent:", err.message));
@@ -656,11 +672,11 @@ export default function App() {
           // least one, so there's always something to share here.
           newPerson.gen = anchor.gen;
           newPerson.parents = [...anchor.parents];
-          addPerson(newPerson).catch((err) => console.error("Failed to persist new sibling:", err.message));
+          addPerson(newPerson).catch(handlePersonPersistFailure);
         } else {
           newPerson.gen = anchor.gen + 1;
           newPerson.parents = anchor.spouse ? [anchor.id, anchor.spouse] : [anchor.id];
-          addPerson(newPerson).catch((err) => console.error("Failed to persist new person:", err.message));
+          addPerson(newPerson).catch(handlePersonPersistFailure);
         }
       }
     }

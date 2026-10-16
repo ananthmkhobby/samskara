@@ -247,7 +247,7 @@ export default async function handler(req, res) {
     if (familyErr) throw new Error(familyErr.message);
     if (!family) throw new Error("That family couldn't be found.");
     if (!getEffectiveLimits(family).pdfExport) {
-      res.status(403).json({ error: "PDF export isn't included in your family's current plan. Ask a Head/Admin to upgrade to Rooted or Legacy to export PDFs." });
+      res.status(403).json({ error: "PDF export isn't included in your family's current plan. Ask a Head/Admin to request an upgrade to Rooted or Legacy from the Plans page." });
       return;
     }
   } catch (err) {

@@ -76,8 +76,13 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
       const path = await uploadFamilyMedia(CURRENT_FAMILY_ID, person.id, blob, "jpg");
       const url = await resolveMediaUrl(path);
       onChangePhoto(person.id, path, url);
-    } catch {
-      // ignore unreadable file / failed upload; input stays empty
+    } catch (err) {
+      // A genuinely unreadable file throws a generic browser error, but a
+      // blocked plan limit (see enforce_media_limit in supabase/migrations/
+      // 20261017120000_plan_enforcement.sql) throws a real, actionable
+      // message — either way the person picking a photo deserves to know
+      // it didn't actually save, not silence.
+      alert(err.message || "Couldn't upload that photo — please try again.");
     }
     e.target.value = "";
   }

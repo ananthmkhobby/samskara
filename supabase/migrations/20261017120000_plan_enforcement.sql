@@ -96,7 +96,7 @@ begin
   end if;
   select count(*) into v_count from people where family_id = NEW.family_id;
   if v_count >= v_limit then
-    raise exception 'This family''s plan allows up to % people in the tree. Ask a Head/Admin to upgrade the plan to add more.', v_limit
+    raise exception 'This family''s plan allows up to % people in the tree. Ask a Head/Admin to request an upgrade from the Plans page.', v_limit
       using errcode = '23514';
   end if;
   return NEW;
@@ -178,7 +178,7 @@ begin
   -- transitioning), so v_count (current matching rows, excluding this one)
   -- at >= limit means this row would become the (limit+1)th match.
   if v_count >= v_limit then
-    raise exception 'This family''s plan allows up to % %. Ask a Head/Admin to upgrade the plan to add more.', v_limit, v_kind
+    raise exception 'This family''s plan allows up to % %. Ask a Head/Admin to request an upgrade from the Plans page.', v_limit, v_kind
       using errcode = '23514';
   end if;
 
