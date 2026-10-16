@@ -11,6 +11,7 @@
 //     gating it behind signup would gut the demo — but counted against a
 //     shared daily ceiling so the worst case is bounded and cheap.
 import { createClient } from "@supabase/supabase-js";
+import { getEffectiveLimits } from "../src/lib/planTiers.js";
 
 // Shared across all anonymous callers per day, not per-IP: an IP cap is
 // trivially defeated by rotating IPs, and the thing actually being
@@ -42,10 +43,27 @@ export async function allowAiRequest(req) {
       // isModuleEnabled) — server-side, not just a hidden client button,
       // since these endpoints spend real OpenAI credit.
       const { data: member } = await supabase
-        .from("family_members").select("id, families(module_flags)").eq("user_id", user.id).limit(1).maybeSingle();
+        .from("family_members")
+        .select("id, family_id, families(module_flags, plan_tier, plan_limit_overrides)")
+        .eq("user_id", user.id).limit(1).maybeSingle();
       if (member) {
         if (member.families?.module_flags?.aiFeatures === false) {
           throw new Error("AI features aren't included in your family's current plan.");
+        }
+        // Signed-in members are capped per-family-per-month, not per the
+        // anonymous path's shared daily ceiling below — see
+        // consume_family_ai_call in supabase/migrations/
+        // 20261017120000_plan_enforcement.sql. null = unlimited (Legacy's
+        // and Rooted's defaults unless overridden).
+        const limit = getEffectiveLimits(member.families).aiCallsPerMonth;
+        if (limit !== null) {
+          const { data: allowed, error } = await supabase.rpc("consume_family_ai_call", {
+            p_family_id: member.family_id, p_limit: limit,
+          });
+          if (error) throw new Error("Couldn't check AI usage for this month — please try again.");
+          if (!allowed) {
+            throw new Error(`Your family's plan includes ${limit} AI calls a month, and that's been used up for this month. Ask a Head/Admin to upgrade for more.`);
+          }
         }
         return;
       }

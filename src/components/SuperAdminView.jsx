@@ -278,13 +278,21 @@ function BlogTeamSection({ adminSecret }) {
   );
 }
 
-// Limit keys an admin can override per family — mirrors planTiers.js's
-// `limits` shape minus the boolean ones (pdfExport/printedBook), which are
-// Phase 2 concerns (no enforcement exists for them yet either way).
+// Numeric limit keys an admin can override per family — mirrors
+// planTiers.js's `limits` shape minus the boolean ones (handled separately
+// below). printedBook stays out of scope — no code enforces it, it's a
+// physical-fulfillment process, not a software gate.
 const OVERRIDABLE_LIMIT_KEYS = Object.keys(LIMIT_LABELS);
+const OVERRIDABLE_BOOLEAN_KEYS = ["pdfExport"];
+const BOOLEAN_LABELS = { pdfExport: "PDF export" };
 
 function emptyOverrides() {
-  return Object.fromEntries(OVERRIDABLE_LIMIT_KEYS.map((k) => [k, ""]));
+  return {
+    ...Object.fromEntries(OVERRIDABLE_LIMIT_KEYS.map((k) => [k, ""])),
+    // "" = inherit the tier default, "true"/"false" = forced — a plain
+    // checkbox can't represent "unset," so this is a tri-state select.
+    ...Object.fromEntries(OVERRIDABLE_BOOLEAN_KEYS.map((k) => [k, ""])),
+  };
 }
 
 // "Manage a family's plan" — search a family, change its plan_tier, reuse
@@ -352,9 +360,13 @@ function ManagePlanSection({ adminSecret }) {
       const moduleFlags = Object.fromEntries(
         Object.entries(enabledModules).filter(([, enabled]) => !enabled).map(([key]) => [key, false])
       );
-      const limitOverrides = Object.fromEntries(
-        Object.entries(overrides).filter(([, v]) => v !== "").map(([k, v]) => [k, Number(v)])
+      const numericOverrides = Object.fromEntries(
+        OVERRIDABLE_LIMIT_KEYS.filter((k) => overrides[k] !== "").map((k) => [k, Number(overrides[k])])
       );
+      const booleanOverrides = Object.fromEntries(
+        OVERRIDABLE_BOOLEAN_KEYS.filter((k) => overrides[k] !== "").map((k) => [k, overrides[k] === "true"])
+      );
+      const limitOverrides = { ...numericOverrides, ...booleanOverrides };
       const data = await callApi("/api/provision-family", {
         adminSecret, action: "update-plan", familyId: selected.id, planTier, moduleFlags, limitOverrides,
       });
@@ -448,6 +460,20 @@ function ManagePlanSection({ adminSecret }) {
                   onChange={(e) => setOverrides((prev) => ({ ...prev, [key]: e.target.value }))}
                   style={{ flex: 1 }}
                 />
+              </div>
+            ))}
+            {OVERRIDABLE_BOOLEAN_KEYS.map((key) => (
+              <div key={key} className="tag-row" style={{ alignItems: "center", marginBottom: 6 }}>
+                <span style={{ minWidth: 140, fontSize: 13, color: "var(--ink-faint)" }}>{BOOLEAN_LABELS[key]}</span>
+                <select
+                  value={overrides[key]}
+                  onChange={(e) => setOverrides((prev) => ({ ...prev, [key]: e.target.value }))}
+                  style={{ flex: 1 }}
+                >
+                  <option value="">Use {PLAN_TIERS[planTier].label}'s default ({PLAN_TIERS[planTier].limits[key] ? "On" : "Off"})</option>
+                  <option value="true">Force on</option>
+                  <option value="false">Force off</option>
+                </select>
               </div>
             ))}
           </div>

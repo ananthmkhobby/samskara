@@ -7,6 +7,7 @@
 // logic, unchanged.
 import { randomUUID } from "crypto";
 import { serviceClient, requireMember } from "./_memberAuth.js";
+import { getEffectiveLimits } from "../src/lib/planTiers.js";
 import {
   Document, PersonPage, FamilyCoverPage, TableOfContentsPage, GenerationDividerPage,
   PersonSection, VamshavaliPage, Page, StyleSheet, h, buildVamshavali,
@@ -237,6 +238,18 @@ export default async function handler(req, res) {
   try {
     supabase = serviceClient();
     await requireMember(supabase, req, familyId);
+
+    // Starter's plan has no PDF export (view the tree/person pages in-app
+    // instead) — gated once here, before any of the three actions below,
+    // since all three produce a PDF.
+    const { data: family, error: familyErr } = await supabase
+      .from("families").select("plan_tier, plan_limit_overrides").eq("id", familyId).maybeSingle();
+    if (familyErr) throw new Error(familyErr.message);
+    if (!family) throw new Error("That family couldn't be found.");
+    if (!getEffectiveLimits(family).pdfExport) {
+      res.status(403).json({ error: "PDF export isn't included in your family's current plan. Ask a Head/Admin to upgrade to Rooted or Legacy to export PDFs." });
+      return;
+    }
   } catch (err) {
     res.status(403).json({ error: err.message });
     return;
