@@ -10,16 +10,8 @@ import FamilyNodeEditor from "./FamilyNodeEditor";
 import { SHOW_AI_FEATURES } from "../lib/featureFlags";
 import { getEffectiveLimits, minimumTierForFlag, nextTier, PLAN_TIERS } from "../lib/planTiers";
 
-// This wizard only ever runs on a brand-new, empty tree (see
-// alreadyHasPeople below), so the existing-people count is always 0 here —
-// the parsed/built count alone is what matters against the plan's limit.
-// null = unlimited.
-const PEOPLE_LIMIT = getEffectiveLimits({ plan_tier: CURRENT_FAMILY_PLAN_TIER, plan_limit_overrides: CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES }).people;
-// SHOW_AI_FEATURES is a separate global "not ready to ship" switch,
-// unrelated to plan — still hides this card outright when off. Once on,
-// AI_MODULE_ENABLED is the real plan gate: shown disabled on Starter
-// rather than vanishing, same as FolioModal.jsx's identical pattern.
-const AI_MODULE_ENABLED = isModuleEnabled("aiFeatures");
+// A pure lookup against PLAN_TIERS (not session state) — safe as a
+// module-level constant, unlike peopleLimit/aiModuleEnabled below.
 const AI_MIN_TIER = minimumTierForFlag("aiFeatures", true);
 
 export default function FamilyBuilderView({ onNav }) {
@@ -33,6 +25,16 @@ export default function FamilyBuilderView({ onNav }) {
   const [excelPreview, setExcelPreview] = useState(null);
   const [excelParsing, setExcelParsing] = useState(false);
   const [excelImporting, setExcelImporting] = useState(false);
+  // Computed per-render, not at module scope — a module-level constant
+  // here would freeze at the default ("starter"/no modules) from before
+  // initDataLayer()'s async session fetch ever resolves. This wizard only
+  // ever runs on a brand-new, empty tree (see alreadyHasPeople below), so
+  // the existing-people count is always 0 here — the parsed/built count
+  // alone is what matters against the limit. null = unlimited.
+  // SHOW_AI_FEATURES is a separate global "not ready to ship" switch,
+  // unrelated to plan — still hides the scan card outright when off.
+  const peopleLimit = getEffectiveLimits({ plan_tier: CURRENT_FAMILY_PLAN_TIER, plan_limit_overrides: CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES }).people;
+  const aiModuleEnabled = isModuleEnabled("aiFeatures");
   const [excelImportError, setExcelImportError] = useState("");
   const fileRef = useRef(null);
   const excelInputRef = useRef(null);
@@ -154,9 +156,9 @@ export default function FamilyBuilderView({ onNav }) {
             <button type="submit" className="btn primary" disabled={!starterName.trim()}>Begin building</button>
           </form>
           {SHOW_AI_FEATURES && (
-            <div className="card fam-builder-path" style={!AI_MODULE_ENABLED ? { opacity: 0.6 } : undefined}>
-              <h3>Or scan a photo of an existing chart{!AI_MODULE_ENABLED && AI_MIN_TIER && <span className="tag" style={{ marginLeft: 8, fontSize: 11 }}>{PLAN_TIERS[AI_MIN_TIER].label}</span>}</h3>
-              {AI_MODULE_ENABLED ? (
+            <div className="card fam-builder-path" style={!aiModuleEnabled ? { opacity: 0.6 } : undefined}>
+              <h3>Or scan a photo of an existing chart{!aiModuleEnabled && AI_MIN_TIER && <span className="tag" style={{ marginLeft: 8, fontSize: 11 }}>{PLAN_TIERS[AI_MIN_TIER].label}</span>}</h3>
+              {aiModuleEnabled ? (
                 <>
                   <p className="form-hint" style={{ marginTop: 0 }}>Already have a family tree drawn on paper or a photo of one? Upload it and AI will read the names and relationships to get you started — you'll still be able to fix anything it gets wrong before saving.</p>
                   <input ref={fileRef} type="file" accept="image/*" onChange={handleScan} disabled={scanning} />
@@ -197,7 +199,7 @@ export default function FamilyBuilderView({ onNav }) {
                       </ul>
                     )}
                     {(() => {
-                      const excelOverLimit = PEOPLE_LIMIT !== null && excelPreview.people.length > PEOPLE_LIMIT;
+                      const excelOverLimit = peopleLimit !== null && excelPreview.people.length > peopleLimit;
                       const upgradeTier = nextTier(CURRENT_FAMILY_PLAN_TIER);
                       return (
                         <>
@@ -205,7 +207,7 @@ export default function FamilyBuilderView({ onNav }) {
                             <button
                               type="button" className="btn primary small" onClick={handleExcelImport}
                               disabled={excelImporting || excelOverLimit}
-                              title={excelOverLimit ? `Your plan allows up to ${PEOPLE_LIMIT} people` : undefined}
+                              title={excelOverLimit ? `Your plan allows up to ${peopleLimit} people` : undefined}
                             >
                               {excelImporting ? "Importing…" : `Import ${excelPreview.people.length} ${excelPreview.people.length === 1 ? "person" : "people"}`}
                             </button>
@@ -217,7 +219,7 @@ export default function FamilyBuilderView({ onNav }) {
                           </div>
                           {excelOverLimit && (
                             <p className="form-hint" style={{ color: "var(--maroon-ink)", marginTop: 6 }}>
-                              This file has {excelPreview.people.length} people, but your plan allows up to {PEOPLE_LIMIT}.
+                              This file has {excelPreview.people.length} people, but your plan allows up to {peopleLimit}.
                               Trim the file and re-upload, or ask a Head/Admin to request an upgrade.
                             </p>
                           )}
@@ -236,7 +238,7 @@ export default function FamilyBuilderView({ onNav }) {
   }
 
   const total = countPeople(root);
-  const overLimit = PEOPLE_LIMIT !== null && total > PEOPLE_LIMIT;
+  const overLimit = peopleLimit !== null && total > peopleLimit;
 
   return (
     <section className="wrap">
@@ -253,7 +255,7 @@ export default function FamilyBuilderView({ onNav }) {
       </div>
       {overLimit && (
         <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>
-          You have {total} people, but your plan allows up to {PEOPLE_LIMIT}. Remove some before saving, or ask a
+          You have {total} people, but your plan allows up to {peopleLimit}. Remove some before saving, or ask a
           Head/Admin to request an upgrade —{" "}
           <button type="button" className="link-btn" onClick={() => { window.location.href = "/plans"; }}>see plans →</button>
         </p>

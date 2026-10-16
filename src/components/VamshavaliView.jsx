@@ -7,11 +7,6 @@ import { useModalA11y } from "../hooks/useModalA11y";
 import { CloseIcon } from "./Icons";
 import { getEffectiveLimits } from "../lib/planTiers";
 
-// api/photobook.js enforces this server-side regardless — this is purely
-// so Starter sees an honest, disabled button instead of one that's
-// guaranteed to fail with a 403 after a wait.
-const PDF_EXPORT_ALLOWED = getEffectiveLimits({ plan_tier: CURRENT_FAMILY_PLAN_TIER, plan_limit_overrides: CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES }).pdfExport;
-
 const ROW_LABELS = { alive: "Alive", departed: "Departed", unknown: "Unknown" };
 
 function VamshavaliRow({ row, id, highlighted }) {
@@ -60,6 +55,12 @@ export default function VamshavaliView({ onClose }) {
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState("");
   const [highlightedId, setHighlightedId] = useState(null);
+  // Computed per-render, not at module scope — see TreeView.jsx's identical
+  // fix for the full reasoning (a module-level constant froze at the
+  // default "starter" from before session data ever loaded, so every real
+  // family regardless of actual tier saw "upgrade to export"). api/
+  // photobook.js enforces this server-side regardless.
+  const pdfExportAllowed = getEffectiveLimits({ plan_tier: CURRENT_FAMILY_PLAN_TIER, plan_limit_overrides: CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES }).pdfExport;
 
   const vamshavali = useMemo(() => (egoId ? buildVamshavali(egoId, PEOPLE, "pitru") : { ego: null, sections: [] }), [egoId]);
 
@@ -215,10 +216,10 @@ export default function VamshavaliView({ onClose }) {
           {downloadError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{downloadError}</p>}
           <button
             type="button" className="btn primary"
-            disabled={downloading || !egoId} onClick={PDF_EXPORT_ALLOWED ? handleDownload : () => window.location.href = "/plans"}
-            style={{ marginTop: 10 }} title={PDF_EXPORT_ALLOWED ? undefined : "Not included in your family's current plan — tap to see plans"}
+            disabled={downloading || !egoId} onClick={pdfExportAllowed ? handleDownload : () => window.location.href = "/plans"}
+            style={{ marginTop: 10 }} title={pdfExportAllowed ? undefined : "Not included in your family's current plan — tap to see plans"}
           >
-            {downloading ? "Preparing PDF…" : PDF_EXPORT_ALLOWED ? "Download PDF" : "Download PDF (upgrade to export)"}
+            {downloading ? "Preparing PDF…" : pdfExportAllowed ? "Download PDF" : "Download PDF (upgrade to export)"}
           </button>
         </div>
       </div>
