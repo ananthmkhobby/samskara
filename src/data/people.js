@@ -3,6 +3,7 @@ import { batchResolveMediaUrls, resolveMediaUrl } from "../lib/mediaUpload";
 import { fetchFamilyData, fetchFamilyDetails, fetchMyFamilies, fetchActiveFamilyId, fetchLibraryData, fetchPracticeLogs, mapContributionRow, insertPerson as dbInsertPerson, insertMarriage as dbInsertMarriage, insertBook as dbInsertBook, bumpFamilyFlame, fetchMyPersonLink, hasAcceptedPolicy } from "./familyDb";
 import { setSession, DEMO_FAMILY_ID, CURRENT_FAMILY_ID } from "./session";
 import { POLICY_VERSION } from "../lib/policy";
+import { getEffectiveModules } from "../lib/planTiers";
 
 export const VALUES = ["Courage", "Seva", "Education", "Simplicity", "Devotion", "Discipline", "Hospitality", "Resilience"];
 
@@ -198,7 +199,16 @@ export async function initDataLayer() {
     familyName: familyDetails.name || null,
     familyTagline: familyDetails.tagline || null,
     familyLogoUrl,
-    moduleFlags: familyDetails.moduleFlags,
+    // Resolved against the plan tier here, once, at boot — NOT the raw
+    // module_flags column. isModuleEnabled() in session.js only ever
+    // checks this value, and until now it was handed the raw column
+    // directly, so a Starter family with an empty module_flags (the
+    // default for every self-registered family — register_new_family()
+    // never sets it) read as "everything enabled," regardless of what the
+    // pricing page said Starter includes. getEffectiveModules() is the
+    // same merge /plans and SuperAdmin already display; this is what
+    // makes it actually enforced, not just displayed.
+    moduleFlags: getEffectiveModules({ plan_tier: familyDetails.planTier, module_flags: familyDetails.moduleFlags }),
     planTier: familyDetails.planTier,
     planLimitOverrides: familyDetails.planLimitOverrides,
     role: resolved.role,

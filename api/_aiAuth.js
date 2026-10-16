@@ -11,7 +11,7 @@
 //     gating it behind signup would gut the demo — but counted against a
 //     shared daily ceiling so the worst case is bounded and cheap.
 import { createClient } from "@supabase/supabase-js";
-import { getEffectiveLimits } from "../src/lib/planTiers.js";
+import { getEffectiveLimits, getEffectiveModules } from "../src/lib/planTiers.js";
 
 // Shared across all anonymous callers per day, not per-IP: an IP cap is
 // trivially defeated by rotating IPs, and the thing actually being
@@ -47,7 +47,13 @@ export async function allowAiRequest(req) {
         .select("id, family_id, families(module_flags, plan_tier, plan_limit_overrides)")
         .eq("user_id", user.id).limit(1).maybeSingle();
       if (member) {
-        if (member.families?.module_flags?.aiFeatures === false) {
+        // getEffectiveModules, not the raw module_flags column directly —
+        // Starter's own tier default turns this off, same bug fix as
+        // src/data/people.js's identical correction. A raw-column check
+        // only ever caught an explicit admin override, never the tier
+        // default itself (every self-registered family's module_flags
+        // starts empty).
+        if (!getEffectiveModules(member.families).aiFeatures) {
           throw new Error("AI features aren't included in your family's current plan.");
         }
         // Signed-in members are capped per-family-per-month, not per the

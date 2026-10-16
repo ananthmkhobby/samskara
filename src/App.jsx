@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useReducer, useRef, useState } from "react";
+import { Suspense, useEffect, useReducer, useRef, useState } from "react";
+import { lazyWithReload as lazy } from "./lib/lazyWithReload";
 import TopBar from "./components/TopBar";
 import BottomBar from "./components/BottomBar";
 import HomeDashboard from "./components/HomeDashboard";
