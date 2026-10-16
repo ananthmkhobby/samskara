@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MIN_GEN, MAX_GEN, byId, yearsLabel } from "../data/helpers";
-import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL, CURRENT_USER_ID, CURRENT_ROLE } from "../data/session";
+import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL, CURRENT_USER_ID, CURRENT_ROLE, CURRENT_FAMILY_PLAN_TIER } from "../data/session";
+import { PLAN_TIERS } from "../lib/planTiers";
 import {
   createInvite, fetchFamilyMembers, updateMemberRole, setMemberPersonLink,
   updateMemberDisplayName, fetchInvites, revokeInvite, fetchMemberEmail,
@@ -1159,12 +1160,37 @@ function AdminSection({ id, title, description, defaultOpen, children }) {
   );
 }
 
+// Where a Head/Admin actually finds "what plan are we on" — nowhere else
+// in the app surfaces this today (the public /plans page shows it too, but
+// only once you already know to look there). Read-only here on purpose;
+// changing tiers happens via a /plans request or directly through
+// SuperAdmin, not from this card.
+function PlanCard() {
+  const plan = PLAN_TIERS[CURRENT_FAMILY_PLAN_TIER] || PLAN_TIERS.starter;
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 12 }}>
+      <div className="tag-row" style={{ alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <strong style={{ fontSize: 15 }}>{plan.label}</strong>
+          <p className="form-hint" style={{ margin: "2px 0 0" }}>{plan.tagline}</p>
+        </div>
+        <button type="button" className="btn ghost small" onClick={() => { window.location.href = "/plans"; }}>
+          View plans
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function MembersPage() {
   const [invitesRefreshKey, setInvitesRefreshKey] = useState(0);
   const [membersRefreshKey, setMembersRefreshKey] = useState(0);
   const [galleryExportRefreshKey, setGalleryExportRefreshKey] = useState(0);
   return (
     <>
+      <AdminSection id="plan" title="Your plan" description="What's included today, and how to see or request other options.">
+        <PlanCard />
+      </AdminSection>
       <AdminSection id="roster" title="Members & roles" description="Who's joined, their role, and which person in the tree they are." defaultOpen>
         <RosterCard key={membersRefreshKey} />
       </AdminSection>

@@ -21,6 +21,14 @@ export let IS_DEMO = true;
 // `false` to disable something, never used as an allow-list. Configured
 // once at onboarding via /superadmin, not self-serve.
 export let MODULE_FLAGS = {};
+// The family's subscription tier and any per-family overrides (see
+// families.plan_tier/plan_limit_overrides and src/lib/planTiers.js's
+// getEffectiveLimits/getEffectiveModules) — "starter" until a Head/Admin
+// upgrades via SuperAdmin or requests a change from the Plans page. Demo
+// mode gets Legacy's effective shape via IS_DEMO checks elsewhere, not by
+// faking a tier here.
+export let CURRENT_FAMILY_PLAN_TIER = "starter";
+export let CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES = {};
 // Every family the logged-in account belongs to — [{familyId, familyName,
 // role}] — length 1 for the common case, more once someone's joined a
 // second family (e.g. both their dad's and mom's trees). Powers the
@@ -72,6 +80,8 @@ export function setSession(next) {
   CURRENT_ROLE = next.role ?? null;
   IS_DEMO = next.isDemo ?? true;
   MODULE_FLAGS = next.moduleFlags ?? {};
+  CURRENT_FAMILY_PLAN_TIER = next.planTier ?? "starter";
+  CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES = next.planLimitOverrides ?? {};
   ACCOUNT_NEEDS_FAMILY = next.needsFamily ?? false;
   IS_BLOG_AUTHOR = next.isBlogAuthor ?? false;
   NEEDS_LOGIN = next.needsLogin ?? false;

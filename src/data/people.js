@@ -199,6 +199,8 @@ export async function initDataLayer() {
     familyTagline: familyDetails.tagline || null,
     familyLogoUrl,
     moduleFlags: familyDetails.moduleFlags,
+    planTier: familyDetails.planTier,
+    planLimitOverrides: familyDetails.planLimitOverrides,
     role: resolved.role,
     isDemo: resolved.isDemo,
     needsFamily: resolved.needsFamily,

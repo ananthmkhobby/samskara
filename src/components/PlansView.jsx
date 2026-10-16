@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PLAN_TIERS, PLAN_ORDER, LIMIT_LABELS, formatLimit } from "../lib/planTiers";
 import { supabase } from "../lib/supabaseClient";
-import { CURRENT_FAMILY_ID, CURRENT_USER_ID, CURRENT_ROLE, IS_DEMO, NEEDS_LOGIN } from "../data/session";
+import { CURRENT_FAMILY_ID, CURRENT_USER_ID, CURRENT_ROLE, CURRENT_FAMILY_PLAN_TIER, IS_DEMO, NEEDS_LOGIN } from "../data/session";
 import "../styles/plans.css";
 
 // Standalone, public page — reachable identically whether signed in or not
@@ -12,6 +12,10 @@ function goHome() {
 }
 
 const CAN_REQUEST_UPGRADE = !NEEDS_LOGIN && !IS_DEMO && (CURRENT_ROLE === "head" || CURRENT_ROLE === "admin");
+// A real, signed-in family member (not the shared public demo) sees which
+// card is theirs — the demo family is excluded since "your current plan"
+// means nothing to an anonymous visitor browsing it.
+const SHOW_CURRENT_PLAN = !NEEDS_LOGIN && !IS_DEMO;
 
 export default function PlansView() {
   const [currency, setCurrency] = useState("inr");
@@ -64,8 +68,10 @@ export default function PlansView() {
           const plan = PLAN_TIERS[tier];
           const price = plan.price[currency];
           const isStarter = tier === "starter";
+          const isCurrent = SHOW_CURRENT_PLAN && tier === CURRENT_FAMILY_PLAN_TIER;
           return (
-            <div key={tier} className={`plan-card${tier === "rooted" ? " plan-card-featured" : ""}`}>
+            <div key={tier} className={`plan-card${tier === "rooted" ? " plan-card-featured" : ""}${isCurrent ? " plan-card-current" : ""}`}>
+              {isCurrent && <span className="plan-card-current-badge">Your current plan</span>}
               <span className="eyebrow">{plan.label}</span>
               <p className="plan-card-tagline">{plan.tagline}</p>
               <div className="plan-card-price">
@@ -80,7 +86,9 @@ export default function PlansView() {
                 <li>Printed book: <strong>{plan.limits.printedBook ? "1 included/year" : "—"}</strong></li>
                 <li>Treasury, Journey, Japa: <strong>{plan.modules.treasury ? "Included" : "Not included"}</strong></li>
               </ul>
-              {isStarter ? (
+              {isCurrent ? (
+                <p className="form-hint" style={{ textAlign: "center" }}>This is your family's plan today.</p>
+              ) : isStarter ? (
                 <button type="button" className="btn primary" onClick={() => { window.location.href = "/"; }}>
                   Create your family
                 </button>

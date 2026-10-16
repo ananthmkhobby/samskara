@@ -21,6 +21,12 @@
   border: 1px solid var(--line); border-radius: 16px; padding: 24px 22px; text-align: left;
 }
 .plan-card-featured { border-color: var(--maroon-ink); box-shadow: 0 14px 28px -16px rgba(90, 40, 20, .4); }
+.plan-card-current { border-color: var(--maroon-ink); border-width: 2px; padding: 23px 21px; }
+.plan-card-current-badge {
+  align-self: flex-start; margin-bottom: 10px; padding: 3px 10px; border-radius: 999px;
+  background: var(--maroon-ink); color: #fff; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em;
+}
 
 .plan-card-tagline { color: var(--ink-soft); font-size: 13px; margin: 6px 0 14px; min-height: 36px; }
 .plan-card-price { font-family: var(--font-devanagari, Georgia, serif); font-size: 32px; color: var(--maroon-deep); margin-bottom: 18px; }
