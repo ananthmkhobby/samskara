@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { PEOPLE, VALUES } from "../data/people";
-import { CURRENT_FAMILY_ID, CURRENT_FAMILY_NAME } from "../data/session";
+import { CURRENT_FAMILY_ID, CURRENT_FAMILY_NAME, CURRENT_FAMILY_PLAN_TIER, CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES } from "../data/session";
+import { getEffectiveLimits } from "../lib/planTiers";
+
+// api/photobook.js enforces this server-side regardless — this is purely
+// so Starter sees an honest, disabled button instead of one that's
+// guaranteed to fail with a 403 after a wait. Same gate as FolioModal.jsx
+// and VamshavaliView.jsx's own "Download PDF" buttons.
+const PDF_EXPORT_ALLOWED = getEffectiveLimits({ plan_tier: CURRENT_FAMILY_PLAN_TIER, plan_limit_overrides: CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES }).pdfExport;
 import { supabase } from "../lib/supabaseClient";
 import BanyanTree from "./BanyanTree";
 import ClassicTree from "./ClassicTree";
@@ -108,8 +115,11 @@ export default function TreeView({ contributions, onSelectPerson, onNav }) {
         )}
         <button className={`chip${mode === "classic" ? " active" : ""}`} onClick={() => setMode("classic")}>Tree</button>
         <button className={`chip${mode === "focus" ? " active" : ""}`} onClick={() => setMode("focus")}>Focus view</button>
-        <button className="btn ghost small" onClick={handleDownloadFamilyPdf} disabled={familyPdfDownloading}>
-          {familyPdfDownloading ? "Preparing the family book…" : "Download family photobook (PDF)"}
+        <button
+          className="btn ghost small" onClick={PDF_EXPORT_ALLOWED ? handleDownloadFamilyPdf : () => window.location.href = "/plans"}
+          disabled={familyPdfDownloading} title={PDF_EXPORT_ALLOWED ? undefined : "Not included in your family's current plan — tap to see plans"}
+        >
+          {familyPdfDownloading ? "Preparing the family book…" : PDF_EXPORT_ALLOWED ? "Download family photobook (PDF)" : "Download family photobook (upgrade to export)"}
         </button>
       </div>
       {mode !== "focus" && (
