@@ -11,6 +11,12 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.16.4 — Update support contact email to support@oursamskara.com
+
+[PR #10](https://github.com/ananthmkhobby/samskara/pull/10) — replaces `whyvasupport@gmail.com` with `support@oursamskara.com` everywhere it appeared: Privacy Policy, Terms & Conditions, and `SECURITY.md`. A contact-info swap only — doesn't change what's collected/used/shared, so `POLICY_VERSION` wasn't bumped.
+
+Verified post-deploy: both `oursamskara.com/privacy` and `oursamskara.com/terms` show the new address in every spot.
+
 ## v2026.10.16.3 — Fix: plan-gated buttons showing wrong state for every real family
 
 [PR #9](https://github.com/ananthmkhobby/samskara/pull/9) — found via a direct report: Talakadu Kutumbha is on Legacy, but "Download family photobook" and Folio's "Download PDF" both said "upgrade to export." The family's DB row was correct (`plan_tier='legacy'`, no overrides) — this was a real client-side bug affecting **every real Rooted/Legacy family**, not just this one.
