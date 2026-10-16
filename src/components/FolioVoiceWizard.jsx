@@ -8,11 +8,9 @@ import { SHOW_AI_FEATURES } from "../lib/featureFlags";
 import { isModuleEnabled } from "../data/session";
 import { minimumTierForFlag, PLAN_TIERS } from "../lib/planTiers";
 
-// SHOW_AI_FEATURES is a separate global "not ready to ship" switch,
-// unrelated to plan — still hides this entirely when off. Once on,
-// AI_MODULE_ENABLED is the real plan gate: shown disabled on Starter
-// rather than vanishing, same as FolioModal.jsx's identical pattern.
-const AI_MODULE_ENABLED = isModuleEnabled("aiFeatures");
+// A pure lookup against PLAN_TIERS (not session state) — safe as a
+// module-level constant, unlike aiModuleEnabled, which is computed
+// per-render inside the component below (see its own comment for why).
 const AI_MIN_TIER = minimumTierForFlag("aiFeatures", true);
 
 const SPEECH_LANGS = [
@@ -67,6 +65,12 @@ const STEPS = [
 ];
 
 export default function FolioVoiceWizard({ request, onSubmitField, onFinish, onOpenInterview }) {
+  // Computed per-render, not at module scope — see TreeView.jsx's identical
+  // fix for the full reasoning (a module-level constant froze at the
+  // default "no modules enabled" from before session data ever loaded).
+  // SHOW_AI_FEATURES is a separate global "not ready to ship" switch,
+  // unrelated to plan — still hides this entirely when off.
+  const aiModuleEnabled = isModuleEnabled("aiFeatures");
   // Decided once, at open time, from whatever's already filled — this is
   // also what makes it resumable: reopening later just re-evaluates against
   // current data and only asks about what's still empty.
@@ -201,7 +205,7 @@ export default function FolioVoiceWizard({ request, onSubmitField, onFinish, onO
             )}
             {SHOW_AI_FEATURES && (
               <p className="form-hint">
-                {AI_MODULE_ENABLED
+                {aiModuleEnabled
                   ? "Want to go deeper? The AI-guided interview has a longer conversation and drafts a full biography chapter."
                   : `The AI-guided interview is included from ${AI_MIN_TIER ? PLAN_TIERS[AI_MIN_TIER].label : "a paid plan"} — tap below to see plans.`}
               </p>
@@ -209,10 +213,10 @@ export default function FolioVoiceWizard({ request, onSubmitField, onFinish, onO
             <div className="folio-actions">
               {SHOW_AI_FEATURES && (
                 <button
-                  className="btn primary" style={!AI_MODULE_ENABLED ? { opacity: 0.6 } : undefined}
-                  onClick={AI_MODULE_ENABLED ? onOpenInterview : () => { window.location.href = "/plans"; }}
+                  className="btn primary" style={!aiModuleEnabled ? { opacity: 0.6 } : undefined}
+                  onClick={aiModuleEnabled ? onOpenInterview : () => { window.location.href = "/plans"; }}
                 >
-                  {AI_MODULE_ENABLED ? "Continue to AI interview →" : `See plans (${AI_MIN_TIER ? PLAN_TIERS[AI_MIN_TIER].label : "upgrade"}) →`}
+                  {aiModuleEnabled ? "Continue to AI interview →" : `See plans (${AI_MIN_TIER ? PLAN_TIERS[AI_MIN_TIER].label : "upgrade"}) →`}
                 </button>
               )}
               <button className={SHOW_AI_FEATURES ? "btn ghost" : "btn primary"} onClick={onFinish}>Done</button>

@@ -11,6 +11,16 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.16.2 — Fix: Blog/Plans landing on the family splash screen; hide blog read-aloud
+
+[PR #8](https://github.com/ananthmkhobby/samskara/pull/8) — two bugs reported directly against the previous release, both fixed the same day:
+
+**Blog going blank after showing a "family banner," every time, until refreshed.** Root cause: `App.jsx`'s `showFamilySplash` gate (defaults `true` on every mount, shown whenever a family has a logo/tagline) was checked *before* the `view === "blog"`/`"plans"` bypasses — so navigating straight to Blog from inside a family with a logo showed that family's own splash screen first, and the transition out of it went blank. Reordered so Blog/Plans — standalone public surfaces — always bypass the splash, same as they already bypass the login gate.
+
+**"Listen to this post" still showing on the blog**, despite the Audio *upload* button already being hidden in an earlier release. These are two different features — the upload button in the editor vs. a browser-text-to-speech read-aloud bar on the published post. Now hidden behind its own flag (`SHOW_BLOG_READ_ALOUD` in `featureFlags.js`), matching the original request. Component and speed controls stay fully built for an easy re-enable later.
+
+Verified on the test environment first (a disposable family with a tagline set, confirming the fix end-to-end), then post-deploy on production: `oursamskara.com` loads correctly, and the real published post no longer shows "Listen to this post."
+
 ## v2026.10.16 — Subscription tiers (Starter/Rooted/Legacy), hard enforcement, and a self-registration fix
 
 [PR #7](https://github.com/ananthmkhobby/samskara/pull/7) — the largest release so far, built in stages across one long session:

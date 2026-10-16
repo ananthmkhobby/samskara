@@ -2,12 +2,6 @@ import { useState } from "react";
 import { PEOPLE, VALUES } from "../data/people";
 import { CURRENT_FAMILY_ID, CURRENT_FAMILY_NAME, CURRENT_FAMILY_PLAN_TIER, CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES } from "../data/session";
 import { getEffectiveLimits } from "../lib/planTiers";
-
-// api/photobook.js enforces this server-side regardless — this is purely
-// so Starter sees an honest, disabled button instead of one that's
-// guaranteed to fail with a 403 after a wait. Same gate as FolioModal.jsx
-// and VamshavaliView.jsx's own "Download PDF" buttons.
-const PDF_EXPORT_ALLOWED = getEffectiveLimits({ plan_tier: CURRENT_FAMILY_PLAN_TIER, plan_limit_overrides: CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES }).pdfExport;
 import { supabase } from "../lib/supabaseClient";
 import BanyanTree from "./BanyanTree";
 import ClassicTree from "./ClassicTree";
@@ -29,6 +23,16 @@ export default function TreeView({ contributions, onSelectPerson, onNav }) {
   const [valueFilter, setValueFilter] = useState(null);
   const [mode, setMode] = useState(SHOW_BANYAN_TOGGLE ? "banyan" : "classic");
   const [familyPdfDownloading, setFamilyPdfDownloading] = useState(false);
+  // Computed per-render, not at module scope — CURRENT_FAMILY_PLAN_TIER is
+  // only set once initDataLayer()'s async fetch resolves (see
+  // data/session.js), well after this module is first evaluated. A
+  // module-level constant here would freeze at whatever the default was
+  // at import time ("starter") and never reflect the real family's tier —
+  // this was a real bug: every real family, including Legacy ones, saw
+  // "upgrade to export" regardless of their actual plan. api/photobook.js
+  // enforces this server-side regardless — this is purely so Starter sees
+  // an honest, disabled button instead of one guaranteed to 403.
+  const pdfExportAllowed = getEffectiveLimits({ plan_tier: CURRENT_FAMILY_PLAN_TIER, plan_limit_overrides: CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES }).pdfExport;
 
   async function handleDownloadFamilyPdf() {
     setFamilyPdfDownloading(true);
@@ -116,10 +120,10 @@ export default function TreeView({ contributions, onSelectPerson, onNav }) {
         <button className={`chip${mode === "classic" ? " active" : ""}`} onClick={() => setMode("classic")}>Tree</button>
         <button className={`chip${mode === "focus" ? " active" : ""}`} onClick={() => setMode("focus")}>Focus view</button>
         <button
-          className="btn ghost small" onClick={PDF_EXPORT_ALLOWED ? handleDownloadFamilyPdf : () => window.location.href = "/plans"}
-          disabled={familyPdfDownloading} title={PDF_EXPORT_ALLOWED ? undefined : "Not included in your family's current plan — tap to see plans"}
+          className="btn ghost small" onClick={pdfExportAllowed ? handleDownloadFamilyPdf : () => window.location.href = "/plans"}
+          disabled={familyPdfDownloading} title={pdfExportAllowed ? undefined : "Not included in your family's current plan — tap to see plans"}
         >
-          {familyPdfDownloading ? "Preparing the family book…" : PDF_EXPORT_ALLOWED ? "Download family photobook (PDF)" : "Download family photobook (upgrade to export)"}
+          {familyPdfDownloading ? "Preparing the family book…" : pdfExportAllowed ? "Download family photobook (PDF)" : "Download family photobook (upgrade to export)"}
         </button>
       </div>
       {mode !== "focus" && (

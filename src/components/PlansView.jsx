@@ -11,24 +11,29 @@ function goHome() {
   window.location.href = "/";
 }
 
-const CAN_REQUEST_UPGRADE = !NEEDS_LOGIN && !IS_DEMO && (CURRENT_ROLE === "head" || CURRENT_ROLE === "admin");
-// A real, signed-in family member (not the shared public demo) sees which
-// card is theirs — the demo family is excluded since "your current plan"
-// means nothing to an anonymous visitor browsing it.
-const SHOW_CURRENT_PLAN = !NEEDS_LOGIN && !IS_DEMO;
-
 export default function PlansView() {
   const [currency, setCurrency] = useState("inr");
   const [requesting, setRequesting] = useState(null);
   const [requested, setRequested] = useState({});
   const [error, setError] = useState("");
+  // Computed per-render, not at module scope — PlansView is lazy-loaded
+  // (App.jsx), so its module code can first evaluate on a direct page load
+  // to /plans, potentially before initDataLayer()'s async session fetch
+  // has resolved NEEDS_LOGIN/IS_DEMO/CURRENT_ROLE to their real values.
+  // Same bug class as TreeView.jsx/FolioModal.jsx's PDF-export gates —
+  // see their comments for the full story.
+  const canRequestUpgrade = !NEEDS_LOGIN && !IS_DEMO && (CURRENT_ROLE === "head" || CURRENT_ROLE === "admin");
+  // A real, signed-in family member (not the shared public demo) sees which
+  // card is theirs — the demo family is excluded since "your current plan"
+  // means nothing to an anonymous visitor browsing it.
+  const showCurrentPlan = !NEEDS_LOGIN && !IS_DEMO;
 
   async function requestPlan(tier) {
     if (NEEDS_LOGIN) {
       window.location.href = "/";
       return;
     }
-    if (!CAN_REQUEST_UPGRADE) {
+    if (!canRequestUpgrade) {
       setError("Only a family's Head or Admin can request a plan change — ask them to do this from their own login.");
       return;
     }
@@ -68,7 +73,7 @@ export default function PlansView() {
           const plan = PLAN_TIERS[tier];
           const price = plan.price[currency];
           const isStarter = tier === "starter";
-          const isCurrent = SHOW_CURRENT_PLAN && tier === CURRENT_FAMILY_PLAN_TIER;
+          const isCurrent = showCurrentPlan && tier === CURRENT_FAMILY_PLAN_TIER;
           return (
             <div key={tier} className={`plan-card${tier === "rooted" ? " plan-card-featured" : ""}${isCurrent ? " plan-card-current" : ""}`}>
               {isCurrent && <span className="plan-card-current-badge">Your current plan</span>}

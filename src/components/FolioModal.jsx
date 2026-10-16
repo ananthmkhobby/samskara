@@ -12,15 +12,10 @@ import { SHOW_AI_FEATURES, SHOW_DATE_OF_DEATH } from "../lib/featureFlags";
 import { getEffectiveLimits, minimumTierForFlag, PLAN_TIERS } from "../lib/planTiers";
 import { useMediaLimit } from "../hooks/useMediaLimit";
 
-// api/photobook.js enforces this server-side regardless — this is purely
-// so Starter sees an honest, disabled button instead of one that's
-// guaranteed to fail with a 403 after a wait.
-const PDF_EXPORT_ALLOWED = getEffectiveLimits({ plan_tier: CURRENT_FAMILY_PLAN_TIER, plan_limit_overrides: CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES }).pdfExport;
-// SHOW_AI_FEATURES is a separate, global "not ready to ship yet" switch —
-// unrelated to plan, so it still hides the button outright when off. Once
-// it's on, AI_MODULE_ENABLED is the actual plan gate: visible-but-disabled
-// for Starter (never hidden), rather than vanishing the way it used to.
-const AI_MODULE_ENABLED = isModuleEnabled("aiFeatures");
+// AI_MIN_TIER is a pure lookup against PLAN_TIERS (not session state), so
+// it's safe as a module-level constant — unlike pdfExportAllowed/
+// aiModuleEnabled below, which must be computed per-render (see the
+// component body for why).
 const AI_MIN_TIER = minimumTierForFlag("aiFeatures", true);
 
 // Anubhava Chitrashale ("their room") is built and working, but held back
@@ -31,6 +26,15 @@ export const SHOW_CHITRASHALE = false;
 
 export default function FolioModal({ person, contributions, onClose, onEdit, onShare, onOpenBiography, onChangePhoto, onAddFamily, onOpenInterview, onOpenVoiceWizard, onOpenRoom, hasRoomObjects, playingExp, onToggleExpPlay, canModerate, onRemoveExperience, onDeleteContribution, onSelectPerson }) {
   const modalA11y = useModalA11y(onClose);
+  // Computed per-render, not at module scope — a module-level constant
+  // here would freeze at the default ("starter"/no modules) from before
+  // initDataLayer()'s async session fetch ever resolves, and never update
+  // again for the lifetime of the page. This was a real bug: every real
+  // family, including Rooted/Legacy ones, saw these gated regardless of
+  // their actual plan. Servers (api/photobook.js, api/_aiAuth.js) enforce
+  // both regardless — this is purely about showing an honest button.
+  const pdfExportAllowed = getEffectiveLimits({ plan_tier: CURRENT_FAMILY_PLAN_TIER, plan_limit_overrides: CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES }).pdfExport;
+  const aiModuleEnabled = isModuleEnabled("aiFeatures");
   const contribs = contributionsFor(contributions, person.id);
   const media = verifiedMediaFor(contributions, person.id);
   const hasContent = personHasContent(contributions, person);
@@ -164,15 +168,15 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
           </button>
           {SHOW_AI_FEATURES && (
             <button
-              type="button" className="interview-cta" style={!AI_MODULE_ENABLED ? { opacity: 0.6 } : undefined}
-              onClick={AI_MODULE_ENABLED ? onOpenInterview : () => { window.location.href = "/plans"; }}
-              title={AI_MODULE_ENABLED ? undefined : `Included from ${AI_MIN_TIER ? PLAN_TIERS[AI_MIN_TIER].label : "a paid plan"} — tap to see plans`}
+              type="button" className="interview-cta" style={!aiModuleEnabled ? { opacity: 0.6 } : undefined}
+              onClick={aiModuleEnabled ? onOpenInterview : () => { window.location.href = "/plans"; }}
+              title={aiModuleEnabled ? undefined : `Included from ${AI_MIN_TIER ? PLAN_TIERS[AI_MIN_TIER].label : "a paid plan"} — tap to see plans`}
             >
               <span className="interview-cta-icon">🎙️</span>
               <span>
-                <b>Record {person.name.split(" ")[0]}'s story, AI-guided{!AI_MODULE_ENABLED && AI_MIN_TIER && <span className="tag" style={{ marginLeft: 8, fontSize: 11 }}>{PLAN_TIERS[AI_MIN_TIER].label}</span>}</b>
+                <b>Record {person.name.split(" ")[0]}'s story, AI-guided{!aiModuleEnabled && AI_MIN_TIER && <span className="tag" style={{ marginLeft: 8, fontSize: 11 }}>{PLAN_TIERS[AI_MIN_TIER].label}</span>}</b>
                 <span className="interview-cta-sub">
-                  {AI_MODULE_ENABLED
+                  {aiModuleEnabled
                     ? "A few spoken questions — the AI drafts a biography chapter from the conversation"
                     : `Included from ${AI_MIN_TIER ? PLAN_TIERS[AI_MIN_TIER].label : "a paid plan"} — tap to see plans`}
                 </span>
@@ -509,10 +513,10 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
             <button className="btn" onClick={() => onShare(person.id)}>Share what you know</button>
             <button className="btn primary" onClick={onOpenBiography}>Open full biography</button>
             <button
-              className="btn ghost" onClick={PDF_EXPORT_ALLOWED ? handleDownloadPdf : () => window.location.href = "/plans"}
-              disabled={pdfDownloading} title={PDF_EXPORT_ALLOWED ? undefined : "Not included in your family's current plan — tap to see plans"}
+              className="btn ghost" onClick={pdfExportAllowed ? handleDownloadPdf : () => window.location.href = "/plans"}
+              disabled={pdfDownloading} title={pdfExportAllowed ? undefined : "Not included in your family's current plan — tap to see plans"}
             >
-              {pdfDownloading ? "Preparing PDF…" : PDF_EXPORT_ALLOWED ? "Download PDF" : "Download PDF (upgrade to export)"}
+              {pdfDownloading ? "Preparing PDF…" : pdfExportAllowed ? "Download PDF" : "Download PDF (upgrade to export)"}
             </button>
           </div>
         </div>
