@@ -86,6 +86,29 @@ export default function TermsOfServiceView() {
       </div>
 
       <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>Subscription plans &amp; limits</h4>
+        <p className="folio-summary" style={{ marginBottom: 8 }}>
+          Every family starts on the free Starter plan, with the limits (people, photos, recordings, videos, AI
+          features, PDF export) shown on our Plans page. Reaching a limit blocks the specific action that would
+          exceed it — it never deletes or hides anything you've already added.
+        </p>
+        <p className="folio-summary">
+          Upgrading today is a request a Family Head or Admin submits from the Plans page; we review and action it
+          manually. We don't currently process payment automatically through the app, and these terms will be
+          updated to cover billing specifics before that changes.
+        </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>The Samskara Blog</h4>
+        <p className="folio-summary">
+          Our public blog is separate from any family's private archive — it's written by our own team, reachable
+          without an account, and governed by these same Terms. Interacting with it (reading, liking, sharing)
+          doesn't affect, and isn't affected by, any family's archive or plan.
+        </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
         <h4 style={{ fontSize: 15, marginBottom: 10 }}>Service availability &amp; liability</h4>
         <p className="folio-summary" style={{ marginBottom: 8 }}>
           We aim to keep Samskara available and your family's archive intact, but don't guarantee uninterrupted

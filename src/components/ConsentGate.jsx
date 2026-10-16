@@ -14,12 +14,18 @@ import TermsOfServiceView from "./TermsOfServiceView";
 // The box starts unticked and Continue stays disabled until it's ticked — a
 // pre-ticked box, or a "by continuing you agree" line with no affirmative
 // action, is not valid consent under the DPDP Act and would make the whole
-// exercise pointless.
+// exercise pointless. The box itself also stays disabled until both
+// documents have actually been opened at least once — "I agree" to
+// something you were never made to even look at is the same hollow consent
+// problem, just moved one step earlier.
 export default function ConsentGate({ userId, onAccepted }) {
   const [agreed, setAgreed] = useState(false);
   const [reading, setReading] = useState(null); // null | "privacy" | "terms"
+  const [viewedPrivacy, setViewedPrivacy] = useState(false);
+  const [viewedTerms, setViewedTerms] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const bothViewed = viewedPrivacy && viewedTerms;
 
   async function accept() {
     setBusy(true);
@@ -67,27 +73,30 @@ export default function ConsentGate({ userId, onAccepted }) {
           </div>
 
           <div className="consent-doc-links">
-            <button type="button" className="card more-menu-item" onClick={() => setReading("privacy")}>
+            <button type="button" className="card more-menu-item" onClick={() => { setViewedPrivacy(true); setReading("privacy"); }}>
               <span className="more-menu-text">
-                <b>Privacy Policy</b>
+                <b>Privacy Policy{viewedPrivacy ? " ✓" : ""}</b>
                 <span>What's collected, who can see it, and how to get it deleted</span>
               </span>
             </button>
-            <button type="button" className="card more-menu-item" onClick={() => setReading("terms")}>
+            <button type="button" className="card more-menu-item" onClick={() => { setViewedTerms(true); setReading("terms"); }}>
               <span className="more-menu-text">
-                <b>Terms &amp; Conditions</b>
+                <b>Terms &amp; Conditions{viewedTerms ? " ✓" : ""}</b>
                 <span>What you can expect from us, and what we ask of you</span>
               </span>
             </button>
           </div>
 
-          <label className="consent-check">
-            <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+          <label className="consent-check" style={!bothViewed ? { opacity: 0.5, cursor: "not-allowed" } : undefined}>
+            <input type="checkbox" checked={agreed} disabled={!bothViewed} onChange={(e) => setAgreed(e.target.checked)} />
             <span>
               I have read and agree to the Privacy Policy and Terms &amp; Conditions
               <em> (version of {POLICY_VERSION_LABEL})</em>
             </span>
           </label>
+          {!bothViewed && (
+            <p className="form-hint" style={{ marginTop: 6 }}>Open both documents above at least once to check this box.</p>
+          )}
 
           {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
 

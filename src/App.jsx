@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useReducer, useRef, useState } from "react";
 import TopBar from "./components/TopBar";
 import BottomBar from "./components/BottomBar";
 import HomeDashboard from "./components/HomeDashboard";
+import AuthPanel from "./components/AuthPanel";
 import MoreMenu from "./components/MoreMenu";
 import SearchView from "./components/SearchView";
 import TreeView from "./components/TreeView";
@@ -977,6 +978,30 @@ export default function App() {
   // not render behind it, or "they saw it" becomes arguable.
   if (needsConsent) {
     return <ConsentGate userId={CURRENT_USER_ID} onAccepted={() => setNeedsConsent(false)} />;
+  }
+
+  // A self-registered account with zero family_members rows resolves
+  // isDemo:true/familyId:DEMO_FAMILY_ID (see data/people.js's
+  // resolveAuthAndFamily) purely so the rest of the app has somewhere
+  // harmless to point at while they decide — not because they're actually
+  // meant to land inside the demo family. Without this gate, that "harmless
+  // default" IS the entire experience: the full Rao Family demo renders as
+  // their landing page, TopBar still shows "Log in" (keyed on IS_DEMO), and
+  // the real "start a new family" prompt (AuthPanel's FamilyIntentGate) is
+  // buried as a small card at the bottom of Home — exactly the same shape
+  // of bug the IS_BLOG_AUTHOR gate below was added to fix. Same tier,
+  // same reasoning, checked first since a blog author can never also be in
+  // this state (zero family_members rows means different things for each,
+  // but both resolve through the same fallback — see IS_BLOG_AUTHOR's own
+  // check in resolveAuthAndFamily for how they're told apart).
+  if (ACCOUNT_NEEDS_FAMILY) {
+    return (
+      <div className="login-page login-page-scroll">
+        <div className="login-help-wrap">
+          <AuthPanel onShowPrivacy={() => goTo("privacy")} onShowTerms={() => goTo("terms")} />
+        </div>
+      </div>
+    );
   }
 
   // A blog-author session resolves isDemo:true (see data/people.js) so the

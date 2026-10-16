@@ -3,6 +3,7 @@ const SUBPROCESSORS = [
   { name: "Vercel", use: "Hosts the web app itself. Vercel does not have access to your family's stored data — the app talks to Supabase directly from your device." },
   { name: "OpenAI", use: "Powers optional AI features: drafting a biography chapter from spoken interview answers, translating text, and extracting names/dates from an uploaded family-tree photo. Only the specific content submitted to these features is sent, for that single request." },
   { name: "OpenStreetMap (Nominatim)", use: "Converts a city/place name you enter into map coordinates for the Journey map. Only the place name is sent." },
+  { name: "Twilio", use: "Powers the optional WhatsApp integration — if your family connects it, Twilio relays messages and media between WhatsApp and the app, which means it handles the phone number and message content for that integration only." },
 ];
 
 export default function PrivacyPolicyView() {
@@ -87,6 +88,28 @@ export default function PrivacyPolicyView() {
         <p className="folio-summary">
           The public demo (a "try it now" link, no login) shows a separate, fictional sample family. It contains no
           real family's data, and nothing entered while browsing it is saved to any real family's archive.
+        </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>The Samskara Blog</h4>
+        <p className="folio-summary">
+          Separately from any family's private archive, Samskara publishes a public blog, written by a small internal
+          team — not family content, and not subject to any family's privacy settings. If you post a comment,
+          like, or share a post, that interaction isn't tied to any family's archive. The blog is reachable without
+          an account.
+        </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>Subscription plans</h4>
+        <p className="folio-summary">
+          Every family starts on our free Starter plan. We store which plan a family is on and the usage limits
+          that go with it (how many people, photos, recordings, videos, etc.) so the app can show accurate limits
+          and let you request a change. We do not currently charge automatically — upgrading today is a request a
+          Family Head or Admin submits, which we review and action manually; no payment details are collected or
+          stored by the app itself at this time. If that changes, this policy will be updated before any payment
+          processing begins.
         </p>
       </div>
 
