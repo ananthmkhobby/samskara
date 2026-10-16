@@ -98,7 +98,7 @@ async function provision(res, supabase, { familyName, headEmail, headName, modul
 async function searchFamilies(res, supabase, { query }) {
   try {
     const q = (query || "").trim();
-    let builder = supabase.from("families").select("id, name, plan_tier").order("name").limit(20);
+    let builder = supabase.from("families").select("id, name, plan_tier, module_flags, plan_limit_overrides").order("name").limit(20);
     if (q) builder = builder.ilike("name", `%${q}%`);
     const { data, error } = await builder;
     if (error) throw new Error(error.message);

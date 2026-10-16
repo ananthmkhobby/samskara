@@ -333,8 +333,20 @@ function ManagePlanSection({ adminSecret }) {
     const tier = family.plan_tier || "starter";
     setPlanTier(tier);
     const tierModules = PLAN_TIERS[tier].modules;
-    setEnabledModules(Object.fromEntries(GATABLE_MODULES.map((m) => [m.key, tierModules[m.key] !== false])));
-    setOverrides(emptyOverrides());
+    const moduleFlags = family.module_flags || {};
+    // A module explicitly flagged (true or false) wins; otherwise fall back
+    // to the tier default — matches getEffectiveModules()' own semantics.
+    // Loading this family's ACTUAL current flags here (not just the tier
+    // default) is what makes "Save plan" an edit instead of a silent reset
+    // of whatever an earlier admin session already set.
+    setEnabledModules(Object.fromEntries(GATABLE_MODULES.map((m) =>
+      [m.key, m.key in moduleFlags ? moduleFlags[m.key] !== false : tierModules[m.key] !== false]
+    )));
+    const overrides = family.plan_limit_overrides || {};
+    setOverrides({
+      ...Object.fromEntries(OVERRIDABLE_LIMIT_KEYS.map((k) => [k, k in overrides && overrides[k] !== null ? String(overrides[k]) : ""])),
+      ...Object.fromEntries(OVERRIDABLE_BOOLEAN_KEYS.map((k) => [k, k in overrides && overrides[k] !== null ? String(overrides[k]) : ""])),
+    });
   }
 
   // Re-filling to the new tier's defaults on change, same as the plan's
