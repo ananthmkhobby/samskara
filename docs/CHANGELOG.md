@@ -11,6 +11,28 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.16 — Subscription tiers (Starter/Rooted/Legacy), hard enforcement, and a self-registration fix
+
+[PR #7](https://github.com/ananthmkhobby/samskara/pull/7) — the largest release so far, built in stages across one long session:
+
+**Subscription data model + public Plans page.** `families.plan_tier`/`plan_limit_overrides`, `src/lib/planTiers.js` as the single source of truth for Starter/Rooted/Legacy numbers, SuperAdmin's "Manage a family's plan" section, the public `/plans` page, and self-serve `plan_upgrade_requests`. Every pre-existing family was grandfathered to `'legacy'` in the enforcement migration (see below) so Phase 1's silent `'starter'` default never capped a real family — confirmed on production, all real families moved correctly.
+
+**Real hard enforcement**, not just display: Postgres triggers on `people` and `storage.objects` enforce people/photos/recordings/videos counts across every existing insert/upload call site automatically; `api/_aiAuth.js` caps AI calls per family per month; `api/photobook.js` blocks PDF export for Starter. SuperAdmin can override every limit, including a tri-state `pdfExport` toggle.
+
+**"Never hide a gated feature" policy.** Every gated surface (Treasury/Journey/Japa in the nav, AI buttons, PDF export, people-limit import) now shows visibly-disabled with the specific plan that unlocks it ("Included from Rooted") and a link to `/plans`, instead of silently disappearing or letting someone attempt something guaranteed to fail.
+
+**A real enforcement bug found while building the above**: `isModuleEnabled()` read the raw `families.module_flags` column directly, never merged with the plan tier's own defaults — so Treasury/Journey/Japa had been fully enabled for every Starter family (including every self-registered one) since Phase 1 shipped, contradicting what `/plans` displayed. Fixed at session hydration (`src/data/people.js`) and the identical bug in `api/_aiAuth.js`'s module check.
+
+**Self-registration was landing new users in the shared public demo family** instead of their own. Root cause: `App.jsx` never promoted `ACCOUNT_NEEDS_FAMILY` to a top-level gate the way it already did for the identical blog-author case — the actual family-creation RPC was always correct, it just never got shown first. Fixed with a proper top-level gate. Also fixed in the same pass: the Privacy Policy/Terms checkbox (both signup-time and post-login) is now disabled until both documents are actually opened, opening them no longer wipes in-progress signup form data, and both documents were updated for what's actually shipped (Blog, WhatsApp/Twilio, subscription plans) with `POLICY_VERSION` bumped.
+
+**Blog/Admin sometimes needing a manual refresh to load**, diagnosed as a code-split-chunk-vs-service-worker race (`registerType: 'autoUpdate'` swaps precache manifests in the background, independent of when an already-open tab's own bundle reloads) — new `src/lib/lazyWithReload.js` wraps every lazy-loaded view to self-heal with one automatic reload instead of leaving a dead view on screen.
+
+**Proactive media-usage indicators** — a new `family_media_usage()` RPC and `useMediaLimit` hook show "X/100 photos used" and disable the control at the limit, across every reachable upload surface, instead of only finding out via the (already-friendly) reactive error.
+
+Verified extensively on the test environment throughout — all 6 enforcement limits, cross-member sharing (confirmed the cap is family-wide, not per-member), the upgrade-request flow, a genuine end-to-end self-registration test, the module-gating fix, and the media-usage indicator, each with disposable test data cleaned up after. Both migrations pre-applied to production ahead of this merge.
+
+Verified post-deploy: production build `Ready`; `oursamskara.com` loads correctly, `/plans` and `/blog` both confirmed working with real content.
+
 ## v2026.10.15.6 — Email-redirect fix, confirmation emails; blog likes, share, reading redesign
 
 Two pieces, both landed on the same `dev` → `main` PR ([#6](https://github.com/ananthmkhobby/samskara/pull/6)):
