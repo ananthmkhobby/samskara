@@ -11,6 +11,18 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.16.3 — Fix: plan-gated buttons showing wrong state for every real family
+
+[PR #9](https://github.com/ananthmkhobby/samskara/pull/9) — found via a direct report: Talakadu Kutumbha is on Legacy, but "Download family photobook" and Folio's "Download PDF" both said "upgrade to export." The family's DB row was correct (`plan_tier='legacy'`, no overrides) — this was a real client-side bug affecting **every real Rooted/Legacy family**, not just this one.
+
+**Root cause**: `PDF_EXPORT_ALLOWED`/`AI_MODULE_ENABLED`/`PEOPLE_LIMIT` in `TreeView.jsx`, `FolioModal.jsx`, `VamshavaliView.jsx`, `FamilyBuilderView.jsx`, `FolioVoiceWizard.jsx` (plus `CAN_REQUEST_UPGRADE`/`SHOW_CURRENT_PLAN` in `PlansView.jsx`, found in a follow-up sweep) were declared as module-level constants — evaluated once when each module is first imported, before `initDataLayer()`'s async session fetch resolves. At that point `CURRENT_FAMILY_PLAN_TIER`/`MODULE_FLAGS` are still at boot-time defaults (`"starter"`/`{}`), and since ES module top-level code never re-runs, the gate froze there for the page's lifetime regardless of the family's actual plan. Starter only ever looked correct because `"starter"` happened to already be the frozen default. Fixed by moving each computation inside its component's function body, so it recomputes every render against the live session bindings — the same pattern several other files already used correctly.
+
+Also includes two smaller fixes from the same `dev` push: Blog/Plans no longer briefly show a family's welcome-splash screen before loading (a gate-ordering bug), and the blog's "Listen to this post" read-aloud bar is now hidden (a separate feature from the editor's audio-upload button already hidden, and the actual gap in the original "hide audio" request).
+
+Verified on the test environment first: reproduced the bug live on a fresh disposable Legacy-tier family *before* writing the fix, then re-verified fixed afterward (fresh session, cache cleared) — "Download family photobook (PDF)" and Folio's plain "Download PDF" both correct, `/plans` correctly badges "YOUR CURRENT PLAN."
+
+Verified post-deploy: production build `Ready`, deployed from the exact merge commit; `oursamskara.com` loads correctly.
+
 ## v2026.10.16.2 — Fix: Blog/Plans landing on the family splash screen; hide blog read-aloud
 
 [PR #8](https://github.com/ananthmkhobby/samskara/pull/8) — two bugs reported directly against the previous release, both fixed the same day:
