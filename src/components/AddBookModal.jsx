@@ -5,9 +5,11 @@ import { uploadFamilyMedia } from "../lib/mediaUpload";
 import { CURRENT_FAMILY_ID } from "../data/session";
 import { CloseIcon } from "./Icons";
 import { useModalA11y } from "../hooks/useModalA11y";
+import { useMediaLimit } from "../hooks/useMediaLimit";
 
 export default function AddBookModal({ onCancel, onSubmit, canModerate }) {
   const modalA11y = useModalA11y(onCancel);
+  const photoLimit = useMediaLimit("photos");
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState(LIBRARY_CATEGORIES[0].key);
   const [story, setStory] = useState("");
@@ -96,9 +98,20 @@ export default function AddBookModal({ onCancel, onSubmit, canModerate }) {
             </div>
             <div className="form-row">
               <label>Cover photo (optional)</label>
-              <input type="file" accept="image/*" onChange={handleCoverFile} />
+              <input type="file" accept="image/*" onChange={handleCoverFile} disabled={photoLimit.atLimit} />
               {coverDataUrl && <img src={coverDataUrl} alt="" style={{ width: 90, height: 118, objectFit: "cover", borderRadius: 8, marginTop: 10, border: "1px solid var(--line-strong)" }} />}
               {coverError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{coverError}</p>}
+              {photoLimit.usageLabel && (
+                <p className="form-hint" style={{ color: photoLimit.atLimit ? "var(--maroon-ink)" : undefined }}>
+                  {photoLimit.usageLabel}
+                  {photoLimit.atLimit && (
+                    <>
+                      {" — "}
+                      <button type="button" className="link-btn" onClick={() => { window.location.href = "/plans"; }}>see plans{photoLimit.upgradeTierLabel ? ` (${photoLimit.upgradeTierLabel})` : ""} →</button>
+                    </>
+                  )}
+                </p>
+              )}
             </div>
             <div className="form-row">
               <label>Soft copy (optional)</label>

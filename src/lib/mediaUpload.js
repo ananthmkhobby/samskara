@@ -85,3 +85,17 @@ export async function batchResolveMediaUrls(paths) {
   }
   return map;
 }
+
+// { photos, recordings, videos } current counts for a family — powers a
+// proactive "47/100 photos used" indicator ahead of an upload attempt,
+// via the family_media_usage() RPC (supabase/migrations/
+// 20261017180000_family_media_usage.sql), since storage.objects isn't
+// queryable from the client the way a public-schema table is. Returns
+// null on any failure — callers should treat that as "don't know yet,"
+// not "zero used."
+export async function fetchMediaUsage(familyId) {
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc("family_media_usage", { p_family_id: familyId });
+  if (error) return null;
+  return data;
+}

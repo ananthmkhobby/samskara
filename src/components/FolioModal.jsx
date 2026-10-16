@@ -10,6 +10,7 @@ import { useModalA11y } from "../hooks/useModalA11y";
 import { supabase } from "../lib/supabaseClient";
 import { SHOW_AI_FEATURES, SHOW_DATE_OF_DEATH } from "../lib/featureFlags";
 import { getEffectiveLimits, minimumTierForFlag, PLAN_TIERS } from "../lib/planTiers";
+import { useMediaLimit } from "../hooks/useMediaLimit";
 
 // api/photobook.js enforces this server-side regardless — this is purely
 // so Starter sees an honest, disabled button instead of one that's
@@ -38,6 +39,7 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
   const relationship = relationshipCaption(person);
   const widowed = widowedLabel(person);
   const photoInputRef = useRef(null);
+  const photoLimit = useMediaLimit("photos");
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [expCollapsed, setExpCollapsed] = useState(false);
   // Starts collapsed once the list is long enough to be worth collapsing —
@@ -108,16 +110,26 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
             <button
               type="button"
               className="avatar-view-btn"
-              onClick={() => (hasPhoto ? setLightboxSrc(person.photoUrl) : photoInputRef.current?.click())}
-              aria-label={hasPhoto ? `View ${person.name}'s photo` : "Add profile photo"}
+              onClick={() => (hasPhoto ? setLightboxSrc(person.photoUrl) : !photoLimit.atLimit && photoInputRef.current?.click())}
+              aria-label={hasPhoto ? `View ${person.name}'s photo` : photoLimit.atLimit ? "Photo limit reached — tap to see plans" : "Add profile photo"}
             >
               <PersonAvatar person={person} size={96} minGen={MIN_GEN} maxGen={MAX_GEN} variant="band" className="avatar" />
             </button>
-            <button type="button" className="avatar-edit-fab" onClick={() => photoInputRef.current?.click()} aria-label="Change profile photo">
+            <button
+              type="button" className="avatar-edit-fab"
+              onClick={() => { if (photoLimit.atLimit) window.location.href = "/plans"; else photoInputRef.current?.click(); }}
+              aria-label={photoLimit.atLimit ? "Photo limit reached — tap to see plans" : "Change profile photo"}
+              title={photoLimit.atLimit ? `Your plan allows up to ${photoLimit.limit} photos — ask a Head/Admin to upgrade` : undefined}
+            >
               <EditPencilIcon />
             </button>
           </div>
-          <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoFile} />
+          {photoLimit.usageLabel && (
+            <p className="form-hint" style={{ textAlign: "center", color: photoLimit.atLimit ? "var(--maroon-ink)" : undefined, marginTop: -8, marginBottom: 10 }}>
+              {photoLimit.usageLabel}{photoLimit.atLimit && photoLimit.upgradeTierLabel ? ` — see plans (${photoLimit.upgradeTierLabel})` : ""}
+            </p>
+          )}
+          <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoFile} disabled={photoLimit.atLimit} />
           <h2 className="folio-name-line">
             {formatName(person)}
             <button

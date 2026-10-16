@@ -9,6 +9,7 @@ import { resizeImage } from "../lib/imageResize";
 import { uploadFamilyMedia, uploadPrivateFamilyMedia } from "../lib/mediaUpload";
 import { CURRENT_FAMILY_ID, CURRENT_USER_ID } from "../data/session";
 import { SHOW_AI_FEATURES } from "../lib/featureFlags";
+import { useMediaLimit } from "../hooks/useMediaLimit";
 
 const TYPE_DEFS = [
   { key: "memory", label: "Memory", Icon: MemoryIcon },
@@ -76,6 +77,12 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
   const [personId, setPersonId] = useState(initial.personId || "__new__");
   const [newName, setNewName] = useState("");
   const [type, setType] = useState(initial.type || "memory");
+  // "audio"/"video" are this app's internal names; the plan's limits use
+  // "recordings"/"videos" — same mapping mediaUpload.js's own classifier
+  // uses for the matching MIME-type prefix.
+  const mediaLimitKind = type === "photo" ? "photos" : type === "audio" ? "recordings" : type === "video" ? "videos" : null;
+  const mediaLimit = useMediaLimit(mediaLimitKind || "photos");
+  const mediaLimitApplies = !!mediaLimitKind;
   const [text, setText] = useState("");
   const [speechLang, setSpeechLang] = useState("en-IN");
   const [fileName, setFileName] = useState("");
@@ -292,10 +299,21 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
               {type === "photo" && (
                 <>
                   <label>Upload photo</label>
-                  <input type="file" accept="image/*" onChange={handlePhotoFile} />
+                  <input type="file" accept="image/*" onChange={handlePhotoFile} disabled={mediaLimit.atLimit} />
                   {photoDataUrl && <img src={photoDataUrl} alt="" style={{ width: 120, height: 120, objectFit: "cover", borderRadius: 8, marginTop: 10, border: "1px solid var(--line-strong)" }} />}
                   {photoError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{photoError}</p>}
                 </>
+              )}
+              {mediaLimitApplies && mediaLimit.usageLabel && (
+                <p className="form-hint" style={{ color: mediaLimit.atLimit ? "var(--maroon-ink)" : undefined }}>
+                  {mediaLimit.usageLabel}
+                  {mediaLimit.atLimit && (
+                    <>
+                      {" — "}
+                      <button type="button" className="link-btn" onClick={() => { window.location.href = "/plans"; }}>see plans{mediaLimit.upgradeTierLabel ? ` (${mediaLimit.upgradeTierLabel})` : ""} →</button>
+                    </>
+                  )}
+                </p>
               )}
               {type === "document" && (
                 <>
@@ -342,7 +360,7 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
             </div>
             {submitError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{submitError}</p>}
             <div className="folio-actions">
-              <button type="submit" className="btn primary" disabled={submitting}>
+              <button type="submit" className="btn primary" disabled={submitting || (mediaLimitApplies && mediaLimit.atLimit)}>
                 {submitting ? "Uploading…" : visibility === "private" ? "Save privately" : canModerate ? "Add now" : "Submit for review"}
               </button>
               <button type="button" className="btn ghost" onClick={onCancel} disabled={submitting}>Cancel</button>

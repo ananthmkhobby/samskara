@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MIN_GEN, MAX_GEN, byId, yearsLabel } from "../data/helpers";
 import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL, CURRENT_USER_ID, CURRENT_ROLE, CURRENT_FAMILY_PLAN_TIER } from "../data/session";
 import { PLAN_TIERS } from "../lib/planTiers";
+import { useMediaLimit } from "../hooks/useMediaLimit";
 import {
   createInvite, fetchFamilyMembers, updateMemberRole, setMemberPersonLink,
   updateMemberDisplayName, fetchInvites, revokeInvite, fetchMemberEmail,
@@ -618,6 +619,7 @@ function FamilyNameCard() {
 // tagline and logo are read once at boot into plain module bindings.
 function FamilyTaglineLogoCard() {
   const [tagline, setTagline] = useState(CURRENT_FAMILY_TAGLINE || "");
+  const photoLimit = useMediaLimit("photos");
   const [logoBusy, setLogoBusy] = useState(false);
   const [taglineBusy, setTaglineBusy] = useState(false);
   const [error, setError] = useState("");
@@ -689,13 +691,24 @@ function FamilyTaglineLogoCard() {
         {CURRENT_FAMILY_LOGO_URL && (
           <img src={CURRENT_FAMILY_LOGO_URL} alt="" style={{ width: 64, height: 64, borderRadius: 10, objectFit: "contain", padding: 4, border: "1px solid var(--line-strong)", background: "var(--parchment-paper)" }} />
         )}
-        <input ref={fileRef} type="file" accept="image/*" onChange={handleLogoFile} disabled={logoBusy} />
+        <input ref={fileRef} type="file" accept="image/*" onChange={handleLogoFile} disabled={logoBusy || photoLimit.atLimit} />
         {CURRENT_FAMILY_LOGO_URL && (
           <button type="button" className="link-btn" onClick={removeLogo} disabled={logoBusy} style={{ color: "var(--maroon-ink)", fontSize: 13 }}>
             Remove
           </button>
         )}
       </div>
+      {photoLimit.usageLabel && (
+        <p className="form-hint" style={{ color: photoLimit.atLimit ? "var(--maroon-ink)" : undefined, marginTop: 8 }}>
+          {photoLimit.usageLabel}
+          {photoLimit.atLimit && (
+            <>
+              {" — "}
+              <button type="button" className="link-btn" onClick={() => { window.location.href = "/plans"; }}>see plans{photoLimit.upgradeTierLabel ? ` (${photoLimit.upgradeTierLabel})` : ""} →</button>
+            </>
+          )}
+        </p>
+      )}
       {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
       {saved && <p className="form-hint">Saved — refreshing…</p>}
     </div>
