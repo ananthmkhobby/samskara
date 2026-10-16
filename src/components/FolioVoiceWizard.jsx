@@ -6,11 +6,14 @@ import { AudioIcon, CloseIcon } from "./Icons";
 import { useModalA11y } from "../hooks/useModalA11y";
 import { SHOW_AI_FEATURES } from "../lib/featureFlags";
 import { isModuleEnabled } from "../data/session";
+import { minimumTierForFlag, PLAN_TIERS } from "../lib/planTiers";
 
-// api/interview.js enforces this server-side regardless — see
-// FolioModal.jsx's identical constant for why this matters even while
-// SHOW_AI_FEATURES is globally off today.
-const AI_FEATURES_ALLOWED = SHOW_AI_FEATURES && isModuleEnabled("aiFeatures");
+// SHOW_AI_FEATURES is a separate global "not ready to ship" switch,
+// unrelated to plan — still hides this entirely when off. Once on,
+// AI_MODULE_ENABLED is the real plan gate: shown disabled on Starter
+// rather than vanishing, same as FolioModal.jsx's identical pattern.
+const AI_MODULE_ENABLED = isModuleEnabled("aiFeatures");
+const AI_MIN_TIER = minimumTierForFlag("aiFeatures", true);
 
 const SPEECH_LANGS = [
   { code: "en-IN", label: "English" },
@@ -196,10 +199,23 @@ export default function FolioVoiceWizard({ request, onSubmitField, onFinish, onO
             ) : (
               <p className="form-hint" style={{ marginTop: 6 }}>Nothing new was captured this time — that's fine, it'll ask again next time you run the walkthrough.</p>
             )}
-            {AI_FEATURES_ALLOWED && <p className="form-hint">Want to go deeper? The AI-guided interview has a longer conversation and drafts a full biography chapter.</p>}
+            {SHOW_AI_FEATURES && (
+              <p className="form-hint">
+                {AI_MODULE_ENABLED
+                  ? "Want to go deeper? The AI-guided interview has a longer conversation and drafts a full biography chapter."
+                  : `The AI-guided interview is included from ${AI_MIN_TIER ? PLAN_TIERS[AI_MIN_TIER].label : "a paid plan"} — tap below to see plans.`}
+              </p>
+            )}
             <div className="folio-actions">
-              {AI_FEATURES_ALLOWED && <button className="btn primary" onClick={onOpenInterview}>Continue to AI interview →</button>}
-              <button className={AI_FEATURES_ALLOWED ? "btn ghost" : "btn primary"} onClick={onFinish}>Done</button>
+              {SHOW_AI_FEATURES && (
+                <button
+                  className="btn primary" style={!AI_MODULE_ENABLED ? { opacity: 0.6 } : undefined}
+                  onClick={AI_MODULE_ENABLED ? onOpenInterview : () => { window.location.href = "/plans"; }}
+                >
+                  {AI_MODULE_ENABLED ? "Continue to AI interview →" : `See plans (${AI_MIN_TIER ? PLAN_TIERS[AI_MIN_TIER].label : "upgrade"}) →`}
+                </button>
+              )}
+              <button className={SHOW_AI_FEATURES ? "btn ghost" : "btn primary"} onClick={onFinish}>Done</button>
             </div>
           </div>
         </div>

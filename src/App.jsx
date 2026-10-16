@@ -3,6 +3,7 @@ import TopBar from "./components/TopBar";
 import BottomBar from "./components/BottomBar";
 import HomeDashboard from "./components/HomeDashboard";
 import AuthPanel from "./components/AuthPanel";
+import { minimumTierForFlag, PLAN_TIERS } from "./lib/planTiers";
 import MoreMenu from "./components/MoreMenu";
 import SearchView from "./components/SearchView";
 import TreeView from "./components/TreeView";
@@ -1088,7 +1089,15 @@ export default function App() {
           <section className="wrap">
             <div className="section-head">
               <h2>Not included in your family's plan</h2>
-              <p>This feature isn't part of your family's current plan. Contact Samskara to add it.</p>
+              <p>
+                {(() => {
+                  const minTier = minimumTierForFlag(viewGateKey, true);
+                  return minTier
+                    ? `This is included from ${PLAN_TIERS[minTier].label} — ask a Head/Admin to request an upgrade from the Plans page.`
+                    : "This isn't part of your family's current plan — ask a Head/Admin to request an upgrade from the Plans page.";
+                })()}
+              </p>
+              <button type="button" className="btn primary" style={{ marginTop: 10 }} onClick={() => goTo("plans")}>See plans →</button>
             </div>
           </section>
         )}

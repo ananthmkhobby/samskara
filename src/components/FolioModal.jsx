@@ -9,17 +9,18 @@ import { CURRENT_FAMILY_ID, CURRENT_FAMILY_PLAN_TIER, CURRENT_FAMILY_PLAN_LIMIT_
 import { useModalA11y } from "../hooks/useModalA11y";
 import { supabase } from "../lib/supabaseClient";
 import { SHOW_AI_FEATURES, SHOW_DATE_OF_DEATH } from "../lib/featureFlags";
-import { getEffectiveLimits } from "../lib/planTiers";
+import { getEffectiveLimits, minimumTierForFlag, PLAN_TIERS } from "../lib/planTiers";
 
 // api/photobook.js enforces this server-side regardless — this is purely
 // so Starter sees an honest, disabled button instead of one that's
 // guaranteed to fail with a 403 after a wait.
 const PDF_EXPORT_ALLOWED = getEffectiveLimits({ plan_tier: CURRENT_FAMILY_PLAN_TIER, plan_limit_overrides: CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES }).pdfExport;
-// api/_aiAuth.js enforces this server-side regardless — this is so a
-// Starter family doesn't see AI entry points that are guaranteed to 429
-// (currently moot while SHOW_AI_FEATURES is globally off, but this is the
-// per-family half of that gate so it's correct the moment it flips on).
-const AI_FEATURES_ALLOWED = SHOW_AI_FEATURES && isModuleEnabled("aiFeatures");
+// SHOW_AI_FEATURES is a separate, global "not ready to ship yet" switch —
+// unrelated to plan, so it still hides the button outright when off. Once
+// it's on, AI_MODULE_ENABLED is the actual plan gate: visible-but-disabled
+// for Starter (never hidden), rather than vanishing the way it used to.
+const AI_MODULE_ENABLED = isModuleEnabled("aiFeatures");
+const AI_MIN_TIER = minimumTierForFlag("aiFeatures", true);
 
 // Anubhava Chitrashale ("their room") is built and working, but held back
 // from release for now — flip this back on when it's ready to ship. Kept
@@ -149,12 +150,20 @@ export default function FolioModal({ person, contributions, onClose, onEdit, onS
               <span className="interview-cta-sub">A few quick spoken questions — heritage, life lesson, summary, places. Skip anything, pick up later.</span>
             </span>
           </button>
-          {AI_FEATURES_ALLOWED && (
-            <button type="button" className="interview-cta" onClick={onOpenInterview}>
+          {SHOW_AI_FEATURES && (
+            <button
+              type="button" className="interview-cta" style={!AI_MODULE_ENABLED ? { opacity: 0.6 } : undefined}
+              onClick={AI_MODULE_ENABLED ? onOpenInterview : () => { window.location.href = "/plans"; }}
+              title={AI_MODULE_ENABLED ? undefined : `Included from ${AI_MIN_TIER ? PLAN_TIERS[AI_MIN_TIER].label : "a paid plan"} — tap to see plans`}
+            >
               <span className="interview-cta-icon">🎙️</span>
               <span>
-                <b>Record {person.name.split(" ")[0]}'s story, AI-guided</b>
-                <span className="interview-cta-sub">A few spoken questions — the AI drafts a biography chapter from the conversation</span>
+                <b>Record {person.name.split(" ")[0]}'s story, AI-guided{!AI_MODULE_ENABLED && AI_MIN_TIER && <span className="tag" style={{ marginLeft: 8, fontSize: 11 }}>{PLAN_TIERS[AI_MIN_TIER].label}</span>}</b>
+                <span className="interview-cta-sub">
+                  {AI_MODULE_ENABLED
+                    ? "A few spoken questions — the AI drafts a biography chapter from the conversation"
+                    : `Included from ${AI_MIN_TIER ? PLAN_TIERS[AI_MIN_TIER].label : "a paid plan"} — tap to see plans`}
+                </span>
               </span>
             </button>
           )}

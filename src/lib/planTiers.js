@@ -81,3 +81,27 @@ export function getEffectiveModules(family) {
   );
   return { ...disabledByTier, ...(family?.module_flags || {}) };
 }
+
+// The cheapest tier whose own default unlocks a given module or boolean
+// limit (e.g. "treasury", "pdfExport") — used to name a specific upgrade
+// target in gated UI ("upgrade to Rooted") instead of a vague "ask an
+// admin." Returns null if no tier's default unlocks it (shouldn't happen
+// for any key actually used this way today, but a family-specific
+// module_flags/plan_limit_overrides block isn't a tier problem at all —
+// callers should prefer that explanation when they can tell the two apart).
+export function minimumTierForFlag(key, inModules) {
+  for (const tier of PLAN_ORDER) {
+    const source = inModules ? PLAN_TIERS[tier].modules : PLAN_TIERS[tier].limits;
+    if (source[key]) return tier;
+  }
+  return null;
+}
+
+// For a numeric limit (people/photos/recordings/videos/aiCallsPerMonth),
+// there's no single tier that's always "enough" — it depends how far over
+// the family is. The honest, simple recommendation is just the next tier
+// up from whatever they're on now. Returns null if already on the top tier.
+export function nextTier(currentTier) {
+  const idx = PLAN_ORDER.indexOf(currentTier || "starter");
+  return idx >= 0 && idx < PLAN_ORDER.length - 1 ? PLAN_ORDER[idx + 1] : null;
+}

@@ -8,17 +8,19 @@ import { callApi } from "../lib/apiFetch";
 import { downloadTemplate, parseTemplateWorkbook } from "../lib/familyTemplate";
 import FamilyNodeEditor from "./FamilyNodeEditor";
 import { SHOW_AI_FEATURES } from "../lib/featureFlags";
-import { getEffectiveLimits } from "../lib/planTiers";
+import { getEffectiveLimits, minimumTierForFlag, nextTier, PLAN_TIERS } from "../lib/planTiers";
 
 // This wizard only ever runs on a brand-new, empty tree (see
 // alreadyHasPeople below), so the existing-people count is always 0 here —
 // the parsed/built count alone is what matters against the plan's limit.
 // null = unlimited.
 const PEOPLE_LIMIT = getEffectiveLimits({ plan_tier: CURRENT_FAMILY_PLAN_TIER, plan_limit_overrides: CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES }).people;
-// api/ai-tools.js's "scan" action enforces this server-side regardless —
-// see FolioModal.jsx's identical constant for why this matters even while
-// SHOW_AI_FEATURES is globally off today.
-const AI_FEATURES_ALLOWED = SHOW_AI_FEATURES && isModuleEnabled("aiFeatures");
+// SHOW_AI_FEATURES is a separate global "not ready to ship" switch,
+// unrelated to plan — still hides this card outright when off. Once on,
+// AI_MODULE_ENABLED is the real plan gate: shown disabled on Starter
+// rather than vanishing, same as FolioModal.jsx's identical pattern.
+const AI_MODULE_ENABLED = isModuleEnabled("aiFeatures");
+const AI_MIN_TIER = minimumTierForFlag("aiFeatures", true);
 
 export default function FamilyBuilderView({ onNav }) {
   const [root, setRoot] = useState(null);
@@ -151,13 +153,22 @@ export default function FamilyBuilderView({ onNav }) {
             </div>
             <button type="submit" className="btn primary" disabled={!starterName.trim()}>Begin building</button>
           </form>
-          {AI_FEATURES_ALLOWED && (
-            <div className="card fam-builder-path">
-              <h3>Or scan a photo of an existing chart</h3>
-              <p className="form-hint" style={{ marginTop: 0 }}>Already have a family tree drawn on paper or a photo of one? Upload it and AI will read the names and relationships to get you started — you'll still be able to fix anything it gets wrong before saving.</p>
-              <input ref={fileRef} type="file" accept="image/*" onChange={handleScan} disabled={scanning} />
-              {scanning && <p className="form-hint">Reading the photo… this can take a moment.</p>}
-              {scanError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{scanError}</p>}
+          {SHOW_AI_FEATURES && (
+            <div className="card fam-builder-path" style={!AI_MODULE_ENABLED ? { opacity: 0.6 } : undefined}>
+              <h3>Or scan a photo of an existing chart{!AI_MODULE_ENABLED && AI_MIN_TIER && <span className="tag" style={{ marginLeft: 8, fontSize: 11 }}>{PLAN_TIERS[AI_MIN_TIER].label}</span>}</h3>
+              {AI_MODULE_ENABLED ? (
+                <>
+                  <p className="form-hint" style={{ marginTop: 0 }}>Already have a family tree drawn on paper or a photo of one? Upload it and AI will read the names and relationships to get you started — you'll still be able to fix anything it gets wrong before saving.</p>
+                  <input ref={fileRef} type="file" accept="image/*" onChange={handleScan} disabled={scanning} />
+                  {scanning && <p className="form-hint">Reading the photo… this can take a moment.</p>}
+                  {scanError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{scanError}</p>}
+                </>
+              ) : (
+                <p className="form-hint" style={{ marginTop: 0 }}>
+                  Included from {AI_MIN_TIER ? PLAN_TIERS[AI_MIN_TIER].label : "a paid plan"} —{" "}
+                  <button type="button" className="link-btn" onClick={() => { window.location.href = "/plans"; }}>see plans →</button>
+                </p>
+              )}
             </div>
           )}
           <div className="card fam-builder-path">
@@ -185,16 +196,34 @@ export default function FamilyBuilderView({ onNav }) {
                         {excelPreview.warnings.map((w, i) => <li key={i}>{w}</li>)}
                       </ul>
                     )}
-                    {PEOPLE_LIMIT !== null && excelPreview.people.length > PEOPLE_LIMIT ? (
-                      <p className="form-hint" style={{ color: "var(--maroon-ink)", marginTop: 8 }}>
-                        This file has {excelPreview.people.length} people, but your plan allows up to {PEOPLE_LIMIT}.
-                        Trim the file and re-upload, or ask a Head/Admin to request an upgrade from the Plans page.
-                      </p>
-                    ) : (
-                      <button type="button" className="btn primary small" onClick={handleExcelImport} disabled={excelImporting} style={{ marginTop: 8 }}>
-                        {excelImporting ? "Importing…" : `Import ${excelPreview.people.length} ${excelPreview.people.length === 1 ? "person" : "people"}`}
-                      </button>
-                    )}
+                    {(() => {
+                      const excelOverLimit = PEOPLE_LIMIT !== null && excelPreview.people.length > PEOPLE_LIMIT;
+                      const upgradeTier = nextTier(CURRENT_FAMILY_PLAN_TIER);
+                      return (
+                        <>
+                          <div className="tag-row" style={{ alignItems: "center", marginTop: 8 }}>
+                            <button
+                              type="button" className="btn primary small" onClick={handleExcelImport}
+                              disabled={excelImporting || excelOverLimit}
+                              title={excelOverLimit ? `Your plan allows up to ${PEOPLE_LIMIT} people` : undefined}
+                            >
+                              {excelImporting ? "Importing…" : `Import ${excelPreview.people.length} ${excelPreview.people.length === 1 ? "person" : "people"}`}
+                            </button>
+                            {excelOverLimit && upgradeTier && (
+                              <button type="button" className="btn ghost small" onClick={() => { window.location.href = "/plans"; }}>
+                                See plans ({PLAN_TIERS[upgradeTier].label}) →
+                              </button>
+                            )}
+                          </div>
+                          {excelOverLimit && (
+                            <p className="form-hint" style={{ color: "var(--maroon-ink)", marginTop: 6 }}>
+                              This file has {excelPreview.people.length} people, but your plan allows up to {PEOPLE_LIMIT}.
+                              Trim the file and re-upload, or ask a Head/Admin to request an upgrade.
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
                   </>
                 )}
               </div>
@@ -225,7 +254,8 @@ export default function FamilyBuilderView({ onNav }) {
       {overLimit && (
         <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>
           You have {total} people, but your plan allows up to {PEOPLE_LIMIT}. Remove some before saving, or ask a
-          Head/Admin to request an upgrade from the Plans page.
+          Head/Admin to request an upgrade —{" "}
+          <button type="button" className="link-btn" onClick={() => { window.location.href = "/plans"; }}>see plans →</button>
         </p>
       )}
       {saveError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{saveError}</p>}
