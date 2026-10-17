@@ -28,6 +28,41 @@
   background: #fff; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); font-family: inherit;
 }
 
+/* The lead story — a magazine front page always puts one piece ahead of
+   the rest; an undifferentiated grid of equal cards has no way to say
+   "start here," which is most of what makes a list feel flat. */
+.blog-feature {
+  display: block; width: 100%; text-align: left; background: var(--parchment-paper);
+  border: 1px solid var(--line); border-radius: 20px; overflow: hidden; cursor: pointer;
+  font-family: inherit; padding: 0; margin: 0 0 32px; position: relative;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.blog-feature:hover { transform: translateY(-2px); box-shadow: 0 22px 44px -22px rgba(90, 40, 20, .45); }
+.blog-feature-media { position: relative; aspect-ratio: 16/8; }
+.blog-feature-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.blog-feature-img--placeholder {
+  display: flex; align-items: center; justify-content: center; font-family: var(--font-devanagari, Georgia, serif);
+  font-size: 52px; color: var(--maroon-ink); background: linear-gradient(135deg, var(--maroon-wash), var(--parchment-paper)); opacity: .55;
+}
+.blog-feature-overlay {
+  position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20, 8, 4, 0) 35%, rgba(20, 8, 4, .82) 100%);
+}
+.blog-feature-text {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 28px 28px 24px; color: #fff;
+}
+.blog-feature-eyebrow {
+  display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 8px;
+}
+.blog-feature-text h2 {
+  font-family: var(--font-devanagari, Georgia, serif); font-size: clamp(22px, 3.4vw, 32px); line-height: 1.25; margin: 0 0 8px; color: #fff;
+}
+.blog-feature-text p {
+  font-size: 14.5px; line-height: 1.55; margin: 0 0 10px; color: rgba(255, 255, 255, .88);
+  max-width: 540px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.blog-feature-meta { font-size: 12px; font-weight: 600; letter-spacing: .03em; color: rgba(255, 255, 255, .75); }
+
 .blog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 22px; }
 
 .blog-card {
@@ -53,27 +88,77 @@
 .blog-card-meta { color: var(--ink-faint); font-size: 11.5px; margin: 0; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
 
 /* A thin, book's-own-bookmark-ribbon progress indicator pinned to the
-   viewport — the one piece of the "reading experience" that genuinely
-   needs JS rather than just type/space. */
+   viewport. Once the reader scrolls past the hero, a compact title bar
+   fades in underneath it — the "sticky masthead" that keeps a long piece
+   feeling oriented instead of like an endless undifferentiated scroll. */
 .blog-reading-progress {
-  position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 40;
-  background: transparent; pointer-events: none;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 40; pointer-events: none;
 }
-.blog-reading-progress-fill {
-  height: 100%; background: var(--maroon-ink); transition: width .1s linear;
+.blog-reading-progress-bar { height: 3px; background: transparent; }
+.blog-reading-progress-fill { height: 100%; background: var(--maroon-ink); transition: width .1s linear; }
+.blog-reading-progress-title {
+  max-width: 920px; margin: 0 auto; padding: 0 20px; height: 0; overflow: hidden;
+  font-family: var(--font-devanagari, Georgia, serif); font-size: 14px; color: var(--ink);
+  background: var(--parchment-paper); border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; opacity: 0; transition: opacity .25s ease, height .25s ease;
+  white-space: nowrap; text-overflow: ellipsis;
 }
+.blog-reading-progress--titled .blog-reading-progress-title { height: 40px; opacity: 1; }
 
 .blog-post { max-width: 720px; margin: 0 auto; }
-.blog-post--book { padding-top: 4px; }
-.blog-post-cover {
-  width: 100%; border-radius: 14px; margin: 18px 0 20px; display: block;
-  box-shadow: 0 18px 40px -22px rgba(42, 20, 10, .45);
+.blog-post--book { padding-top: 4px; position: relative; }
+
+/* The post's own front page — a full hero treatment (image, gradient,
+   overlaid title) rather than a thumbnail-sized cover sitting above plain
+   text, so opening a post feels like turning to a designed page, not
+   loading a text file. */
+.blog-post-hero {
+  position: relative; border-radius: 18px; overflow: hidden; margin: 18px 0 22px;
+  box-shadow: 0 20px 44px -22px rgba(42, 20, 10, .5);
 }
+.blog-post-hero-img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
+.blog-post-hero-overlay {
+  position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20, 8, 4, 0) 40%, rgba(20, 8, 4, .85) 100%);
+}
+.blog-post-hero-text { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 28px 22px; }
+.blog-post .blog-post-hero-text h1 {
+  font-family: var(--font-devanagari, Georgia, serif); font-size: clamp(26px, 4.6vw, 40px);
+  color: #fff; line-height: 1.2; margin: 0 0 8px; letter-spacing: -.01em;
+}
+.blog-post .blog-post-hero-text .blog-post-meta { color: rgba(255, 255, 255, .85); margin: 0; }
+
 .blog-post h1 {
   font-family: var(--font-devanagari, Georgia, serif); font-size: clamp(30px, 5vw, 44px);
   color: var(--maroon-deep); line-height: 1.22; margin: 0 0 8px; letter-spacing: -.01em;
 }
 .blog-post-meta { color: var(--ink-faint); font-size: 13px; margin: 0 0 18px; font-style: italic; }
+
+/* Desktop-only floating rail, docked in the page's own side margin — never
+   competes with the article's 720px measure. Collapses to an inline
+   <details> on anything narrower, right below the byline. */
+.blog-toc {
+  font-size: 13px; line-height: 1.5;
+}
+.blog-toc ol { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.blog-toc a {
+  color: var(--ink-faint); text-decoration: none; display: block; border-left: 2px solid var(--line);
+  padding-left: 10px; transition: color .15s ease, border-color .15s ease;
+}
+.blog-toc a:hover { color: var(--ink-soft); }
+.blog-toc a.active { color: var(--maroon-ink); border-color: var(--maroon-ink); font-weight: 600; }
+.blog-toc-label { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-faint); }
+.blog-toc--rail {
+  display: none; position: fixed; top: 160px; width: 190px; z-index: 5;
+  left: max(24px, calc(50% - 560px));
+}
+.blog-toc--inline {
+  margin: 0 0 22px; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; background: var(--parchment-paper);
+}
+.blog-toc--inline summary { cursor: pointer; font-weight: 600; color: var(--ink-soft); font-size: 13.5px; }
+@media (min-width: 1280px) {
+  .blog-toc--rail { display: block; }
+  .blog-toc--inline { display: none; }
+}
 
 /* A quiet manuscript-style divider — the kind of mark a Parampare entry
    already uses elsewhere in this app — rather than a plain <hr>, so the
@@ -85,12 +170,41 @@
   font-family: var(--font-display, Georgia, serif); font-size: 18px; line-height: 1.85;
   color: var(--ink); margin-top: 4px; letter-spacing: .1px;
 }
-.blog-post-body h2 { font-family: var(--font-devanagari, Georgia, serif); color: var(--maroon-deep); margin: 36px 0 14px; font-size: 24px; }
+/* Each H2 gets a little breathing room and its own small ornament above
+   it — a visual "new chapter" beat that breaks a long piece into named
+   stretches, the same pacing device the table of contents links jump to. */
+.blog-post-body h2 {
+  font-family: var(--font-devanagari, Georgia, serif); color: var(--maroon-deep); margin: 48px 0 16px; font-size: 24px;
+  scroll-margin-top: 90px;
+}
+.blog-post-body h2::before { content: "॥"; display: block; color: var(--line-strong); font-size: 15px; margin-bottom: 10px; letter-spacing: .3em; }
 .blog-post-body img { max-width: 100%; border-radius: 10px; margin: 20px 0; box-shadow: 0 14px 32px -20px rgba(42, 20, 10, .4); }
 .blog-post-body audio, .blog-post-body video { width: 100%; margin: 20px 0; border-radius: 10px; }
 .blog-post-body a { color: var(--maroon-ink); text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
 .blog-post-body p { margin: 0 0 20px; }
 .blog-post-body ul, .blog-post-body ol { margin: 0 0 20px; padding-left: 26px; }
+
+/* A pull-quote, not a filing-cabinet indent — large serif italic with a
+   gold rule, the kind of resting point a long article needs every so
+   often so it reads as a designed piece, not a wall of paragraphs. */
+.blog-post-body blockquote {
+  margin: 32px 0; padding: 4px 0 4px 24px; border-left: 3px solid var(--gold);
+  font-family: var(--font-devanagari, Georgia, serif); font-style: italic; font-size: 22px; line-height: 1.5; color: var(--maroon-deep);
+}
+.blog-post-body blockquote p { margin: 0; }
+
+/* A closing ornament matching the opening divider — marks the actual end
+   of the piece before the like/share footer, so the footer reads as "after
+   the story," not a continuation of it. */
+.blog-post-end-mark { text-align: center; margin: 44px 0 0; color: var(--line-strong); font-size: 20px; opacity: .6; }
+.blog-post-end-mark span { letter-spacing: .4em; }
+
+.blog-back-to-top {
+  position: fixed; bottom: 28px; right: 28px; z-index: 30; width: 44px; height: 44px; border-radius: 999px;
+  border: 1px solid var(--line-strong); background: var(--maroon-ink); color: #fff; font-size: 18px; cursor: pointer;
+  box-shadow: 0 10px 24px -10px rgba(42, 20, 10, .5); transition: transform .15s ease;
+}
+.blog-back-to-top:hover { transform: translateY(-2px); }
 
 /* Drop cap on the very first paragraph only — a real book touch, not
    applied to every paragraph (which would just look broken). */
