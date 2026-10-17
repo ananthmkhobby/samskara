@@ -11,6 +11,16 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.17 — Redesign the blog reading experience
+
+[PR #11](https://github.com/ananthmkhobby/samskara/pull/11) — the blog looked plain next to the rest of the app and lengthy posts felt like an undifferentiated wall of text. Redesigned the list and post pages for a premium, editorial feel: a magazine-style featured post on the list page, a full hero cover with overlaid title on post pages, a reading-time estimate, an auto-built table of contents (from the post's own `<h2>`s) with scroll-spy highlighting, a sticky title bar that fades in once scrolled past the hero, section ornaments, pull-quote styling for blockquotes, and a back-to-top button.
+
+**Bug found and fixed during review**: table-of-contents links didn't jump anywhere. Heading ids were being assigned by mutating `<h2>` DOM nodes in a `useEffect` after the body's `dangerouslySetInnerHTML` first rendered — any later re-render of the post (the reading-time update, the ToC's own item-list update, the scrollspy's active-id update, all of which live in the same component) handed React a fresh `dangerouslySetInnerHTML` object, which React re-applied, replacing those nodes and silently losing every id before a reader could click one. Fixed by stamping ids into the HTML string itself before it's ever rendered, so they survive every re-render deterministically.
+
+Verified on the test environment first with 5 posts (1 real + 4 disposable demo posts, since-deleted) covering both the featured-hero and plain-grid list states, and a long multi-section post exercising the table of contents, scroll-spy, sticky title bar, and back-to-top button — then re-verified the ToC fix specifically (heading ids present, click jumps to the right section).
+
+Verified post-deploy: production build `Ready` from the merge commit; `oursamskara.com/blog`'s real "What Is Samskara?" post (8 sections) shows the new hero, correct reading time, and working table-of-contents ids; no console errors.
+
 ## v2026.10.16.4 — Update support contact email to support@oursamskara.com
 
 [PR #10](https://github.com/ananthmkhobby/samskara/pull/10) — replaces `whyvasupport@gmail.com` with `support@oursamskara.com` everywhere it appeared: Privacy Policy, Terms & Conditions, and `SECURITY.md`. A contact-info swap only — doesn't change what's collected/used/shared, so `POLICY_VERSION` wasn't bumped.
