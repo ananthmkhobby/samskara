@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, Suspense } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { lazyWithReload as lazy } from "../lib/lazyWithReload";
 import { fetchPublishedPosts, fetchPostBySlug, blogMediaUrl, likePost } from "../data/blogDb";
 import "../styles/blog.css";
@@ -237,31 +237,49 @@ function slugifyHeading(text) {
   return String(text || "").toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").slice(0, 60) || "section";
 }
 
-// Auto-built from the post's own <h2> headings — nothing for an author to
-// maintain separately. Breaks a long piece into named, jumpable sections
-// (the actual fix for "a lengthy article shouldn't feel like reading more"
-// — a visible map of how much is left, and where you are in it, beats pure
-// scroll length every time) and tracks which section is on-screen via
-// IntersectionObserver so the active entry highlights as the reader scrolls.
-function useTableOfContents(bodyRef, ready) {
-  const [items, setItems] = useState([]);
+// Stamps a stable `id` onto every <h2> directly in the HTML string, before
+// it's ever handed to dangerouslySetInnerHTML — not by querying the DOM and
+// mutating nodes in a useEffect afterwards. That imperative-mutation
+// approach was tried first and silently lost every id: any later re-render
+// (the reading-time update, the table of contents' own state update, the
+// scrollspy's active-section update — all of which touch this same
+// component) hands dangerouslySetInnerHTML a fresh `{ __html }` object each
+// time, and React re-applies it, replacing the live nodes — including
+// whatever id a prior effect had set on them — with fresh ones from the
+// unmodified string. Baking the id into the string itself means every
+// re-render reproduces the same ids, because they're part of the content
+// now, not a side effect layered on top of it.
+function addHeadingIds(html) {
+  if (!html) return { html: "", items: [] };
+  const used = new Set();
+  const items = [];
+  const transformed = html.replace(/<h2([^>]*)>([\s\S]*?)<\/h2>/gi, (match, attrs, inner) => {
+    const text = inner.replace(/<[^>]+>/g, "").trim();
+    const base = slugifyHeading(text);
+    let id = base, n = 2;
+    while (used.has(id)) { id = `${base}-${n}`; n += 1; }
+    used.add(id);
+    items.push({ id, text });
+    return `<h2${attrs} id="${id}">${inner}</h2>`;
+  });
+  return { html: transformed, items };
+}
+
+// Breaks a long piece into named, jumpable sections — the actual fix for "a
+// lengthy article shouldn't feel like reading more": a visible map of how
+// much is left, and where you are in it, beats pure scroll length every
+// time. The ids themselves come from addHeadingIds() above; this just
+// tracks which section is currently on-screen via IntersectionObserver, so
+// the active entry highlights as the reader scrolls — read-only, so it has
+// no DOM-mutation race to lose.
+function useScrollSpy(bodyRef, items, ready) {
   const [activeId, setActiveId] = useState(null);
 
   useEffect(() => {
     const root = bodyRef.current;
-    if (!ready || !root) { setItems([]); return; }
-    const headings = Array.from(root.querySelectorAll("h2"));
-    const used = new Set();
-    const list = headings.map((h) => {
-      const base = slugifyHeading(h.textContent);
-      let id = base, n = 2;
-      while (used.has(id)) { id = `${base}-${n}`; n += 1; }
-      used.add(id);
-      h.id = id;
-      return { id, text: h.textContent || "" };
-    });
-    setItems(list);
-    if (!list.length) return undefined;
+    if (!ready || !root || !items.length) { setActiveId(null); return undefined; }
+    const headings = items.map((it) => root.querySelector(`#${CSS.escape(it.id)}`)).filter(Boolean);
+    if (!headings.length) return undefined;
     const observer = new IntersectionObserver(
       (entries) => {
         const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
@@ -271,9 +289,9 @@ function useTableOfContents(bodyRef, ready) {
     );
     headings.forEach((h) => observer.observe(h));
     return () => observer.disconnect();
-  }, [bodyRef, ready]);
+  }, [bodyRef, items, ready]);
 
-  return { items, activeId };
+  return activeId;
 }
 
 function TableOfContents({ items, activeId }) {
@@ -451,12 +469,14 @@ function BlogPost({ slug, onBack }) {
     }).catch((err) => setError(err.message));
   }, [slug]);
 
-  // Both derived from the body's own rendered DOM, which only exists once
-  // `post` has actually loaded and dangerouslySetInnerHTML has run — gated
-  // on `post?.id` so they recompute per-post, not just on mount.
+  // Heading ids are computed once per post, straight from the HTML string
+  // (see addHeadingIds' own comment for why this isn't a DOM-mutation
+  // effect) — everything downstream (the rendered markup, the table of
+  // contents list, the scrollspy) reads from this single source.
+  const { html: bodyHtml, items: tocItems } = useMemo(() => addHeadingIds(post?.body_html), [post?.body_html]);
   const bodyReady = !!post?.body_html;
   const readingMinutes = useReadingTime(bodyRef, bodyReady);
-  const toc = useTableOfContents(bodyRef, bodyReady);
+  const activeTocId = useScrollSpy(bodyRef, tocItems, bodyReady);
 
   if (error) {
     return (
@@ -496,13 +516,14 @@ function BlogPost({ slug, onBack }) {
         )}
 
         {SHOW_BLOG_READ_ALOUD && <ReadAloudBar title={post.title} textRef={bodyRef} />}
-        <TableOfContents items={toc.items} activeId={toc.activeId} />
+        <TableOfContents items={tocItems} activeId={activeTocId} />
         <div className="blog-post-divider" aria-hidden="true"><span>॥</span></div>
         {/* Trusted markup — only blog_authors (a small, admin-created team,
             see supabase/migrations/20261015150000_blog_posts_and_authors.sql)
             can ever write body_html, via Tiptap's own serializer, never
-            arbitrary visitor input. */}
-        <div ref={bodyRef} className="blog-post-body blog-post-body--dropcap" dangerouslySetInnerHTML={{ __html: post.body_html }} />
+            arbitrary visitor input. bodyHtml is that same trusted string
+            with h2 ids stamped in (addHeadingIds), not user input. */}
+        <div ref={bodyRef} className="blog-post-body blog-post-body--dropcap" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
         <div className="blog-post-end-mark" aria-hidden="true"><span>॥</span></div>
         <div className="blog-post-footer">
           <LikeButton postId={post.id} initialCount={post.like_count || 0} />
