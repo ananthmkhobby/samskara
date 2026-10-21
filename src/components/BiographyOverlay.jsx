@@ -3,6 +3,8 @@ import { flushSync } from "react-dom";
 import { yearsLabel, formatName, MIN_GEN, MAX_GEN } from "../data/helpers";
 import { EditPencilIcon } from "./Icons";
 import PersonAvatar from "./PersonAvatar";
+import { CURRENT_FAMILY_PLAN_TIER, CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES } from "../data/session";
+import { getEffectiveLimits } from "../lib/planTiers";
 
 function ChapterContent({ chapter, onEdit }) {
   return (
@@ -19,6 +21,7 @@ function ChapterContent({ chapter, onEdit }) {
 }
 
 export default function BiographyOverlay({ person, onClose, onEditChapter }) {
+  const pdfExportAllowed = getEffectiveLimits({ plan_tier: CURRENT_FAMILY_PLAN_TIER, plan_limit_overrides: CURRENT_FAMILY_PLAN_LIMIT_OVERRIDES }).pdfExport;
   const [chapterIndex, setChapterIndex] = useState(0);
   const [activeSide, setActiveSide] = useState("A");
   const [pageAChapter, setPageAChapter] = useState(0);
@@ -108,7 +111,12 @@ export default function BiographyOverlay({ person, onClose, onEditChapter }) {
       <div className="bio-topbar">
         <b>{formatName(person)} — Full biography</b>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn small" onClick={() => window.print()}>Download PDF</button>
+          <button
+            className="btn small" onClick={pdfExportAllowed ? () => window.print() : () => window.location.href = "/plans"}
+            title={pdfExportAllowed ? undefined : "Not included in your family's current plan — tap to see plans"}
+          >
+            {pdfExportAllowed ? "Download PDF" : "Download PDF (upgrade to export)"}
+          </button>
           <button className="btn small ghost" onClick={onClose}>Close</button>
         </div>
       </div>
