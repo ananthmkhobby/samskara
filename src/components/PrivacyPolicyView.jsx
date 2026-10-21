@@ -4,6 +4,7 @@ const SUBPROCESSORS = [
   { name: "OpenAI", use: "Powers optional AI features: drafting a biography chapter from spoken interview answers, translating text, and extracting names/dates from an uploaded family-tree photo. Only the specific content submitted to these features is sent, for that single request." },
   { name: "OpenStreetMap (Nominatim)", use: "Converts a city/place name you enter into map coordinates for the Journey map. Only the place name is sent." },
   { name: "Twilio", use: "Powers the optional WhatsApp integration — if your family connects it, Twilio relays messages and media between WhatsApp and the app, which means it handles the phone number and message content for that integration only." },
+  { name: "Meta / WhatsApp", use: "WhatsApp is operated by Meta Platforms, Inc. — connecting your number and sending us a message there means WhatsApp/Meta also processes that message as the platform it runs on, governed by Meta's own WhatsApp Business Platform terms and privacy practices, in addition to the handling described here. Connecting a number is always your own explicit action; we never message you first until you do." },
 ];
 
 export default function PrivacyPolicyView() {

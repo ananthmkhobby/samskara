@@ -77,6 +77,26 @@ export default function TermsOfServiceView() {
       </div>
 
       <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>WhatsApp integration</h4>
+        <p className="folio-summary" style={{ marginBottom: 8 }}>
+          Connecting your WhatsApp number to Samskara is optional and always your own action — we never message you
+          first until you do. Once connected, you can send photos, voice notes, documents, and memories directly on
+          WhatsApp, which are saved the same way (and reviewed under the same roles) as anything added in the app.
+        </p>
+        <p className="folio-summary" style={{ marginBottom: 8 }}>
+          <b>Proactive nudges are a separate choice.</b> Connecting your number does not by itself mean we'll message
+          you first about anything else — a Head or Admin can separately opt in to receive an occasional WhatsApp
+          nudge (for example, when items are waiting for review), and can turn that off at any time from the same
+          place they turned it on.
+        </p>
+        <p className="folio-summary">
+          WhatsApp is operated by Meta Platforms, Inc., via the WhatsApp Business Platform; your use of it through
+          Samskara is also subject to WhatsApp's own terms. Standard message and data rates from your carrier may
+          apply.
+        </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
         <h4 style={{ fontSize: 15, marginBottom: 10 }}>The public demo</h4>
         <p className="folio-summary">
           A "try it now" link may let visitors explore a sample family with no login required. The demo family is
