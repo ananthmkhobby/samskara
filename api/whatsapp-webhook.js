@@ -456,6 +456,23 @@ export default async function handler(req, res) {
     // Checked before falling through to the generic memory-capture flow, the
     // same way the media-based shortcuts above are checked before it.
     if (numMedia === 0) {
+      // "add to gallery for NAME" is only ever wired up as a photo caption
+      // (checked above, inside the numMedia>0 image branch) — sent as bare
+      // text it used to fall straight through to the generic memory-capture
+      // flow, which silently treated the whole sentence as a brand new
+      // memory and then, on the NEXT message, as a person's name to search
+      // for (ilike-matching nothing), surfacing a confusing "I couldn't
+      // find that person" two turns later with no obvious connection to
+      // what was actually typed. Caught live (2026-10-21): a real user sent
+      // this as text, got the "couldn't find that person" reply, and
+      // reasonably assumed person-matching was broken rather than realizing
+      // a photo attachment was required.
+      if (GALLERY_ADD_RE.test(textBody)) {
+        await finishMessage({ processing_status: "completed" });
+        await reply(phoneNumber, "To add to a gallery, send the photo itself with the caption \"add to gallery for NAME\" — a caption alone doesn't have a photo attached to add.");
+        ack(res);
+        return;
+      }
       const editMatch = textBody.match(FOLIO_EDIT_RE);
       if (editMatch) {
         const [, rawField, rawName, rawValue] = editMatch;
