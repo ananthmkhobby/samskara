@@ -132,6 +132,21 @@ function log(event, fields = {}) {
   console.log(JSON.stringify({ event, ...fields }));
 }
 
+// Every call site below used to fire-and-forget this upsert — found live
+// (2026-10-21) that a write rejected by whatsapp_conversations' state CHECK
+// constraint (a new state added to _whatsappConversation.js without a
+// matching migration — same bug class as 20261003120000 and 20261006120000)
+// failed completely silently: the reply text still went out since it's
+// computed in memory beforehand, so the user kept seeing the same question
+// forever while the conversation row silently never advanced, and every
+// message was still logged "completed" with no error. Centralized here so
+// every conversation-state write logs a real error if it ever happens
+// again, instead of needing six separate try/catches kept in sync by hand.
+async function upsertConversation(supabase, fields) {
+  const { error } = await supabase.from("whatsapp_conversations").upsert(fields);
+  if (error) log("PROCESSING_FAILED", { reason: `conversation_state_write_failed: ${error.message}`, phone: maskPhone(fields.phone_number), state: fields.state });
+}
+
 // Temporary fine-grained tracing while chasing an intermittent hang during
 // local testing: some requests stall completely between two awaits with
 // neither a resolved value nor a thrown error, and the coarser per-stage
@@ -420,7 +435,7 @@ export default async function handler(req, res) {
           // advanceConversation's own "new media mid-conversation starts
           // fresh" rule (api/_whatsappConversation.js), just applied here
           // since this path never calls into that function at all.
-          await supabase.from("whatsapp_conversations").upsert({
+          await upsertConversation(supabase, {
             phone_number: phoneNumber, user_id: identity.userId, family_id: identity.familyId,
             state: "IDLE", pending_person_id: null, context: {}, last_interaction_at: new Date().toISOString(),
           });
@@ -508,7 +523,7 @@ export default async function handler(req, res) {
             browse.push({ position: browse.length + 1, contributionId: items[i].id });
             await sendWhatsAppMedia(phoneNumber, signed.signedUrl, `${browse.length}. ${person.name}`);
           }
-          await supabase.from("whatsapp_conversations").upsert({
+          await upsertConversation(supabase, {
             phone_number: phoneNumber, user_id: identity.userId, family_id: identity.familyId,
             state: conversation?.state || "IDLE", pending_person_id: conversation?.pending_person_id || null,
             context: { ...(conversation?.context || {}), lastGalleryBrowse: { personId: person.id, items: browse } },
@@ -657,7 +672,7 @@ export default async function handler(req, res) {
         await maybeNudgeModerators(supabase, identity.familyId);
       }
       log("PHOTO_IDENTIFIED", { phone: maskPhone(phoneNumber), applied: isModerator });
-      await supabase.from("whatsapp_conversations").upsert({
+      await upsertConversation(supabase, {
         phone_number: phoneNumber, user_id: identity.userId, family_id: identity.familyId,
         state: "IDLE", pending_person_id: null, context: {}, last_interaction_at: new Date().toISOString(),
       });
@@ -690,7 +705,7 @@ export default async function handler(req, res) {
       if (contribErr) {
         // Nothing lost — keep the draft in place so a retry of YES works,
         // rather than clearing the conversation on a failed save.
-        await supabase.from("whatsapp_conversations").upsert({
+        await upsertConversation(supabase, {
           phone_number: phoneNumber, user_id: identity.userId, family_id: identity.familyId,
           state: "WAITING_FOR_CONFIRMATION", pending_person_id: result.personId || null,
           context: conversation?.context || {}, last_interaction_at: new Date().toISOString(),
@@ -707,7 +722,7 @@ export default async function handler(req, res) {
       const replyText = status === "Verified"
         ? `Saved ❤️\nI added this to ${whoText}.`
         : `Saved — sent to your family's review queue for ${whoText}. A Head or Admin will confirm it shortly.`;
-      await supabase.from("whatsapp_conversations").upsert({
+      await upsertConversation(supabase, {
         phone_number: phoneNumber, user_id: identity.userId, family_id: identity.familyId,
         state: "IDLE", pending_person_id: null, context: {}, last_interaction_at: new Date().toISOString(),
       });
@@ -717,7 +732,7 @@ export default async function handler(req, res) {
       return;
     }
 
-    await supabase.from("whatsapp_conversations").upsert({
+    await upsertConversation(supabase, {
       phone_number: phoneNumber, user_id: identity.userId, family_id: identity.familyId,
       state: result.nextState, pending_person_id: result.pendingPersonId || null,
       context: result.context, last_interaction_at: new Date().toISOString(),
