@@ -22,3 +22,39 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+
+  # Vercel deploys app code automatically on every push, but Supabase
+  # migrations are a separate step nothing used to enforce — found the hard
+  # way (2026-10-21) when a deployed release depended on a migration that
+  # had only ever been pushed to the test project, never production.
+  # Production silently ran on stale schema until a real user hit the gap.
+  #
+  # Runs against the TEST project on every push to dev (did this push's
+  # migrations actually get applied there?), and against PRODUCTION on
+  # every PR into main (is prod already caught up with everything dev is
+  # about to ship?) plus again after the push to main lands, as a
+  # post-merge confirmation. See scripts/check-migrations-synced.sh for
+  # what it actually checks and why it's API-based, not a direct DB
+  # connection.
+  check-migrations-synced:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.base.ref == 'main' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Pick the project to check
+        id: target
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
+            echo "ref=idopzbqxrpiatumxneak" >> "$GITHUB_OUTPUT"
+            echo "label=test" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=flvxeoawvuvrlondqnci" >> "$GITHUB_OUTPUT"
+            echo "label=production" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Check ${{ steps.target.outputs.label }} project is in sync
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: ./scripts/check-migrations-synced.sh ${{ steps.target.outputs.ref }}
