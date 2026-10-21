@@ -47,7 +47,7 @@ export default defineConfig({
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'fonts/SourceSerif4-Variable.woff2', 'fonts/SourceSerif4-Italic-Variable.woff2'],
       manifest: {
         name: 'Samskara Vamsha Vruksha',
-        short_name: 'Vamsha Vruksha',
+        short_name: 'Samskara',
         description: "Your family's living record — births, marriages, memories, and life lessons, kept in one place.",
         start_url: '/',
         scope: '/',
