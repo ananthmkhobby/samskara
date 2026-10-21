@@ -548,6 +548,37 @@ export async function redeemWhatsAppLink(code) {
   return data?.[0]?.phone_number || null;
 }
 
+// Whether the signed-in account has a linked WhatsApp number at all — a
+// plain boolean via security-definer RPC, since whatsapp_connections itself
+// has no client-readable policy (service-role/webhook only). Powers the
+// Home "Connect on WhatsApp" promo card: shown only while this is false.
+export async function isWhatsAppConnected() {
+  const db = requireClient();
+  const { data, error } = await db.rpc("is_whatsapp_connected");
+  if (error) throw new Error(error.message);
+  return !!data;
+}
+
+// Opt-in for proactive ("nudge") WhatsApp messages — a separate consent
+// from simply having a number connected (see
+// supabase/migrations/20261017200000_whatsapp_nudge_optin.sql for why).
+// Defaults to disabled when no row exists yet.
+export async function fetchNudgePreference(userId) {
+  const db = requireClient();
+  const { data, error } = await db
+    .from("whatsapp_notification_prefs").select("nudges_enabled").eq("user_id", userId).maybeSingle();
+  if (error) throw new Error(error.message);
+  return !!data?.nudges_enabled;
+}
+
+export async function setNudgePreference(userId, enabled) {
+  const db = requireClient();
+  const { error } = await db
+    .from("whatsapp_notification_prefs")
+    .upsert({ user_id: userId, nudges_enabled: enabled, updated_at: new Date().toISOString() });
+  if (error) throw new Error(error.message);
+}
+
 // Powers the Admin "WhatsApp" debug tab — recent inbound message log for the
 // caller's own family (RLS already scopes this to a moderator of that
 // family; see "moderator can read own family whatsapp messages").

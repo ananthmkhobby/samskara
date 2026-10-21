@@ -70,6 +70,19 @@ export async function sendWhatsAppMessage(phoneNumber, body) {
   });
 }
 
+// "show photos of NAME" sends back actual gallery images, not just text —
+// same REST send as sendWhatsAppMessage, just with a media URL attached.
+// The caller is responsible for making that URL fetchable by Twilio (a
+// short-lived Storage signed URL, since the family-media bucket is private).
+export async function sendWhatsAppMedia(phoneNumber, mediaUrl, caption) {
+  await twilioRestClient().messages.create({
+    from: process.env.TWILIO_WHATSAPP_FROM,
+    to: `whatsapp:${phoneNumber}`,
+    mediaUrl: [mediaUrl],
+    body: caption || undefined,
+  });
+}
+
 // A business-initiated message (one the family member hasn't replied to
 // recently) must be a Meta-approved Content Template, not free-form body
 // text — WhatsApp rejects a plain `body` send outside the 24h customer

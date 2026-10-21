@@ -84,3 +84,28 @@ The first round's PDF-export and module-display gating checks only covered the d
 
 ### Cleanup
 - Deleted: `Gating Test ZZZ` (family, people, contributions, family_members), its disposable auth user. Verified zero leftover rows/users after cleanup.
+
+## Round 3 (2026-10-21) — WhatsApp enrollment UX and chat command surface
+
+Covers the WhatsApp work committed this round: discoverable enrollment (login banner, Home promo card, MoreMenu entry, explainer), the nudge opt-in, and new webhook text commands (folio field edits, gallery browse/add/remove). Also fixed, ahead of the 2026-10-30 Supabase Data API cutover: `whatsapp_notification_prefs` (new table, client-facing via RLS) was missing an explicit `GRANT` and relied on Supabase's auto-grant for new public-schema tables — added `grant select, insert, update ... to authenticated` to its migration and applied it directly to the test project (it had already been migrated without it).
+
+### Enrollment UX (disposable `WhatsApp Test ZZZ` family, browser-driven)
+- Login-page banner shows the number correctly, logged out — ✅
+- Home promo card shows only for an unconnected signed-in account, with a working "How it works →" CTA — ✅
+- `ConnectWhatsAppView` explainer renders the number and instructions correctly, reached from MoreMenu's new "Connect on WhatsApp" entry — ✅
+- Nudge opt-in checkbox: toggled it, reloaded the page, confirmed it read back checked — i.e. actually persisted server-side, not just optimistic local state (the specific regression noted as fixed in the component's own code comments) — ✅
+- Token redeem: confirmed via direct DB check (`used_at`/`used_by` set) that the connection genuinely succeeded. The UI itself briefly flashed "That link has already been used" on first load — traced to React StrictMode double-invoking the effect in development only (confirmed `StrictMode` is dev-only and doesn't double-invoke in production builds). Not a real bug — same class as round 1's accordion-click automation artifact — flagged for awareness only.
+- Promo card correctly disappears once the account is connected — ✅
+- Nudge-targeting query (opted-in + connected moderators) verified directly against seeded test data — correctly resolved to exactly the one eligible Head — ✅. Actual Twilio delivery of a nudge remains untested: `TWILIO_NUDGE_TEMPLATE_SID` isn't configured on the test project yet, so sends are silently skipped by design — same infra-not-provisioned gap as the AI quota in round 2.
+
+### Chat command surface (disposable `WA Cmd Test ZZZ` family, signed webhook requests)
+Tested by posting genuinely Twilio-signature-valid requests directly to the deployed `/api/whatsapp-webhook` (computed with the test project's own `TWILIO_AUTH_TOKEN`), since these handlers only run as Vercel functions and aren't reachable through the Vite dev server — confirms real server-side behavior, not UI-only.
+- `update/set FIELD for NAME: VALUE`, as a moderator (direct apply): `summary` and `places` both wrote correctly (`places` parsed into an array) — ✅
+- Same command for an unsupported field (`rashi`, deliberately out of `FOLIO_FIELD_ALIASES`): correctly left the field untouched (no write), consistent with the "I don't know how to update that yet" reply branch — ✅
+- Same command as a Member (non-moderator): correctly created a `Pending` `edit` contribution attributed to the member, `source: "whatsapp"` — and correctly left the live field untouched until approval — ✅
+- `show photos of NAME` / `remove photo N for NAME`: with a real uploaded Storage file, "show" correctly built and recorded the browse list (`whatsapp_conversations.context.lastGalleryBrowse`) and "remove" correctly deleted the contribution row (confirmed gone after). An early attempt with a synthetic/nonexistent storage path produced an empty browse list — not a bug, just confirms `createSignedUrl` requires a real object, same as production would.
+- `remove photo` as a Member: correctly denied ("Only a Head or Admin can remove a gallery photo" branch) with no crash — ✅
+- `add to gallery for NAME`: **not exercised** — requires a real media attachment for the webhook to fetch via Twilio's media API, which this signed-POST harness doesn't send. Same category as D3/D4's file-upload limitation in round 1.
+
+### Cleanup
+- Deleted: `WhatsApp Test ZZZ` and `WA Cmd Test ZZZ` (families, people, contributions, family_members, whatsapp_connections/conversations/messages), all disposable auth users (3 total), the synthetic test photo in Storage. Verified zero leftover rows/users after cleanup.

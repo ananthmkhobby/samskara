@@ -11,6 +11,18 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.21 — Fix: biography PDF export bypassed plan gating
+
+[PR #12](https://github.com/ananthmkhobby/samskara/pull/12) — found during a round-2 subscription/gating test pass covering the real SuperAdmin UI, hard numeric limits, and PDF export across all three entry points. `BiographyOverlay.jsx`'s "Download PDF" button called `window.print()` unconditionally, with no plan check — unlike the matching export buttons in `FolioModal.jsx` and `VamshavaliView.jsx`, which both correctly gate on `pdfExportAllowed`. A Starter-plan family could export a biography PDF through this one entry point despite the plan not including PDF export.
+
+Fixed to match the existing pattern: gated on `pdfExportAllowed` (via `getEffectiveLimits`), redirects to `/plans` and shows "Download PDF (upgrade to export)" when blocked, same as the other two buttons.
+
+Same round also confirmed (no code change needed): the real SuperAdmin UI works end-to-end for setting plan tier, module flags, and limit overrides; the people-count hard limit (`enforce_people_limit` trigger) correctly blocks inserts past the family's effective limit with the right user-facing message. The AI-calls-per-month quota path was not exercised this round — the AI-guided interview entry point is currently hidden in production by the unrelated `SHOW_AI_FEATURES` kill switch, not a gating issue.
+
+Verified on the test environment first (`samskara-koaham.vercel.app`, disposable `Gating Test ZZZ` family): confirmed the built bundle's "upgrade to export" string count went from 3 to 4 occurrences, confirming all three PDF entry points are now gated.
+
+Verified post-deploy: production bundle on `oursamskara.com` updated (`index-hi9MnYw6.js`) and confirmed the same "upgrade to export" string count (4), confirming the fix is live.
+
 ## v2026.10.17 — Redesign the blog reading experience
 
 [PR #11](https://github.com/ananthmkhobby/samskara/pull/11) — the blog looked plain next to the rest of the app and lengthy posts felt like an undifferentiated wall of text. Redesigned the list and post pages for a premium, editorial feel: a magazine-style featured post on the list page, a full hero cover with overlaid title on post pages, a reading-time estimate, an auto-built table of contents (from the post's own `<h2>`s) with scroll-spy highlighting, a sticky title bar that fades in once scrolled past the hero, section ornaments, pull-quote styling for blockquotes, and a back-to-top button.
