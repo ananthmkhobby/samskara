@@ -105,3 +105,19 @@ export function nextTier(currentTier) {
   const idx = PLAN_ORDER.indexOf(currentTier || "starter");
   return idx >= 0 && idx < PLAN_ORDER.length - 1 ? PLAN_ORDER[idx + 1] : null;
 }
+
+// The Postgres plan-limit triggers (enforce_people_limit/enforce_media_limit,
+// supabase/migrations/20261017120000_plan_enforcement.sql) always raise a
+// message starting with this exact phrase. Callers that wrap that message in
+// their own text (e.g. api/_whatsappMedia.js's storeMedia prefixing it with
+// "Couldn't save that attachment: ") can use this to pull the real,
+// human-readable reason back out and show it instead of a generic failure —
+// the same thing the web app already gets for free by just displaying
+// err.message as-is.
+const PLAN_LIMIT_MARKER = "This family's plan allows up to";
+
+export function extractPlanLimitMessage(rawMessage) {
+  const message = String(rawMessage || "");
+  const idx = message.indexOf(PLAN_LIMIT_MARKER);
+  return idx === -1 ? null : message.slice(idx);
+}

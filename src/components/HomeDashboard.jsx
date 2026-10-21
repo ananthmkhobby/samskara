@@ -10,6 +10,7 @@ import { TreeIcon, DiyaGlyph } from "./NavIcons";
 import AuthPanel from "./AuthPanel";
 import InstallAppCard from "./InstallAppCard";
 import BlogPromoCard from "./BlogPromoCard";
+import WhatsAppPromoCard from "./WhatsAppPromoCard";
 import HeritageIntro, { FamilyBondIcon } from "./HeritageIntro";
 import FamilyFlame from "./FamilyFlame";
 import PersonAvatar from "./PersonAvatar";
@@ -269,6 +270,10 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
 
       <div className="cover-enter" style={{ "--enter-delay": "0.08s" }}>
         <BlogPromoCard onNav={onNav} />
+      </div>
+
+      <div className="cover-enter" style={{ "--enter-delay": "0.09s" }}>
+        <WhatsAppPromoCard onNav={onNav} />
       </div>
 
       <div className="counters">

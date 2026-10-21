@@ -1,4 +1,4 @@
-import { ParamparaIcon, LibraryIcon, TreasuryIcon, MapIcon, JapaIcon, AdminIcon } from "./NavIcons";
+import { ParamparaIcon, LibraryIcon, TreasuryIcon, MapIcon, JapaIcon, AdminIcon, ChatIcon } from "./NavIcons";
 import { IS_DEMO, isModuleEnabled } from "../data/session";
 import { minimumTierForFlag, PLAN_TIERS } from "../lib/planTiers";
 
@@ -47,6 +47,15 @@ export default function MoreMenu({ onNav, canModerate }) {
             <span className="more-menu-text">
               <b>Admin</b>
               <span>{canModerate ? "Manage members and review the queue" : "See what's pending review"}</span>
+            </span>
+          </button>
+        )}
+        {!IS_DEMO && (
+          <button type="button" className="card more-menu-item" onClick={() => onNav("connectWhatsapp")}>
+            <span className="more-menu-icon"><ChatIcon /></span>
+            <span className="more-menu-text">
+              <b>Connect on WhatsApp</b>
+              <span>Send photos and stories straight from WhatsApp</span>
             </span>
           </button>
         )}

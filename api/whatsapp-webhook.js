@@ -15,9 +15,111 @@
 // trial docs), while a REST API send works the same way across trial,
 // Sandbox, and a full paid account. This endpoint always just acks Twilio
 // with a bare 200 once the inbound message has been durably recorded.
-import { serviceClient, validateTwilioSignature, normalizePhoneNumber, resolveIdentity, sendWhatsAppMessage } from "./_whatsappAuth.js";
+import { serviceClient, validateTwilioSignature, normalizePhoneNumber, resolveIdentity, sendWhatsAppMessage, sendWhatsAppMedia, sendWhatsAppTemplate } from "./_whatsappAuth.js";
 import { classifyMediaType, fetchTwilioMedia, storeMedia, transcribeAudio } from "./_whatsappMedia.js";
 import { advanceConversation } from "./_whatsappConversation.js";
+import { extractPlanLimitMessage } from "../src/lib/planTiers.js";
+
+// When a write hits a family's plan limit (Postgres triggers in
+// supabase/migrations/20261017120000_plan_enforcement.sql), the raised
+// message already explains exactly what's capped and what to do about it —
+// show that real reason to a free/gated member instead of a generic "try
+// again" message, same as the web app already does for every other
+// plan-limit failure (see FolioModal.jsx/TreeView.jsx etc.).
+function friendlyErrorReply(err, fallback) {
+  return extractPlanLimitMessage(err?.message) || fallback;
+}
+
+// Nudges a family's opted-in Heads/Admins on WhatsApp when a Pending item
+// has just appeared and there wasn't one a moment ago — the 0->1 crossing,
+// not every single pending item, so an active contribution day doesn't
+// turn into a stream of pings. Deliberately event-triggered (no cron, no
+// new scheduled function) and deliberately opt-in-gated per
+// whatsapp_notification_prefs (see
+// supabase/migrations/20261017200000_whatsapp_nudge_optin.sql) — connecting
+// a number is not, by itself, permission to message someone proactively;
+// see the WhatsApp expansion plan's policy research for why.
+// TWILIO_NUDGE_TEMPLATE_SID must point at a Meta-approved Content Template
+// whose only variable ({{1}}) is the pending-items count — unset envs skip
+// silently rather than failing the triggering request.
+async function maybeNudgeModerators(supabase, familyId) {
+  try {
+    const templateSid = process.env.TWILIO_NUDGE_TEMPLATE_SID;
+    if (!templateSid) return;
+    const { count, error: countErr } = await supabase
+      .from("contributions").select("id", { count: "exact", head: true })
+      .eq("family_id", familyId).eq("status", "Pending");
+    if (countErr || count !== 1) return; // only the 0->1 transition
+    const { data: moderators, error: modErr } = await supabase
+      .from("family_members").select("user_id").eq("family_id", familyId).in("role", ["head", "admin"]);
+    if (modErr || !moderators?.length) return;
+    const userIds = moderators.map((m) => m.user_id);
+    const [{ data: prefs }, { data: connections }] = await Promise.all([
+      supabase.from("whatsapp_notification_prefs").select("user_id").in("user_id", userIds).eq("nudges_enabled", true),
+      supabase.from("whatsapp_connections").select("user_id, phone_number").in("user_id", userIds),
+    ]);
+    const optedInIds = new Set((prefs || []).map((p) => p.user_id));
+    const targets = (connections || []).filter((c) => optedInIds.has(c.user_id));
+    for (const t of targets) {
+      await sendWhatsAppTemplate(t.phone_number, templateSid, { 1: String(count) })
+        .catch((err) => log("PROCESSING_FAILED", { reason: `nudge_send_failed: ${err.message}` }));
+    }
+    if (targets.length) log("NUDGE_SENT", { familyId, recipients: targets.length });
+  } catch (err) {
+    log("PROCESSING_FAILED", { reason: `nudge_failed: ${err.message}` });
+  }
+}
+
+// Shared fuzzy-name lookup — same `ilike` + 0/1/many-match handling the
+// "profile pic for NAME" shortcut already uses, reused here by the newer
+// folio-edit and gallery commands below so a third copy of this logic isn't
+// hand-rolled. Already replies (and acks) itself on no-match/ambiguous-match
+// — callers should treat a null return as "already handled, just return."
+async function resolvePersonByName(supabase, familyId, phoneNumber, rawName, res, finishMessage) {
+  const targetName = rawName.trim().replace(/[.!?]+$/, "");
+  const { data: matches, error: searchErr } = await supabase
+    .from("people").select("id, name").eq("family_id", familyId).ilike("name", `%${targetName}%`).limit(6);
+  if (searchErr) {
+    await finishMessage({ processing_status: "failed", error_message: `person_search_failed: ${searchErr.message}` });
+    await reply(phoneNumber, "I couldn't look that person up right now. Please try again.");
+    ack(res);
+    return null;
+  }
+  if (!matches?.length) {
+    await finishMessage({ processing_status: "completed" });
+    await reply(phoneNumber, `I couldn't find anyone named "${targetName}" in the family tree.`);
+    ack(res);
+    return null;
+  }
+  if (matches.length > 1) {
+    await finishMessage({ processing_status: "completed" });
+    await reply(phoneNumber, `A few people match "${targetName}":\n${matches.map((m) => `• ${m.name}`).join("\n")}\n\nResend with their full name.`);
+    ack(res);
+    return null;
+  }
+  return matches[0];
+}
+
+// Folio fields reachable via "update <field> for <name>: <value>". Kept
+// deliberately small: each entry's `field`/`contentOf` must match an exact
+// branch App.jsx's applyContributionEffects already knows how to apply on
+// approval (so a non-moderator's Pending edit isn't silently dropped when a
+// Head/Admin later approves it), and `column`/`parse` is what a moderator's
+// direct apply writes straight to `people`. Fields the web app bundles into
+// a single combined edit (e.g. rashi/gotra/birthGotra/gender all living
+// inside one "heritage" JSON blob) are deliberately left out here — sending
+// just one of those over WhatsApp could otherwise wipe its siblings on
+// approval; add them later alongside a fetch-current-value step, not now.
+const FOLIO_FIELD_ALIASES = {
+  summary: { field: "summary", column: "summary", parse: (v) => v, contentOf: (v) => v },
+  biography: { field: "summary", column: "summary", parse: (v) => v, contentOf: (v) => v },
+  places: { field: "places", column: "places", parse: (v) => v.split(",").map((s) => s.trim()).filter(Boolean), contentOf: (v) => v },
+  location: { field: "geo", column: "geo", parse: (v) => ({ place: v }), contentOf: (v) => JSON.stringify({ place: v }) },
+};
+const FOLIO_EDIT_RE = /^(?:update|set)\s+(.+?)\s+for\s+(.+?):\s*(.+)$/is;
+const GALLERY_ADD_RE = /^add\s+(?:to\s+)?gallery\s+for\s+(.+)$/i;
+const GALLERY_SHOW_RE = /^show\s+(?:photos|gallery)\s+(?:of|for)\s+(.+)$/i;
+const GALLERY_REMOVE_RE = /^remove\s+photo\s+(\d+)\s+for\s+(.+)$/i;
 
 function maskPhone(p) {
   const s = String(p || "");
@@ -240,7 +342,43 @@ export default async function handler(req, res) {
             : `Updated ${targetPersonName}'s profile photo ✅`);
         } catch (err) {
           await finishMessage({ processing_status: "failed", error_message: `profile_photo_for_failed: ${err.message}` });
-          await reply(phoneNumber, "I couldn't update that profile photo right now. Please try sending it again.");
+          await reply(phoneNumber, friendlyErrorReply(err, "I couldn't update that profile photo right now. Please try sending it again."));
+        }
+        ack(res);
+        return;
+      }
+
+      // "add to gallery for NAME" — makes the existing generic-capture
+      // upload path explicitly discoverable as its own command, rather than
+      // only reachable by sending a photo with no caption and working
+      // through the multi-step memory-capture conversation. Goes through
+      // the same storeMedia() call (and therefore the same family-media
+      // plan-limit trigger) as every other photo upload.
+      const galleryMatch = textBody.match(GALLERY_ADD_RE);
+      if (galleryMatch) {
+        const person = await resolvePersonByName(supabase, identity.familyId, phoneNumber, galleryMatch[1], res, finishMessage);
+        if (!person) return;
+        try {
+          const { buffer, ext } = await fetchTwilioMedia(mediaUrl, mediaContentType);
+          const stored = await storeMedia(supabase, identity.familyId, person.id, buffer, ext, mediaContentType);
+          const isModerator = identity.role === "head" || identity.role === "admin";
+          const { error: insertErr } = await supabase.from("contributions").insert({
+            family_id: identity.familyId, person_id: person.id, type: "photo", content: stored.path,
+            image_hash: stored.imageHash, visibility: "shared",
+            contributor: identity.displayName, contributor_user_id: identity.userId,
+            status: isModerator ? "Verified" : "Pending",
+            date: new Date().toISOString().slice(0, 10), source: "whatsapp", source_message_id: messageSid,
+          });
+          if (insertErr) throw new Error(insertErr.message);
+          log("GALLERY_PHOTO_ADDED", { phone: maskPhone(phoneNumber), personId: person.id, status: isModerator ? "Verified" : "Pending" });
+          if (!isModerator) await maybeNudgeModerators(supabase, identity.familyId);
+          await finishMessage({ processing_status: "completed", stored_media_path: stored.path });
+          await reply(phoneNumber, isModerator
+            ? `Added to ${person.name}'s gallery ✅`
+            : `Thanks! Sent to your family's review queue for ${person.name}'s gallery.`);
+        } catch (err) {
+          await finishMessage({ processing_status: "failed", error_message: `gallery_add_failed: ${err.message}` });
+          await reply(phoneNumber, friendlyErrorReply(err, "I couldn't save that photo right now. Please try sending it again."));
         }
         ack(res);
         return;
@@ -292,7 +430,136 @@ export default async function handler(req, res) {
             : "Updated your profile photo ✅");
         } catch (err) {
           await finishMessage({ processing_status: "failed", error_message: `profile_photo_failed: ${err.message}` });
-          await reply(phoneNumber, "I couldn't update your profile photo right now. Please try sending it again.");
+          await reply(phoneNumber, friendlyErrorReply(err, "I couldn't update your profile photo right now. Please try sending it again."));
+        }
+        ack(res);
+        return;
+      }
+    }
+
+    // Text-only commands: folio field edits and gallery browse/remove.
+    // Checked before falling through to the generic memory-capture flow, the
+    // same way the media-based shortcuts above are checked before it.
+    if (numMedia === 0) {
+      const editMatch = textBody.match(FOLIO_EDIT_RE);
+      if (editMatch) {
+        const [, rawField, rawName, rawValue] = editMatch;
+        const alias = FOLIO_FIELD_ALIASES[rawField.trim().toLowerCase()];
+        if (!alias) {
+          await finishMessage({ processing_status: "completed" });
+          await reply(phoneNumber, `I don't know how to update "${rawField.trim()}" yet. Try: summary, places, or location.`);
+          ack(res);
+          return;
+        }
+        const person = await resolvePersonByName(supabase, identity.familyId, phoneNumber, rawName, res, finishMessage);
+        if (!person) return;
+        const value = rawValue.trim();
+        const isModerator = identity.role === "head" || identity.role === "admin";
+        try {
+          if (isModerator) {
+            const { error: updateErr } = await supabase
+              .from("people").update({ [alias.column]: alias.parse(value) }).eq("family_id", identity.familyId).eq("id", person.id);
+            if (updateErr) throw new Error(updateErr.message);
+            log("FOLIO_FIELD_UPDATED", { phone: maskPhone(phoneNumber), personId: person.id, field: alias.column });
+            await finishMessage({ processing_status: "completed" });
+            await reply(phoneNumber, `Updated ${person.name}'s ${rawField.trim().toLowerCase()} ✅`);
+          } else {
+            const { error: proposeErr } = await supabase.from("contributions").insert({
+              family_id: identity.familyId, person_id: person.id, type: "edit",
+              field: alias.field, field_label: rawField.trim(), content: alias.contentOf(value),
+              contributor: identity.displayName, contributor_user_id: identity.userId,
+              status: "Pending", source: "whatsapp", source_message_id: messageSid,
+            });
+            if (proposeErr) throw new Error(proposeErr.message);
+            log("FOLIO_FIELD_PROPOSED", { phone: maskPhone(phoneNumber), personId: person.id, field: alias.field });
+            await maybeNudgeModerators(supabase, identity.familyId);
+            await finishMessage({ processing_status: "completed" });
+            await reply(phoneNumber, `Thanks! Sent "${rawField.trim()}" for ${person.name} to your family's review queue.`);
+          }
+        } catch (err) {
+          await finishMessage({ processing_status: "failed", error_message: `folio_edit_failed: ${err.message}` });
+          await reply(phoneNumber, friendlyErrorReply(err, "I couldn't save that update right now. Please try again."));
+        }
+        ack(res);
+        return;
+      }
+
+      const showMatch = textBody.match(GALLERY_SHOW_RE);
+      if (showMatch) {
+        const person = await resolvePersonByName(supabase, identity.familyId, phoneNumber, showMatch[1], res, finishMessage);
+        if (!person) return;
+        try {
+          const { data: items, error: galErr } = await supabase
+            .from("contributions").select("id, content")
+            .eq("family_id", identity.familyId).eq("person_id", person.id)
+            .eq("type", "photo").eq("status", "Verified")
+            .order("created_at", { ascending: false }).limit(5);
+          if (galErr) throw new Error(galErr.message);
+          if (!items?.length) {
+            await finishMessage({ processing_status: "completed" });
+            await reply(phoneNumber, `No photos yet for ${person.name}.`);
+            ack(res);
+            return;
+          }
+          const browse = [];
+          for (let i = 0; i < items.length; i++) {
+            const { data: signed } = await supabase.storage.from("family-media").createSignedUrl(items[i].content, 600);
+            if (!signed?.signedUrl) continue;
+            browse.push({ position: browse.length + 1, contributionId: items[i].id });
+            await sendWhatsAppMedia(phoneNumber, signed.signedUrl, `${browse.length}. ${person.name}`);
+          }
+          await supabase.from("whatsapp_conversations").upsert({
+            phone_number: phoneNumber, user_id: identity.userId, family_id: identity.familyId,
+            state: conversation?.state || "IDLE", pending_person_id: conversation?.pending_person_id || null,
+            context: { ...(conversation?.context || {}), lastGalleryBrowse: { personId: person.id, items: browse } },
+            last_interaction_at: new Date().toISOString(),
+          });
+          log("GALLERY_SHOWN", { phone: maskPhone(phoneNumber), personId: person.id, count: browse.length });
+          await finishMessage({ processing_status: "completed" });
+          await reply(phoneNumber, browse.length
+            ? `Here are ${person.name}'s most recent photos. To remove one, reply "remove photo NUMBER for ${person.name}".`
+            : `I couldn't open any of ${person.name}'s photos right now.`);
+        } catch (err) {
+          await finishMessage({ processing_status: "failed", error_message: `gallery_show_failed: ${err.message}` });
+          await reply(phoneNumber, "I couldn't load that gallery right now. Please try again.");
+        }
+        ack(res);
+        return;
+      }
+
+      const removeMatch = textBody.match(GALLERY_REMOVE_RE);
+      if (removeMatch) {
+        const isModerator = identity.role === "head" || identity.role === "admin";
+        if (!isModerator) {
+          await finishMessage({ processing_status: "completed" });
+          await reply(phoneNumber, "Only a Head or Admin can remove a gallery photo.");
+          ack(res);
+          return;
+        }
+        const position = parseInt(removeMatch[1], 10);
+        const browse = conversation?.context?.lastGalleryBrowse;
+        const item = browse?.items?.find((it) => it.position === position);
+        if (!browse || !item) {
+          await finishMessage({ processing_status: "completed" });
+          await reply(phoneNumber, `I don't have a recent photo list to remove from — send "show photos of NAME" first.`);
+          ack(res);
+          return;
+        }
+        try {
+          const { data: contribution, error: fetchErr } = await supabase
+            .from("contributions").select("*").eq("id", item.contributionId).eq("family_id", identity.familyId).maybeSingle();
+          if (fetchErr) throw new Error(fetchErr.message);
+          if (!contribution) throw new Error("That photo is already gone.");
+          const { error: delStorageErr } = await supabase.storage.from("family-media").remove([contribution.content]);
+          if (delStorageErr) log("PROCESSING_FAILED", { reason: `gallery_remove_storage: ${delStorageErr.message}` });
+          const { error: delErr } = await supabase.from("contributions").delete().eq("id", contribution.id);
+          if (delErr) throw new Error(delErr.message);
+          log("GALLERY_PHOTO_REMOVED", { phone: maskPhone(phoneNumber), contributionId: contribution.id });
+          await finishMessage({ processing_status: "completed" });
+          await reply(phoneNumber, "Removed that photo ✅");
+        } catch (err) {
+          await finishMessage({ processing_status: "failed", error_message: `gallery_remove_failed: ${err.message}` });
+          await reply(phoneNumber, "I couldn't remove that photo right now. Please try again.");
         }
         ack(res);
         return;
@@ -387,6 +654,7 @@ export default async function handler(req, res) {
           ack(res);
           return;
         }
+        await maybeNudgeModerators(supabase, identity.familyId);
       }
       log("PHOTO_IDENTIFIED", { phone: maskPhone(phoneNumber), applied: isModerator });
       await supabase.from("whatsapp_conversations").upsert({
@@ -434,6 +702,7 @@ export default async function handler(req, res) {
         return;
       }
       log("MEMORY_CREATED", { phone: maskPhone(phoneNumber), count: rows.length, status });
+      if (status === "Pending") await maybeNudgeModerators(supabase, identity.familyId);
       const whoText = result.personName ? `${result.personName}'s memories` : "your family's memories";
       const replyText = status === "Verified"
         ? `Saved ❤️\nI added this to ${whoText}.`
@@ -459,7 +728,7 @@ export default async function handler(req, res) {
   } catch (err) {
     log("PROCESSING_FAILED", { reason: err.message, messageSid });
     await finishMessage({ processing_status: "failed", error_message: err.message }).catch(() => {});
-    await reply(phoneNumber, "I couldn't save this memory right now. Nothing has been lost. Please try sending it again.");
+    await reply(phoneNumber, friendlyErrorReply(err, "I couldn't save this memory right now. Nothing has been lost. Please try sending it again."));
     ack(res);
   }
 }

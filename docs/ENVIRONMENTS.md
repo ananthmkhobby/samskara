@@ -20,11 +20,23 @@ over a single shared backend).
 Every environment variable in `vercel.json`'s referenced API functions
 (`VITE_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `VITE_SUPABASE_ANON_KEY`,
 `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`,
-`OPENAI_API_KEY`, `ADMIN_PROVISION_SECRET`, `APP_URL`,
-`SCANJUNCTION_ALLOWED_ORIGIN`) is configured **per Vercel project**, never
-shared. The production project's Supabase keys point at the production
-Supabase project; the test project's point at the test one. Rotating a key
-in one environment never touches the other.
+`TWILIO_NUDGE_TEMPLATE_SID`, `OPENAI_API_KEY`, `ADMIN_PROVISION_SECRET`,
+`APP_URL`, `SCANJUNCTION_ALLOWED_ORIGIN`) is configured **per Vercel
+project**, never shared. The production project's Supabase keys point at
+the production Supabase project; the test project's point at the test one.
+Rotating a key in one environment never touches the other.
+
+`VITE_WHATSAPP_DISPLAY_NUMBER` is the one WhatsApp-related var exposed to
+the browser (hence the `VITE_` prefix) — a human-formatted number (e.g.
+`+1 415 523 8886`) shown on the login page, the Home promo card, and
+`ConnectWhatsAppView.jsx`'s explainer. Keep it in sync with whatever number
+`TWILIO_WHATSAPP_FROM` actually points at for that project — they're not
+read from the same source since the server-only var carries the `whatsapp:`
+scheme prefix Twilio's API needs, not a display-ready string. `TWILIO_NUDGE_TEMPLATE_SID`
+is the Meta-approved Content Template used for the "N items waiting for
+review" nudge (`api/whatsapp-webhook.js`'s `maybeNudgeModerators`) — unset
+in any environment, nudges are silently skipped rather than failing
+whatever request would have triggered one.
 
 None of these are ever committed — confirmed: no `.env*` file is tracked in
 this repo (`git ls-files | grep env` returns nothing). Local development

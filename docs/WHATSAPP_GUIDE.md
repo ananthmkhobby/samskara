@@ -10,6 +10,19 @@ text message. The first time you write in, you'll get a one-time secure link
 to connect your WhatsApp number to your Samskara account. Open it, confirm,
 and you're connected — no password needed on WhatsApp itself.
 
+Signed in but don't know the number? It's shown right on the Home screen
+(a dismissible card, until you connect) and any time from **More → Connect
+on WhatsApp** — that page also works as a plain explainer if you want to
+read how it works before sending anything.
+
+**Nudges (optional, off by default):** once connected, you can also turn on
+"nudge me when something needs my attention" — a Head/Admin gets a WhatsApp
+message when items are newly waiting for review, not for every single item,
+just when the queue goes from empty to non-empty. This is a separate opt-in
+from connecting your number at all (Meta requires that distinction), and you
+can turn it off any time from the same Connect-on-WhatsApp page. Samskara
+never sends any other kind of proactive message.
+
 **One extra step the first time:** your account also needs to know *which
 person in the family tree you are*. Until that's set, Samskara can save what
 you send, but a couple of shortcuts (see below) won't know who to apply to.
@@ -82,6 +95,30 @@ Samskara looks their name up in the tree:
 
 Only a Head or Admin can do this for someone else — anyone else trying it
 gets a polite "only a Head or Admin can do that" reply instead.
+
+## Updating a folio field
+
+Send:
+
+```
+update <field> for <their name>: <new value>
+```
+
+for example `update summary for Lakshmi: Loved classical music and taught it to three generations of grandchildren.`
+
+Supported fields today: `summary`, `places`, `location`. A Head/Admin's edit
+applies right away; anyone else's is sent to the family's review queue for a
+Head/Admin to confirm, same as any other edit made from the app.
+
+## Gallery commands
+
+- `add to gallery for <name>` (send a photo with this caption) — adds it to
+  that person's gallery. A Head/Admin's photo is visible immediately;
+  anyone else's goes to the review queue first.
+- `show photos of <name>` (or `show gallery for <name>`) — sends back their
+  most recent photos.
+- `remove photo <number> for <name>` — Head/Admin only, removes a photo you
+  just saw via "show photos" (use the number it was listed with).
 
 ## Troubleshooting
 
