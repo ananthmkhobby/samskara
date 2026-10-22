@@ -42,6 +42,17 @@ None of these are ever committed — confirmed: no `.env*` file is tracked in
 this repo (`git ls-files | grep env` returns nothing). Local development
 reads `.env.local`, which is git-ignored.
 
+One more secret, GitHub-side rather than Vercel-side: `SUPABASE_ACCESS_TOKEN`,
+a repo secret (Settings → Secrets and variables → Actions) that CI's
+`check-migrations-synced` job (`.github/workflows/ci.yml`) uses to confirm
+every migration in `supabase/migrations/` has actually been applied to the
+relevant project — see `scripts/check-migrations-synced.sh` for why this
+exists. Generate it from the Supabase Dashboard → Account → Access Tokens
+(a personal access token, not a project API key — it only needs to list/
+query projects you already have access to). This is the one secret in this
+project that isn't scoped to a single Vercel project, since the same check
+runs against both test and production from one workflow.
+
 ## What's identical between them
 
 Schema. Both projects are built from the same ordered set of migrations in

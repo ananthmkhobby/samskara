@@ -11,6 +11,16 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.21.3 — Branding uniformity and WhatsApp policy disclosures
+
+[PR #14](https://github.com/ananthmkhobby/samskara/pull/14) — ahead of submitting "Samskara" for Meta's WhatsApp Business Display Name review. Fixes a real mismatch: the PWA's home-screen name (Android `short_name`, iOS `apple-mobile-web-app-title`) read "Vamsha Vruksha", dropping "Samskara" entirely — anyone with the app installed saw that name on their home screen while WhatsApp would show "Samskara." Both now say "Samskara."
+
+Also adds what Meta's review expects: the Privacy Policy now names Meta/WhatsApp Business Platform directly (previously only named Twilio, the BSP relaying on Meta's behalf), and the Terms gain a dedicated WhatsApp integration section covering the connect flow, the separate explicit nudge opt-in, and that Meta's own terms apply too.
+
+Verified on the test environment first (`samskara-koaham.vercel.app`): confirmed via the live manifest and HTML that both home-screen names read "Samskara," and that both new policy sections render correctly.
+
+Verified post-deploy: production bundle updated (`index-erC0FJ0Z.js`), confirmed via the live manifest and HTML that both now read "Samskara," and both new Privacy Policy/Terms sections render correctly on `oursamskara.com`. No console errors.
+
 ## v2026.10.21.2 — WhatsApp enrollment, nudges, and chat command surface
 
 [PR #13](https://github.com/ananthmkhobby/samskara/pull/13) — the WhatsApp number worked for anyone who already knew to message it, but nothing in the app itself said so; the only place it was written down was a doc meant to be manually shared. Adds a login-page banner, a Home promo card (shown only while the signed-in account has no connected number), a persistent MoreMenu entry, and an explainer page — all pointing at a new "before you connect" mode of `ConnectWhatsAppView`. Adds a separate, explicit opt-in (`whatsapp_notification_prefs`) for proactive nudges, since Meta requires distinct consent from "connecting a number," and wires up one nudge type: an opted-in Head/Admin gets pinged on WhatsApp the moment a family's pending-review count crosses 0→1 (not on every item — avoids spamming an active contribution day). No new cron or scheduled function; stays event-triggered off existing insert paths.

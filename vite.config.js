@@ -44,7 +44,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       devOptions: { enabled: true },
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'fonts/SourceSerif4-Variable.woff2', 'fonts/SourceSerif4-Italic-Variable.woff2'],
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'fonts/SourceSerif4-Variable.woff2', 'fonts/SourceSerif4-Italic-Variable.woff2', 'fonts/NotoSerifKannada-Variable.woff2'],
       manifest: {
         name: 'Samskara Vamsha Vruksha',
         short_name: 'Samskara',
