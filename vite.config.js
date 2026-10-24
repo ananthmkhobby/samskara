@@ -42,8 +42,23 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      // SPIKE: generateSW (the default) can't run custom code in the
+      // service worker at all — it only ever emits what its own
+      // declarative `workbox` options below describe. injectManifest hands
+      // control to our own src/sw.js instead, with self.__WB_MANIFEST as
+      // the one magic string it rewrites into the real precache list at
+      // build time. Needed for push notifications and share-target, both
+      // of which require a custom `self.addEventListener(...)`.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
+      injectManifest: {
+        // Matches generateSW's implicit default closely enough for this
+        // spike — revisit globbing/exclusions when this becomes real.
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+      },
       registerType: 'autoUpdate',
-      devOptions: { enabled: true },
+      devOptions: { enabled: true, type: 'module' },
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'fonts/SourceSerif4-Variable.woff2', 'fonts/SourceSerif4-Italic-Variable.woff2', 'fonts/NotoSerifKannada-Variable.woff2'],
       manifest: {
         name: 'Samskara Vamsha Vruksha',
@@ -60,17 +75,9 @@ export default defineConfig({
           { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
-      workbox: {
-        // /api/* are OpenAI-backed serverless functions — never cache
-        // responses that depend on a live key/quota or a specific prompt.
-        navigateFallbackDenylist: [/^\/api\//],
-        runtimeCaching: [
-          {
-            urlPattern: /^\/api\//,
-            handler: 'NetworkOnly',
-          },
-        ],
-      },
+      // `workbox: {...}` (generateSW-only) is gone — its two behaviors
+      // (precache + network-only /api) are now hand-written in src/sw.js
+      // instead, since injectManifest mode ignores this option entirely.
     }),
   ],
 })
