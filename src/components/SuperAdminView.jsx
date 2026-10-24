@@ -135,6 +135,23 @@ function PushTestSection() {
     }
   }
 
+  // /superadmin is deliberately reachable while signed out (so it works
+  // for provisioning a brand-new family) — but a push subscription needs
+  // a real auth.uid() to attach to (push_subscriptions' RLS requires
+  // user_id = auth.uid()). Without this check, "Enable push" would
+  // silently fail the save with a confusing generic error instead of the
+  // actual, simple reason — found live when testing this for real.
+  if (!CURRENT_USER_ID) {
+    return (
+      <div className="card" style={{ maxWidth: 620, padding: 20, marginTop: 24 }}>
+        <h4 style={{ marginTop: 0 }}>Push notification test</h4>
+        <p className="form-hint" style={{ marginTop: 0 }}>
+          You need to be signed in to a Samskara account to test this — log in at the main site first, then come back to this page in the same browser tab.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="card" style={{ maxWidth: 620, padding: 20, marginTop: 24 }}>
       <h4 style={{ marginTop: 0 }}>Push notification test</h4>
