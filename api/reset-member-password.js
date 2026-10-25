@@ -60,6 +60,7 @@ async function sendTestPush(req, res) {
   const payload = JSON.stringify({
     title: "Samskara",
     body: "This is a test notification — if you can see this, push is working end to end.",
+    url: "/tree",
   });
 
   const results = await Promise.allSettled(
