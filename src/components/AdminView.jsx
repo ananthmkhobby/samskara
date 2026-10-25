@@ -23,6 +23,7 @@ import PersonAvatar from "./PersonAvatar";
 import PhotoLightbox from "./PhotoLightbox";
 import AddPeopleCard from "./AddPeopleCard";
 import WhatsAppAdminTab from "./WhatsAppAdminTab";
+import NotificationsAdminTab from "./NotificationsAdminTab";
 import { EXP_LABELS, CloseIcon } from "./Icons";
 
 const TABS = ["Pending", "Verified", "Rejected", "All"];
@@ -1239,7 +1240,8 @@ export default function AdminView({ contributions, onApprove, onReject, onDelete
   const showDuplicatesTab = !IS_DEMO && canModerate;
   const showGenderTab = !IS_DEMO && canModerate;
   const showWhatsAppTab = !IS_DEMO && canModerate;
-  const adminTabs = [...(showMembersTab ? ["Members"] : []), "Review queue", ...(showPhotosTab ? ["Photos"] : []), ...(showDuplicatesTab ? ["Duplicates"] : []), ...(showGenderTab ? ["Genders"] : []), ...(showWhatsAppTab ? ["WhatsApp"] : [])];
+  const showNotificationsTab = !IS_DEMO && canModerate;
+  const adminTabs = [...(showMembersTab ? ["Members"] : []), "Review queue", ...(showPhotosTab ? ["Photos"] : []), ...(showDuplicatesTab ? ["Duplicates"] : []), ...(showGenderTab ? ["Genders"] : []), ...(showWhatsAppTab ? ["WhatsApp"] : []), ...(showNotificationsTab ? ["Notifications"] : [])];
   const [adminTab, setAdminTab] = useState(showMembersTab ? "Members" : "Review queue");
   const [tab, setTab] = useState("Pending");
   const [lightboxSrc, setLightboxSrc] = useState(null);
@@ -1342,7 +1344,7 @@ export default function AdminView({ contributions, onApprove, onReject, onDelete
   return (
     <section className="wrap">
       <div className="section-head">
-        <h2>{adminTab === "Members" ? "Manage members" : adminTab === "Photos" ? "Unidentified photos" : adminTab === "Duplicates" ? "Possible duplicate photos" : adminTab === "Genders" ? "Set genders" : adminTab === "WhatsApp" ? "WhatsApp activity" : "Review queue"}</h2>
+        <h2>{adminTab === "Members" ? "Manage members" : adminTab === "Photos" ? "Unidentified photos" : adminTab === "Duplicates" ? "Possible duplicate photos" : adminTab === "Genders" ? "Set genders" : adminTab === "WhatsApp" ? "WhatsApp activity" : adminTab === "Notifications" ? "Send a notification" : "Review queue"}</h2>
         <p>
           {adminTab === "Members"
             ? "Invite people, see who's joined, fix a name, or set which person in the tree someone is — for themselves or, if they never got around to it, for anyone."
@@ -1354,18 +1356,20 @@ export default function AdminView({ contributions, onApprove, onReject, onDelete
             ? "Quickly set who's male or female across the whole tree — needed to work out relationship terms for the Vamshavali (Parampare). Skip anyone you'd rather not record."
             : adminTab === "WhatsApp"
             ? "Recent messages Samskara has received on WhatsApp for this family, and what happened with each one — for debugging the integration, not for everyday use."
+            : adminTab === "Notifications"
+            ? "Push a message to everyone's phone, just the Head/Admins, or specific people — only reaches someone who's turned on notifications for Samskara."
             : "Everything the family has submitted or proposed to edit, waiting for a second pair of eyes before it changes the archive."}
         </p>
         {adminTab === "Review queue" && !canModerate && <p className="form-hint" style={{ marginTop: 6 }}>You can see what's pending, but only Admins or the Family Head can approve or reject.</p>}
       </div>
-      {(showMembersTab || showPhotosTab || showDuplicatesTab || showGenderTab || showWhatsAppTab) && (
+      {(showMembersTab || showPhotosTab || showDuplicatesTab || showGenderTab || showWhatsAppTab || showNotificationsTab) && (
         <div className="admin-tabs">
           {adminTabs.map((t) => (
             <button key={t} className={`chip${adminTab === t ? " active" : ""}`} onClick={() => setAdminTab(t)}>{t}</button>
           ))}
         </div>
       )}
-      {adminTab === "Members" ? <MembersPage /> : adminTab === "Photos" ? <UnidentifiedPhotosTab contributions={contributions} onOpenLightbox={setLightboxSrc} /> : adminTab === "Duplicates" ? <DuplicatePhotosTab contributions={contributions} onDeleteContribution={onDeleteContribution} onOpenLightbox={setLightboxSrc} /> : adminTab === "Genders" ? <GenderTab /> : adminTab === "WhatsApp" ? <WhatsAppAdminTab /> : (
+      {adminTab === "Members" ? <MembersPage /> : adminTab === "Photos" ? <UnidentifiedPhotosTab contributions={contributions} onOpenLightbox={setLightboxSrc} /> : adminTab === "Duplicates" ? <DuplicatePhotosTab contributions={contributions} onDeleteContribution={onDeleteContribution} onOpenLightbox={setLightboxSrc} /> : adminTab === "Genders" ? <GenderTab /> : adminTab === "WhatsApp" ? <WhatsAppAdminTab /> : adminTab === "Notifications" ? <NotificationsAdminTab /> : (
       <>
       <div className="admin-tabs">
         {TABS.map((t) => (
