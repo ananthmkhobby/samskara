@@ -41,6 +41,7 @@ import TermsOfServiceStandalone from "./components/TermsOfServiceStandalone";
 import JoinFamilyModal from "./components/JoinFamilyModal";
 import ConnectWhatsAppView from "./components/ConnectWhatsAppView";
 import NotificationSettingsView from "./components/NotificationSettingsView";
+import ShareTargetLanding from "./components/ShareTargetLanding";
 import ParamparaView from "./components/ParamparaView";
 import ParamparaContributeModal from "./components/ParamparaContributeModal";
 import JapaView from "./components/JapaView";
@@ -989,6 +990,19 @@ export default function App() {
   // not render behind it, or "they saw it" becomes arguable.
   if (needsConsent) {
     return <ConsentGate userId={CURRENT_USER_ID} onAccepted={() => setNeedsConsent(false)} />;
+  }
+
+  // The OS share sheet's redirect (src/sw.js's fetch handler, via the
+  // share_target manifest entry) lands here as a plain path, not a `view`
+  // this app's own nav ever sets — caught before the normal view switch so
+  // it works regardless of whatever view happened to be open underneath.
+  if (window.location.pathname === "/share-target") {
+    return (
+      <ShareTargetLanding
+        onReady={(shared) => { window.history.replaceState({}, "", "/"); openContribute(shared); }}
+        onDone={() => { window.history.replaceState({}, "", "/"); goTo("cover"); }}
+      />
+    );
   }
 
   // A self-registered account with zero family_members rows resolves

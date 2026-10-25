@@ -1,11 +1,8 @@
-// SPIKE (2026-10-24): proving vite-plugin-pwa's injectManifest strategy
-// works cleanly with this app's existing behavior before committing to it
-// for push notifications / share-target, both of which need a custom
-// service-worker event handler that generateSW mode (the current strategy)
-// doesn't support. This file replaces the auto-generated SW — the two
-// pieces below reproduce exactly what generateSW was already doing
-// (precache + network-only /api), plus one new push handler to prove the
-// custom-event path actually works.
+// Hand-written service worker (injectManifest mode — see vite.config.js)
+// so push notifications and share-target can both register their own
+// custom event listeners, which generateSW mode doesn't support. The two
+// pieces below reproduce what generateSW used to do automatically
+// (precache + network-only /api); everything past that is custom.
 import { precacheAndRoute, createHandlerBoundToURL } from "workbox-precaching";
 import { registerRoute, NavigationRoute } from "workbox-routing";
 import { NetworkOnly } from "workbox-strategies";
@@ -76,4 +73,40 @@ self.addEventListener("notificationclick", (event) => {
 
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+});
+
+// The OS share sheet's "Samskara" entry (see vite.config.js's share_target
+// manifest key) POSTs multipart/form-data straight to this URL — only a
+// service worker's fetch listener can intercept that directly, a plain
+// page can't. We can't hand the File object itself across the redirect
+// below, so it's stashed in a scratch Cache Storage entry keyed by a
+// generated id, and the redirect target (ShareTargetLanding) reads it back
+// out by that id once the SPA is actually running.
+const SHARE_CACHE = "share-target-inbox";
+
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+  if (event.request.method === "POST" && url.pathname === "/share-target") {
+    event.respondWith(
+      (async () => {
+        const formData = await event.request.formData();
+        const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const title = formData.get("title") || "";
+        const text = formData.get("text") || "";
+        const sharedUrl = formData.get("url") || "";
+        const file = formData.get("media");
+
+        const cache = await caches.open(SHARE_CACHE);
+        await cache.put(
+          `/share-target-data/${id}`,
+          new Response(JSON.stringify({ title, text, url: sharedUrl, hasFile: !!(file && file.size) }))
+        );
+        if (file && file.size) {
+          await cache.put(`/share-target-file/${id}`, new Response(file, { headers: { "Content-Type": file.type || "application/octet-stream" } }));
+        }
+
+        return Response.redirect(`/share-target?id=${id}`, 303);
+      })()
+    );
+  }
 });

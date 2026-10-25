@@ -42,19 +42,18 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // SPIKE: generateSW (the default) can't run custom code in the
+      // generateSW (the previous strategy) can't run custom code in the
       // service worker at all — it only ever emits what its own
-      // declarative `workbox` options below describe. injectManifest hands
+      // declarative `workbox` options would describe. injectManifest hands
       // control to our own src/sw.js instead, with self.__WB_MANIFEST as
       // the one magic string it rewrites into the real precache list at
-      // build time. Needed for push notifications and share-target, both
-      // of which require a custom `self.addEventListener(...)`.
+      // build time. Needed for both push notifications (a custom `push`
+      // listener) and share-target (a custom `fetch` listener intercepting
+      // the POST the OS share sheet sends).
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.js',
       injectManifest: {
-        // Matches generateSW's implicit default closely enough for this
-        // spike — revisit globbing/exclusions when this becomes real.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
       },
       registerType: 'autoUpdate',
@@ -74,6 +73,21 @@ export default defineConfig({
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
+        // Lets Samskara show up as a target in the OS "Share" sheet
+        // (Android/Chrome only — iOS Safari has never implemented this).
+        // The share sheet POSTs here directly; src/sw.js's fetch listener
+        // intercepts it, stashes the payload, and redirects into the app.
+        share_target: {
+          action: '/share-target',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: {
+            title: 'title',
+            text: 'text',
+            url: 'url',
+            files: [{ name: 'media', accept: ['image/*', 'video/*'] }],
+          },
+        },
       },
       // `workbox: {...}` (generateSW-only) is gone — its two behaviors
       // (precache + network-only /api) are now hand-written in src/sw.js
