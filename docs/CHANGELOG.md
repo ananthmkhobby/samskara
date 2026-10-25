@@ -11,6 +11,18 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.25 — Push notifications, Share Target, and Google Analytics
+
+[PR #16](https://github.com/ananthmkhobby/samskara/pull/16) — the biggest batch of this cycle. Ships a full Web Push pipeline: a real "Notifications" settings page (subscribe/unsubscribe, per-category opt-ins), an admin broadcast composer (everyone/admins/specific people), and an automated "add a story to this photo" prompt (manual trigger for now — a real Verified photo with no sibling Verified memory, excluded once already prompted via `notification_log`). Fixes a real bug found during live testing: a photo-prompt notification's `?person=` deep link went nowhere, since nothing in the app actually read that query param — `App.jsx` now seeds `selectedPersonId` from it on load, the same read-once-before-replaceState pattern as its sibling URL params.
+
+Also adds Web Share Target support (Android/Chrome only — iOS Safari has never implemented it): Samskara now shows up in the OS share sheet for photos, text, and links. `src/sw.js`'s `fetch` listener intercepts the share POST (only a service worker can), stashes the payload in Cache Storage, and redirects into a new `ShareTargetLanding` component that hands it to the existing contribute flow, now extended to pre-fill from a shared photo or text.
+
+Finally, adds Google Analytics (gtag.js) sitewide via `index.html` — the app's one real HTML entry point, so the base snippet covers every route automatically. Since navigation past the first load is client-side (pushState/popstate, no real page load), `App.jsx` also fires a `page_view` event on every subsequent view change, so GA sees in-app navigation, not just the one initial hit.
+
+Verified on the test environment first (`samskara-koaham.vercel.app`): full push pipeline tested end to end on a real device (subscribe → send → receive → click-through lands on the right folio); admin composer targeting confirmed to respect family isolation; GA confirmed to fire exactly one `page_view` per view change with no duplicate on initial load. Share Target itself can't be exercised by the automated browser preview at all (needs a real Android device) — deployment and manifest/service-worker wiring verified directly instead.
+
+Verified post-deploy: confirmed live on `oursamskara.com` — the GA measurement ID (`G-S8NX35R8Y7`) renders in the page source, and both the share-target manifest entry and the service worker's POST handler are present in the deployed `manifest.webmanifest`/`sw.js`. No console errors.
+
 ## v2026.10.22 — Migration-sync CI check and Kannada font fix
 
 [PR #15](https://github.com/ananthmkhobby/samskara/pull/15) — two real changes. Adds a CI job (`check-migrations-synced`) that fails if `supabase/migrations/` isn't actually applied to the relevant Supabase project — built after discovering the prior release's migrations had reached the test database but never production, silently breaking a shipped feature until a user hit it. Currently a loud no-op until `SUPABASE_ACCESS_TOKEN` is added as a repo secret (documented in `docs/ENVIRONMENTS.md`). Also self-hosts a Kannada-script font subset (`Noto Serif Kannada`, ~120KB, unicode-range scoped) after a Kannada blog post was found rendering in a visibly different typeface than its English sibling, since none of the existing font stacks cover the Kannada Unicode block.
