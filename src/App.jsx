@@ -114,6 +114,14 @@ const INVITE_CODE_FROM_URL = typeof window !== "undefined" ? new URLSearchParams
 // with whatever reloads next) lets the post-login reload recover a token
 // the address bar no longer shows. Harmless to leave lingering: the token
 // is single-use and expires in 15 minutes either way.
+// Same "read once at module load, before history.replaceState() strips the
+// query string" reasoning as above — lets a link (a push notification's
+// url, a shared link, etc.) open straight to one person's folio instead of
+// just landing on the general tree. Only meaningful alongside a /tree path;
+// read unconditionally here since PEOPLE is already hydrated by the time
+// this module evaluates (see main.jsx's initDataLayer().finally(...)), so
+// there's no risk of racing an empty tree.
+const PERSON_ID_FROM_URL = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("person") : null;
 const WHATSAPP_LINK_TOKEN_FROM_URL = (() => {
   if (typeof window === "undefined") return null;
   const fromUrl = new URLSearchParams(window.location.search).get("token");
@@ -196,7 +204,7 @@ export default function App() {
       body: JSON.stringify({ action: "track", ...UTM_FROM_URL }),
     }).catch(() => {});
   }, []);
-  const [selectedPersonId, setSelectedPersonId] = useState(null);
+  const [selectedPersonId, setSelectedPersonId] = useState(() => PERSON_ID_FROM_URL || null);
   const [biographyPersonId, setBiographyPersonId] = useState(null);
   const [contributeRequest, setContributeRequest] = useState(null);
   const [editRequest, setEditRequest] = useState(null);
