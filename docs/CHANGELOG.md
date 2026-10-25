@@ -11,6 +11,12 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.25.2 — Google Search Console site verification
+
+[PR #17](https://github.com/ananthmkhobby/samskara/pull/17) — adds the `google-site-verification` meta tag to `index.html` so the site can be verified in Search Console (lets Search Console data link into GA4, and enables sitemap submission/crawl monitoring). One line, no behavior change.
+
+Verified post-deploy: the meta tag's content is present in the live page source on `oursamskara.com`.
+
 ## v2026.10.25 — Push notifications, Share Target, and Google Analytics
 
 [PR #16](https://github.com/ananthmkhobby/samskara/pull/16) — the biggest batch of this cycle. Ships a full Web Push pipeline: a real "Notifications" settings page (subscribe/unsubscribe, per-category opt-ins), an admin broadcast composer (everyone/admins/specific people), and an automated "add a story to this photo" prompt (manual trigger for now — a real Verified photo with no sibling Verified memory, excluded once already prompted via `notification_log`). Fixes a real bug found during live testing: a photo-prompt notification's `?person=` deep link went nowhere, since nothing in the app actually read that query param — `App.jsx` now seeds `selectedPersonId` from it on load, the same read-once-before-replaceState pattern as its sibling URL params.
