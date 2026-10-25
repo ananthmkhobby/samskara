@@ -299,6 +299,27 @@ export default function App() {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
+  // index.html's gtag('config', ...) call already sends GA4's one-time
+  // pageview for whatever URL the browser loaded — but every later move
+  // between views here is client-side routing (pushState/popstate, no real
+  // navigation), which GA has no way to see on its own. Fires one page_view
+  // per subsequent view change, skipping the first render so that initial
+  // load isn't double-counted.
+  const gaMountedRef = useRef(false);
+  useEffect(() => {
+    if (!gaMountedRef.current) {
+      gaMountedRef.current = true;
+      return;
+    }
+    if (typeof window.gtag !== "function") return;
+    const path = view === "blog" ? window.location.pathname : pathForView(view);
+    window.gtag("event", "page_view", {
+      page_path: path,
+      page_location: window.location.origin + path,
+      page_title: document.title,
+    });
+  }, [view]);
+
   // Applies a partial state change and pushes a new history entry so the
   // change is reachable via Back — unless we're already mid-popstate
   // (restoring history, not creating new entries).
