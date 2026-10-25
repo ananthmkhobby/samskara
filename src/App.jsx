@@ -40,6 +40,7 @@ import PrivacyPolicyStandalone from "./components/PrivacyPolicyStandalone";
 import TermsOfServiceStandalone from "./components/TermsOfServiceStandalone";
 import JoinFamilyModal from "./components/JoinFamilyModal";
 import ConnectWhatsAppView from "./components/ConnectWhatsAppView";
+import NotificationSettingsView from "./components/NotificationSettingsView";
 import ParamparaView from "./components/ParamparaView";
 import ParamparaContributeModal from "./components/ParamparaContributeModal";
 import JapaView from "./components/JapaView";
@@ -72,7 +73,7 @@ async function withMediaUrl(contribution) {
   return { ...contribution, mediaUrl };
 }
 
-const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp", blog: "/blog", plans: "/plans" };
+const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp", notifications: "/notifications", blog: "/blog", plans: "/plans" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
 // Maps a view to its families.module_flags entitlement key — a view with no
 // entry here (Tree, Folios, Search, Gallery, Activity, Admin, ...) is never
@@ -1130,6 +1131,7 @@ export default function App() {
         {view === "privacy" && <PrivacyPolicyView />}
         {view === "terms" && <TermsOfServiceView />}
         {view === "connectWhatsapp" && <ConnectWhatsAppView token={WHATSAPP_LINK_TOKEN_FROM_URL} onDone={() => goTo("cover")} />}
+        {view === "notifications" && <NotificationSettingsView onDone={() => goTo("more")} />}
         {/* view === "blog" is handled by its own early return above this
             whole TopBar/BottomBar frame — never reaches here. */}
       </main>

@@ -66,3 +66,26 @@ export async function disablePush(userId) {
   await sub.unsubscribe();
   await supabase.from("push_subscriptions").delete().eq("user_id", userId).eq("endpoint", endpoint);
 }
+
+// push_notification_prefs — per-category opt-in for the automated sends
+// (last-activity re-engagement, "tell us more about this photo") designed
+// alongside notification_log. No cron reads these yet; this is just the
+// settings UI's half of that groundwork. Defaults to both off when no row
+// exists yet, same convention as fetchNudgePreference() for WhatsApp.
+export async function fetchNotificationPrefs(userId) {
+  const { data, error } = await supabase
+    .from("push_notification_prefs").select("reengagement_enabled, photo_prompt_enabled").eq("user_id", userId).maybeSingle();
+  if (error) throw new Error(error.message);
+  return {
+    reengagementEnabled: !!data?.reengagement_enabled,
+    photoPromptEnabled: !!data?.photo_prompt_enabled,
+  };
+}
+
+export async function setNotificationPref(userId, key, enabled) {
+  const column = key === "reengagement" ? "reengagement_enabled" : "photo_prompt_enabled";
+  const { error } = await supabase
+    .from("push_notification_prefs")
+    .upsert({ user_id: userId, [column]: enabled, updated_at: new Date().toISOString() });
+  if (error) throw new Error(error.message);
+}
