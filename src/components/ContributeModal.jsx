@@ -76,14 +76,14 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
   const modalA11y = useModalA11y(onCancel);
   const [personId, setPersonId] = useState(initial.personId || "__new__");
   const [newName, setNewName] = useState("");
-  const [type, setType] = useState(initial.type || "memory");
+  const [type, setType] = useState(initial.type || (initial.photoFile ? "photo" : "memory"));
   // "audio"/"video" are this app's internal names; the plan's limits use
   // "recordings"/"videos" — same mapping mediaUpload.js's own classifier
   // uses for the matching MIME-type prefix.
   const mediaLimitKind = type === "photo" ? "photos" : type === "audio" ? "recordings" : type === "video" ? "videos" : null;
   const mediaLimit = useMediaLimit(mediaLimitKind || "photos");
   const mediaLimitApplies = !!mediaLimitKind;
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initial.text || "");
   const [speechLang, setSpeechLang] = useState("en-IN");
   const [fileName, setFileName] = useState("");
   const [docFile, setDocFile] = useState(null);
@@ -121,9 +121,7 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
     if (listening) stopSpeech();
   }
 
-  async function handlePhotoFile(e) {
-    const file = e.target.files[0];
-    if (!file) return;
+  async function loadPhotoFile(file) {
     setPhotoError("");
     try {
       const { dataUrl, blob, imageHash } = await resizeImage(file);
@@ -134,6 +132,20 @@ export default function ContributeModal({ initial, onCancel, onSubmit, canModera
       setPhotoError("Couldn't read that image — try a different file.");
     }
   }
+
+  async function handlePhotoFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    await loadPhotoFile(file);
+  }
+
+  // Pre-fills from the OS share sheet (ShareTargetLanding passes a real
+  // File through `initial.photoFile`) the same way a manual file-input
+  // pick does — same resize/hash pipeline, just not user-triggered.
+  useEffect(() => {
+    if (initial.photoFile) loadPhotoFile(initial.photoFile);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // A soft client-side guard, not a claim about the platform's real limit —
   // it exists to fail fast with a clear message rather than let someone wait

@@ -40,6 +40,8 @@ import PrivacyPolicyStandalone from "./components/PrivacyPolicyStandalone";
 import TermsOfServiceStandalone from "./components/TermsOfServiceStandalone";
 import JoinFamilyModal from "./components/JoinFamilyModal";
 import ConnectWhatsAppView from "./components/ConnectWhatsAppView";
+import NotificationSettingsView from "./components/NotificationSettingsView";
+import ShareTargetLanding from "./components/ShareTargetLanding";
 import ParamparaView from "./components/ParamparaView";
 import ParamparaContributeModal from "./components/ParamparaContributeModal";
 import JapaView from "./components/JapaView";
@@ -72,7 +74,7 @@ async function withMediaUrl(contribution) {
   return { ...contribution, mediaUrl };
 }
 
-const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp", blog: "/blog", plans: "/plans" };
+const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp", notifications: "/notifications", blog: "/blog", plans: "/plans" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
 // Maps a view to its families.module_flags entitlement key — a view with no
 // entry here (Tree, Folios, Search, Gallery, Activity, Admin, ...) is never
@@ -113,6 +115,14 @@ const INVITE_CODE_FROM_URL = typeof window !== "undefined" ? new URLSearchParams
 // with whatever reloads next) lets the post-login reload recover a token
 // the address bar no longer shows. Harmless to leave lingering: the token
 // is single-use and expires in 15 minutes either way.
+// Same "read once at module load, before history.replaceState() strips the
+// query string" reasoning as above — lets a link (a push notification's
+// url, a shared link, etc.) open straight to one person's folio instead of
+// just landing on the general tree. Only meaningful alongside a /tree path;
+// read unconditionally here since PEOPLE is already hydrated by the time
+// this module evaluates (see main.jsx's initDataLayer().finally(...)), so
+// there's no risk of racing an empty tree.
+const PERSON_ID_FROM_URL = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("person") : null;
 const WHATSAPP_LINK_TOKEN_FROM_URL = (() => {
   if (typeof window === "undefined") return null;
   const fromUrl = new URLSearchParams(window.location.search).get("token");
@@ -195,7 +205,7 @@ export default function App() {
       body: JSON.stringify({ action: "track", ...UTM_FROM_URL }),
     }).catch(() => {});
   }, []);
-  const [selectedPersonId, setSelectedPersonId] = useState(null);
+  const [selectedPersonId, setSelectedPersonId] = useState(() => PERSON_ID_FROM_URL || null);
   const [biographyPersonId, setBiographyPersonId] = useState(null);
   const [contributeRequest, setContributeRequest] = useState(null);
   const [editRequest, setEditRequest] = useState(null);
@@ -288,6 +298,27 @@ export default function App() {
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
+
+  // index.html's gtag('config', ...) call already sends GA4's one-time
+  // pageview for whatever URL the browser loaded — but every later move
+  // between views here is client-side routing (pushState/popstate, no real
+  // navigation), which GA has no way to see on its own. Fires one page_view
+  // per subsequent view change, skipping the first render so that initial
+  // load isn't double-counted.
+  const gaMountedRef = useRef(false);
+  useEffect(() => {
+    if (!gaMountedRef.current) {
+      gaMountedRef.current = true;
+      return;
+    }
+    if (typeof window.gtag !== "function") return;
+    const path = view === "blog" ? window.location.pathname : pathForView(view);
+    window.gtag("event", "page_view", {
+      page_path: path,
+      page_location: window.location.origin + path,
+      page_title: document.title,
+    });
+  }, [view]);
 
   // Applies a partial state change and pushes a new history entry so the
   // change is reachable via Back — unless we're already mid-popstate
@@ -982,6 +1013,19 @@ export default function App() {
     return <ConsentGate userId={CURRENT_USER_ID} onAccepted={() => setNeedsConsent(false)} />;
   }
 
+  // The OS share sheet's redirect (src/sw.js's fetch handler, via the
+  // share_target manifest entry) lands here as a plain path, not a `view`
+  // this app's own nav ever sets — caught before the normal view switch so
+  // it works regardless of whatever view happened to be open underneath.
+  if (window.location.pathname === "/share-target") {
+    return (
+      <ShareTargetLanding
+        onReady={(shared) => { window.history.replaceState({}, "", "/"); openContribute(shared); }}
+        onDone={() => { window.history.replaceState({}, "", "/"); goTo("cover"); }}
+      />
+    );
+  }
+
   // A self-registered account with zero family_members rows resolves
   // isDemo:true/familyId:DEMO_FAMILY_ID (see data/people.js's
   // resolveAuthAndFamily) purely so the rest of the app has somewhere
@@ -1130,6 +1174,7 @@ export default function App() {
         {view === "privacy" && <PrivacyPolicyView />}
         {view === "terms" && <TermsOfServiceView />}
         {view === "connectWhatsapp" && <ConnectWhatsAppView token={WHATSAPP_LINK_TOKEN_FROM_URL} onDone={() => goTo("cover")} />}
+        {view === "notifications" && <NotificationSettingsView onDone={() => goTo("more")} />}
         {/* view === "blog" is handled by its own early return above this
             whole TopBar/BottomBar frame — never reaches here. */}
       </main>

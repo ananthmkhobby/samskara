@@ -42,8 +42,22 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      // generateSW (the previous strategy) can't run custom code in the
+      // service worker at all — it only ever emits what its own
+      // declarative `workbox` options would describe. injectManifest hands
+      // control to our own src/sw.js instead, with self.__WB_MANIFEST as
+      // the one magic string it rewrites into the real precache list at
+      // build time. Needed for both push notifications (a custom `push`
+      // listener) and share-target (a custom `fetch` listener intercepting
+      // the POST the OS share sheet sends).
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+      },
       registerType: 'autoUpdate',
-      devOptions: { enabled: true },
+      devOptions: { enabled: true, type: 'module' },
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'fonts/SourceSerif4-Variable.woff2', 'fonts/SourceSerif4-Italic-Variable.woff2', 'fonts/NotoSerifKannada-Variable.woff2'],
       manifest: {
         name: 'Samskara Vamsha Vruksha',
@@ -59,18 +73,25 @@ export default defineConfig({
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
-      },
-      workbox: {
-        // /api/* are OpenAI-backed serverless functions — never cache
-        // responses that depend on a live key/quota or a specific prompt.
-        navigateFallbackDenylist: [/^\/api\//],
-        runtimeCaching: [
-          {
-            urlPattern: /^\/api\//,
-            handler: 'NetworkOnly',
+        // Lets Samskara show up as a target in the OS "Share" sheet
+        // (Android/Chrome only — iOS Safari has never implemented this).
+        // The share sheet POSTs here directly; src/sw.js's fetch listener
+        // intercepts it, stashes the payload, and redirects into the app.
+        share_target: {
+          action: '/share-target',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: {
+            title: 'title',
+            text: 'text',
+            url: 'url',
+            files: [{ name: 'media', accept: ['image/*', 'video/*'] }],
           },
-        ],
+        },
       },
+      // `workbox: {...}` (generateSW-only) is gone — its two behaviors
+      // (precache + network-only /api) are now hand-written in src/sw.js
+      // instead, since injectManifest mode ignores this option entirely.
     }),
   ],
 })

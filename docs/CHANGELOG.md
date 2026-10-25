@@ -11,6 +11,16 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.22 — Migration-sync CI check and Kannada font fix
+
+[PR #15](https://github.com/ananthmkhobby/samskara/pull/15) — two real changes. Adds a CI job (`check-migrations-synced`) that fails if `supabase/migrations/` isn't actually applied to the relevant Supabase project — built after discovering the prior release's migrations had reached the test database but never production, silently breaking a shipped feature until a user hit it. Currently a loud no-op until `SUPABASE_ACCESS_TOKEN` is added as a repo secret (documented in `docs/ENVIRONMENTS.md`). Also self-hosts a Kannada-script font subset (`Noto Serif Kannada`, ~120KB, unicode-range scoped) after a Kannada blog post was found rendering in a visibly different typeface than its English sibling, since none of the existing font stacks cover the Kannada Unicode block.
+
+This release also closes out a same-day infrastructure detour, unrelated to the app code: a GitHub-wide incident paused webhook deliveries, which stalled the test project's auto-deploy; disconnecting/reconnecting the Vercel Git integration as a response (a reasonable thing to try) had the side effect of silently resetting the test project's Production Branch tracking from `dev` back to the default `main`, even though `samskara-koaham.vercel.app` stayed assigned as a Production domain. Both fully diagnosed and fixed at the infrastructure level (Vercel dashboard → Settings → Environments → Production → Branch Tracking → `dev`) — confirmed afterward that production's own branch/domain config (`main` → `oursamskara.com`) was never touched, and that both Supabase projects have all 63 migrations in sync.
+
+Verified on the test environment first (`samskara-koaham.vercel.app`): confirmed the Kannada font loads (`document.fonts` reports it `loaded`) and renders correctly on the live Kannada post.
+
+Verified post-deploy: production bundle updated (`index-1kgPO5DG.js`), no console errors, Kannada font confirmed loaded on the live post (`/blog/-`), title still shows only once (the duplicate-title content fix from the prior release held).
+
 ## v2026.10.21.3 — Branding uniformity and WhatsApp policy disclosures
 
 [PR #14](https://github.com/ananthmkhobby/samskara/pull/14) — ahead of submitting "Samskara" for Meta's WhatsApp Business Display Name review. Fixes a real mismatch: the PWA's home-screen name (Android `short_name`, iOS `apple-mobile-web-app-title`) read "Vamsha Vruksha", dropping "Samskara" entirely — anyone with the app installed saw that name on their home screen while WhatsApp would show "Samskara." Both now say "Samskara."

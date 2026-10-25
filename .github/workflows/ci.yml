@@ -41,9 +41,15 @@ jobs:
     if: github.event.pull_request.base.ref == 'main' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
+      # Pinned, not `version: latest` — `latest` makes the action resolve
+      # the newest release via an unauthenticated GitHub API call every
+      # run, which hit GitHub's low unauthenticated rate limit and failed
+      # the whole job (not a real migration-sync failure) the first time
+      # this workflow ran unattended. A pinned version skips that call
+      # entirely. Bump deliberately, not by switching back to `latest`.
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.109.1
       - name: Pick the project to check
         id: target
         run: |

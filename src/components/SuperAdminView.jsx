@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { callApi } from "../lib/apiFetch";
 import { PLAN_TIERS, PLAN_ORDER, LIMIT_LABELS } from "../lib/planTiers";
+import { CURRENT_USER_ID } from "../data/session";
+import { getPushSubscriptionState, enablePush, disablePush } from "../lib/push";
 
 const SECRET_SESSION_KEY = "vamsha.superadminSecret";
 
@@ -88,6 +90,92 @@ function PasswordResetRequestsSection({ adminSecret }) {
 // cross-referencing against what an ad platform's own dashboard reports.
 // A gap between the two counts for the same day/campaign is the invalid-
 // click rate you're actually paying for.
+// Spike test control, not the real feature UI — proves the whole push
+// pipeline (subscribe -> save -> encrypt -> push service -> OS
+// notification) end to end before any real targeting/opt-in UI exists.
+// Sends only to the signed-in superadmin's own subscriptions (see
+// api/reset-member-password.js's send_test_push action).
+function PushTestSection() {
+  const [state, setState] = useState("checking");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState("");
+
+  async function refresh() {
+    setState(await getPushSubscriptionState());
+  }
+  useEffect(() => { refresh(); }, []);
+
+  async function toggle() {
+    setBusy(true);
+    setError("");
+    setResult("");
+    try {
+      if (state === "subscribed") await disablePush(CURRENT_USER_ID);
+      else await enablePush(CURRENT_USER_ID);
+      await refresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendTest() {
+    setBusy(true);
+    setError("");
+    setResult("");
+    try {
+      const data = await callApi("/api/reset-member-password", { action: "send_test_push" });
+      setResult(`Sent ${data.sent}/${data.total} subscription(s).${data.removedDead ? ` Removed ${data.removedDead} dead subscription(s).` : ""}`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // /superadmin is deliberately reachable while signed out (so it works
+  // for provisioning a brand-new family) — but a push subscription needs
+  // a real auth.uid() to attach to (push_subscriptions' RLS requires
+  // user_id = auth.uid()). Without this check, "Enable push" would
+  // silently fail the save with a confusing generic error instead of the
+  // actual, simple reason — found live when testing this for real.
+  if (!CURRENT_USER_ID) {
+    return (
+      <div className="card" style={{ maxWidth: 620, padding: 20, marginTop: 24 }}>
+        <h4 style={{ marginTop: 0 }}>Push notification test</h4>
+        <p className="form-hint" style={{ marginTop: 0 }}>
+          You need to be signed in to a Samskara account to test this — log in at the main site first, then come back to this page in the same browser tab.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card" style={{ maxWidth: 620, padding: 20, marginTop: 24 }}>
+      <h4 style={{ marginTop: 0 }}>Push notification test</h4>
+      <p className="form-hint" style={{ marginTop: 0 }}>
+        Spike control — enables push for this browser, then sends one real test notification to it. State: <strong>{state}</strong>
+      </p>
+      {(state === "unsubscribed" || state === "subscribed") && (
+        <button type="button" className="btn ghost small" disabled={busy} onClick={toggle}>
+          {busy ? "Working…" : state === "subscribed" ? "Disable push on this browser" : "Enable push on this browser"}
+        </button>
+      )}
+      {state === "subscribed" && (
+        <button type="button" className="btn primary small" disabled={busy} onClick={sendTest} style={{ marginLeft: 8 }}>
+          {busy ? "Sending…" : "Send test notification"}
+        </button>
+      )}
+      {state === "unsupported" && <p className="form-hint">Push isn't supported in this browser, or VITE_PUSH_VAPID_PUBLIC_KEY isn't set.</p>}
+      {state === "denied" && <p className="form-hint">Notification permission was denied at the OS level — re-enable it in the browser's site settings.</p>}
+      {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+      {result && <p className="form-hint">{result}</p>}
+    </div>
+  );
+}
+
 function AdClickLogSection({ adminSecret }) {
   const [clicks, setClicks] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -633,6 +721,7 @@ export default function SuperAdminView() {
       <BlogTeamSection adminSecret={adminSecret} />
       <PasswordResetRequestsSection adminSecret={adminSecret} />
       <AdClickLogSection adminSecret={adminSecret} />
+      <PushTestSection />
     </section>
   );
 }
