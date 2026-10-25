@@ -43,6 +43,11 @@ self.addEventListener("push", (event) => {
       body: payload.body,
       icon: "/icon-192.png",
       badge: "/icon-192.png",
+      // Only set when the sender has a real photo to show (the
+      // "tell us more about this photo" prompt) — a large image in the
+      // notification itself, not just the small icon. Chrome/Android
+      // supports this; browsers that don't just ignore the option.
+      ...(payload.image ? { image: payload.image } : {}),
       data: { url: payload.url || "/" },
     })
   );

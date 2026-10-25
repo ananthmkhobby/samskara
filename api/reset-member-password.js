@@ -1,4 +1,4 @@
-// Vercel serverless function. Three unrelated actions share this one file
+// Vercel serverless function. Four unrelated actions share this one file
 // purely to stay under Vercel's Hobby-plan 12-function cap (same reason
 // api/ai-tools.js merges two otherwise-unrelated things) — this is a
 // temporary home for the two push actions specifically, not a real
@@ -24,9 +24,16 @@
 // body and sends it to a chosen set of their own family's members
 // (everyone, admins/head only, or specific people). Moderator-gated,
 // unlike send_test_push, because this reaches other people's devices.
+//
+// action: "send_photo_prompt_test" — manual trigger for the "tell us more
+// about this photo" automated-notification design (see
+// 20261025120000_push_notification_automation.sql): picks a real Verified
+// photo with no story yet and pushes it to the caller's own devices,
+// respecting their photo_prompt_enabled opt-in. Proves the pick-a-photo
+// logic before it's wrapped in an actual cron job.
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
-import { serviceClient, requireModerator } from "./_memberAuth.js";
+import { serviceClient, requireModerator, requireMember } from "./_memberAuth.js";
 
 function setVapid() {
   const vapidPublic = process.env.VITE_PUSH_VAPID_PUBLIC_KEY;
@@ -150,6 +157,96 @@ async function sendFamilyNotification(req, res) {
   }
 }
 
+// Manual trigger for the "tell us more about this photo" design — proves
+// the real pick-a-photo-and-prompt logic works before it's wrapped in an
+// actual cron job. Any signed-in member of the family, not moderator-only
+// (this only ever pushes to the caller's own devices, about content they
+// can already see), but still respects photo_prompt_enabled — a test
+// button shouldn't bypass the opt-in it exists to test.
+async function sendPhotoPromptTest(req, res) {
+  const { familyId } = req.body || {};
+  if (!familyId) {
+    res.status(400).json({ error: "Missing familyId." });
+    return;
+  }
+
+  let supabase;
+  try {
+    setVapid();
+    supabase = serviceClient();
+    await requireMember(supabase, req, familyId);
+  } catch (err) {
+    res.status(403).json({ error: err.message });
+    return;
+  }
+
+  try {
+    // requireMember's own return value doesn't carry user_id back out —
+    // re-resolve it from the bearer token the same way requireMember
+    // itself just did, rather than threading a second value through.
+    const token = (req.headers.authorization || "").replace(/^Bearer /, "");
+    const { data: { user } } = await supabase.auth.getUser(token);
+
+    const { data: prefRow, error: prefRowErr } = await supabase
+      .from("push_notification_prefs").select("photo_prompt_enabled").eq("user_id", user.id).maybeSingle();
+    if (prefRowErr) throw new Error(prefRowErr.message);
+    if (!prefRow?.photo_prompt_enabled) {
+      res.status(400).json({ error: "Turn on \"add a story to a photo\" notifications first, then try again." });
+      return;
+    }
+
+    // Verified photos for this family with no sibling Verified memory for
+    // the same person — the exact "thin on detail" signal from the design.
+    // Excludes anything already prompted (any user, any time) via
+    // notification_log, so the same photo isn't asked about repeatedly.
+    const { data: photos, error: photosErr } = await supabase
+      .from("contributions")
+      .select("id, person_id, content")
+      .eq("family_id", familyId).eq("type", "photo").eq("status", "Verified")
+      .not("person_id", "is", null);
+    if (photosErr) throw new Error(photosErr.message);
+    if (!photos?.length) {
+      res.status(400).json({ error: "No verified photos in this family yet to prompt about." });
+      return;
+    }
+
+    const { data: memories, error: memErr } = await supabase
+      .from("contributions").select("person_id")
+      .eq("family_id", familyId).eq("type", "memory").eq("status", "Verified");
+    if (memErr) throw new Error(memErr.message);
+    const peopleWithStories = new Set((memories || []).map((m) => m.person_id));
+
+    const { data: alreadyPrompted, error: logErr } = await supabase
+      .from("notification_log").select("reference_id").eq("type", "photo_prompt");
+    if (logErr) throw new Error(logErr.message);
+    const promptedIds = new Set((alreadyPrompted || []).map((r) => r.reference_id));
+
+    const candidates = photos.filter((p) => !peopleWithStories.has(p.person_id) && !promptedIds.has(String(p.id)));
+    if (!candidates.length) {
+      res.status(400).json({ error: "Every photo either already has a story, or has already been prompted about." });
+      return;
+    }
+
+    const photo = candidates[Math.floor(Math.random() * candidates.length)];
+    const { data: person } = await supabase.from("people").select("name").eq("family_id", familyId).eq("id", photo.person_id).maybeSingle();
+    const { data: signed, error: signErr } = await supabase.storage.from("family-media").createSignedUrl(photo.content, 3600);
+    if (signErr) throw new Error(signErr.message);
+
+    const result = await sendToUserIds(supabase, [user.id], {
+      title: "Add to the archive",
+      body: `Know more about this photo of ${person?.name || "someone in your family"}? Tap to add a memory.`,
+      url: `/tree?person=${encodeURIComponent(photo.person_id)}`,
+      image: signed.signedUrl,
+    });
+
+    await supabase.from("notification_log").insert({ user_id: user.id, type: "photo_prompt", reference_id: String(photo.id) });
+
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message || "Couldn't send that prompt." });
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
@@ -162,6 +259,10 @@ export default async function handler(req, res) {
   }
   if (req.body?.action === "send_family_notification") {
     await sendFamilyNotification(req, res);
+    return;
+  }
+  if (req.body?.action === "send_photo_prompt_test") {
+    await sendPhotoPromptTest(req, res);
     return;
   }
 

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { CURRENT_USER_ID, IS_DEMO } from "../data/session";
+import { CURRENT_USER_ID, CURRENT_FAMILY_ID, IS_DEMO } from "../data/session";
 import {
   getPushSubscriptionState, enablePush, disablePush,
   fetchNotificationPrefs, setNotificationPref,
 } from "../lib/push";
+import { callApi } from "../lib/apiFetch";
 
 // MoreMenu's "Notifications" entry — the real, user-facing subscribe
 // toggle that the SuperAdminView "Push notification test" panel never was
@@ -16,6 +17,8 @@ export default function NotificationSettingsView({ onDone }) {
   const [error, setError] = useState("");
   const [prefs, setPrefs] = useState({ reengagementEnabled: false, photoPromptEnabled: false });
   const [prefBusy, setPrefBusy] = useState("");
+  const [photoPromptBusy, setPhotoPromptBusy] = useState(false);
+  const [photoPromptResult, setPhotoPromptResult] = useState("");
 
   async function refresh() {
     setState(await getPushSubscriptionState());
@@ -40,6 +43,20 @@ export default function NotificationSettingsView({ onDone }) {
       setError(err.message);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function sendPhotoPromptTest() {
+    setPhotoPromptBusy(true);
+    setPhotoPromptResult("");
+    setError("");
+    try {
+      const data = await callApi("/api/reset-member-password", { action: "send_photo_prompt_test", familyId: CURRENT_FAMILY_ID });
+      setPhotoPromptResult(data.sent ? "Sent — check your notifications." : "Couldn't reach a device — try enabling notifications again.");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setPhotoPromptBusy(false);
     }
   }
 
@@ -105,6 +122,14 @@ export default function NotificationSettingsView({ onDone }) {
               />
               Occasionally ask me to add a story to a photo that doesn't have one yet
             </label>
+            {prefs.photoPromptEnabled && (
+              <div style={{ marginLeft: 26 }}>
+                <button type="button" className="btn ghost small" disabled={photoPromptBusy} onClick={sendPhotoPromptTest}>
+                  {photoPromptBusy ? "Finding a photo…" : "Send me one now, to test"}
+                </button>
+                {photoPromptResult && <p className="form-hint" style={{ marginTop: 6 }}>{photoPromptResult}</p>}
+              </div>
+            )}
           </div>
         )}
 
