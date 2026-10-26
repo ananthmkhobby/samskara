@@ -1,5 +1,25 @@
 import AuthPanel from "./AuthPanel";
+import PromoCarousel from "./PromoCarousel";
 import { WHATSAPP_DISPLAY_NUMBER } from "../lib/whatsapp";
+
+// Pure awareness, no `cta`/`onClick` — neither WhatsApp linking nor
+// enabling push can actually happen before signing in (both need a real
+// account to attach to), so there's nothing for a button here to do.
+// The real, actionable version of each lives on Home post-login.
+const LOGGED_OUT_SLIDES = [
+  {
+    key: "whatsapp",
+    icon: "📱",
+    eyebrow: "Also on WhatsApp",
+    title: <>Sign in, then message <strong>{WHATSAPP_DISPLAY_NUMBER}</strong> to send photos and stories straight from your phone.</>,
+  },
+  {
+    key: "notifications",
+    icon: "🔔",
+    eyebrow: "Stay in the loop",
+    title: "Sign in, then turn on notifications to hear the moment someone adds something.",
+  },
+];
 
 // Each rotates through the hero panel on a slow crossfade (see .login-hero-slide
 // in login.css) — a mix of the kind of ordinary family objects that almost never
@@ -72,15 +92,9 @@ export default function LoginPage({ onShowHelp, onShowPrivacy, onShowTerms }) {
             {" "}and{" "}
             <button type="button" className="link-btn" onClick={onShowPrivacy}>Privacy Policy</button>.
           </p>
-          {/* Can't actually link a number before signing in (connecting
-              requires an account — see redeem_whatsapp_link()'s auth.uid()
-              check), so this is pure awareness: the real "message this
-              number" CTA only appears once signed in, as a Home promo card
-              and in More → Connect on WhatsApp. */}
-          <p className="form-hint login-whatsapp-note" style={{ textAlign: "center", marginTop: 10 }}>
-            📱 Samskara also works over WhatsApp — sign in, then message{" "}
-            <strong>{WHATSAPP_DISPLAY_NUMBER}</strong> to send photos and stories straight from your phone.
-          </p>
+          <div style={{ marginTop: 14 }}>
+            <PromoCarousel slides={LOGGED_OUT_SLIDES} />
+          </div>
         </div>
       </div>
     </div>
