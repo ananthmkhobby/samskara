@@ -644,6 +644,7 @@ function PlatformBroadcastSection({ adminSecret }) {
 
   async function save(e) {
     e.preventDefault();
+    if (!adminSecret) { setError("Enter the admin secret above first."); return; }
     setBusy(true);
     setError("");
     setResult("");
@@ -661,6 +662,7 @@ function PlatformBroadcastSection({ adminSecret }) {
   }
 
   async function sendNow() {
+    if (!adminSecret) { setError("Enter the admin secret above first."); return; }
     setSending(true);
     setError("");
     setResult("");
@@ -674,8 +676,6 @@ function PlatformBroadcastSection({ adminSecret }) {
       setSending(false);
     }
   }
-
-  if (!adminSecret) return null;
 
   return (
     <div className="card" style={{ maxWidth: 460, padding: 20, marginTop: 16 }}>
