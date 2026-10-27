@@ -11,6 +11,16 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.27.2 — One-time full-screen notification prompt
+
+[PR #19](https://github.com/ananthmkhobby/samskara/pull/19) — the rotating Home promo card from the same day's earlier release was easy to scroll past entirely. Adds `NotificationPrompt.jsx`, a real full-screen gate (same tier as `FamilySplash`/`ConsentGate`) shown once per app open for a signed-in account that hasn't turned on push yet — one clear choice, "Turn on notifications →" or "Maybe later." Stops reappearing once the account actually subscribes, or once the OS permission comes back denied (nothing this screen does can fix a denial). The Home promo card stays too, for anyone who picks "Maybe later" and changes their mind later from Home.
+
+Also fixed, same day: `ADMIN_PROVISION_SECRET` was discovered stored as an empty string on the production Vercel project — the live deployment only still worked because it was built before that got cleared; the next production deploy would have silently broken every superadmin tool at once (provisioning, plan management, blog team, password resets, and the broadcast panel from the prior release). Restored to its real value and confirmed working.
+
+Verified on the test environment first (`samskara-koaham.vercel.app`): confirmed the prompt renders correctly (had to temporarily force-render it in isolation, since the automated test tooling's sandboxed browser is permanently stuck at a denied OS notification permission and can never reach the real "unsubscribed" state that triggers it) — reverted that test hook cleanly before committing. Separately verified the restored superadmin broadcast end to end on production itself: a real test push sent and received on a physical device.
+
+Verified post-deploy: confirmed live on `oursamskara.com` — the new bundle includes the prompt's copy, no console errors.
+
 ## v2026.10.27 — Superadmin broadcast, ScanJunction docs, and rotating promo banner
 
 [PR #18](https://github.com/ananthmkhobby/samskara/pull/18) — three changes. Adds a superadmin-wide recurring push broadcast: the `/superadmin` screen gets a "Platform notification" panel to compose one custom message sent to every subscribed person across every family, on an editable days-based frequency (a daily Vercel Cron — Hobby's actual floor — checks whether the interval has elapsed), plus a manual "send now" for testing. Folded into the existing `provision-family.js` endpoint rather than a new file, same 12/12 Hobby-cap workaround used throughout this project; the send logic itself was extracted into a shared `api/_push.js` rather than duplicated a third time. A same-day follow-up fixed the panel not rendering until the admin secret was typed in — inconsistent with every other section on that page.
