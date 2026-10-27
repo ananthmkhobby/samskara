@@ -56,6 +56,19 @@ export async function enablePush(userId) {
   // A re-subscribe on a browser that already has a row hits the unique
   // constraint on endpoint — harmless, the row's already exactly right.
   if (error && error.code !== "23505") throw new Error(error.message);
+
+  // Defaults both automated categories on the moment someone turns
+  // notifications on at all — previously these stayed off until a
+  // separate trip to the two checkboxes below, which most people never
+  // made, defeating the point of having them. Someone who wants only one
+  // can still turn the other back off right after; this just picks a
+  // better default. Best-effort: a hiccup here shouldn't fail the actual
+  // subscribe, which already succeeded.
+  try {
+    await supabase.from("push_notification_prefs").upsert({
+      user_id: userId, reengagement_enabled: true, photo_prompt_enabled: true, updated_at: new Date().toISOString(),
+    });
+  } catch { /* subscribe itself already succeeded — prefs can be fixed from settings */ }
 }
 
 export async function disablePush(userId) {
