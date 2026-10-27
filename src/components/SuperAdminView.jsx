@@ -609,6 +609,117 @@ function ManagePlanSection({ adminSecret }) {
   );
 }
 
+// Composes one recurring, app-wide push notification — not tied to any
+// family. Separate from PushTestSection (which only ever pushes to the
+// superadmin's own browser, for pipeline testing) and NotificationsAdminTab
+// in AdminView.jsx (a family Head/Admin's one-off send to their own
+// family only). The cron that actually fires this on schedule lives in
+// api/provision-family.js's GET branch — see vercel.json's `crons` entry.
+function PlatformBroadcastSection({ adminSecret }) {
+  const [cfg, setCfg] = useState(null);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [url, setUrl] = useState("/");
+  const [frequencyDays, setFrequencyDays] = useState(7);
+  const [enabled, setEnabled] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState("");
+
+  async function load() {
+    try {
+      const data = await callApi("/api/provision-family", { adminSecret, action: "get-broadcast" });
+      setCfg(data.broadcast);
+      setTitle(data.broadcast.title || "");
+      setBody(data.broadcast.body || "");
+      setUrl(data.broadcast.url || "/");
+      setFrequencyDays(data.broadcast.frequency_days || 7);
+      setEnabled(!!data.broadcast.enabled);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+  useEffect(() => { if (adminSecret) load(); }, [adminSecret]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function save(e) {
+    e.preventDefault();
+    if (!adminSecret) { setError("Enter the admin secret above first."); return; }
+    setBusy(true);
+    setError("");
+    setResult("");
+    try {
+      const data = await callApi("/api/provision-family", {
+        adminSecret, action: "set-broadcast", title, body, url, frequencyDays: Number(frequencyDays), enabled,
+      });
+      setCfg(data.broadcast);
+      setResult("Saved.");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendNow() {
+    if (!adminSecret) { setError("Enter the admin secret above first."); return; }
+    setSending(true);
+    setError("");
+    setResult("");
+    try {
+      const data = await callApi("/api/provision-family", { adminSecret, action: "send-broadcast-now" });
+      setResult(`Sent to ${data.sent}/${data.total} subscription(s) (${data.recipients} ${data.recipients === 1 ? "person" : "people"}).${data.removedDead ? ` Removed ${data.removedDead} dead subscription(s).` : ""}`);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ maxWidth: 460, padding: 20, marginTop: 16 }}>
+      <h4 style={{ marginTop: 0 }}>Platform notification</h4>
+      <p className="form-hint" style={{ marginTop: 0 }}>
+        One recurring push sent to every subscribed person across every family — a platform-wide announcement, not scoped to one family. Fires once a day's cron checks whether the interval below has elapsed; change the frequency any time, or send it immediately below regardless of schedule.
+      </p>
+      <form onSubmit={save}>
+        <div className="form-row">
+          <label>Title</label>
+          <input type="text" placeholder="e.g. Samskara" value={title} onChange={(e) => setTitle(e.target.value)} />
+        </div>
+        <div className="form-row">
+          <label>Message</label>
+          <textarea placeholder="What you want everyone to see" value={body} onChange={(e) => setBody(e.target.value)} />
+        </div>
+        <div className="form-row">
+          <label>Link (opened on tap, optional)</label>
+          <input type="text" placeholder="/" value={url} onChange={(e) => setUrl(e.target.value)} />
+        </div>
+        <div className="form-row">
+          <label>Repeat every (days)</label>
+          <input type="number" min="1" value={frequencyDays} onChange={(e) => setFrequencyDays(e.target.value)} style={{ maxWidth: 100 }} />
+        </div>
+        <div className="form-row">
+          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+            <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+            Enabled — send automatically on schedule
+          </label>
+        </div>
+        {cfg?.last_sent_at && (
+          <p className="form-hint">Last sent: {new Date(cfg.last_sent_at).toLocaleString()}</p>
+        )}
+        {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+        {result && <p className="form-hint">{result}</p>}
+        <div className="tag-row" style={{ marginTop: 8 }}>
+          <button type="submit" className="btn primary small" disabled={busy}>{busy ? "Saving…" : "Save"}</button>
+          <button type="button" className="btn ghost small" disabled={sending} onClick={sendNow}>{sending ? "Sending…" : "Send now"}</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export default function SuperAdminView() {
   const [adminSecret, setAdminSecret] = useState(() => sessionStorage.getItem(SECRET_SESSION_KEY) || "");
   const [familyName, setFamilyName] = useState("");
@@ -722,6 +833,7 @@ export default function SuperAdminView() {
       <PasswordResetRequestsSection adminSecret={adminSecret} />
       <AdClickLogSection adminSecret={adminSecret} />
       <PushTestSection />
+      <PlatformBroadcastSection adminSecret={adminSecret} />
     </section>
   );
 }
