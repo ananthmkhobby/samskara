@@ -11,6 +11,12 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.27.3 — Default both notification categories on when push is enabled
+
+[PR #20](https://github.com/ananthmkhobby/samskara/pull/20) — found while testing the new prompt on a real device: the two automated-notification opt-ins (reengagement, photo-prompt) defaulted off even after subscribing, requiring a separate trip to the settings page that most people would never make. `enablePush()` now defaults both on the moment someone turns notifications on at all, from any entry point (the full-screen prompt, the settings page, or the superadmin test panel all share this one function) — someone who wants only one can still turn the other back off right after.
+
+Verified post-deploy: confirmed live on `oursamskara.com`.
+
 ## v2026.10.27.2 — One-time full-screen notification prompt
 
 [PR #19](https://github.com/ananthmkhobby/samskara/pull/19) — the rotating Home promo card from the same day's earlier release was easy to scroll past entirely. Adds `NotificationPrompt.jsx`, a real full-screen gate (same tier as `FamilySplash`/`ConsentGate`) shown once per app open for a signed-in account that hasn't turned on push yet — one clear choice, "Turn on notifications →" or "Maybe later." Stops reappearing once the account actually subscribes, or once the OS permission comes back denied (nothing this screen does can fix a denial). The Home promo card stays too, for anyone who picks "Maybe later" and changes their mind later from Home.
