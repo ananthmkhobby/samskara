@@ -42,6 +42,8 @@ import JoinFamilyModal from "./components/JoinFamilyModal";
 import ConnectWhatsAppView from "./components/ConnectWhatsAppView";
 import NotificationSettingsView from "./components/NotificationSettingsView";
 import ShareTargetLanding from "./components/ShareTargetLanding";
+import NotificationPrompt from "./components/NotificationPrompt";
+import { getPushSubscriptionState, enablePush } from "./lib/push";
 import ParamparaView from "./components/ParamparaView";
 import ParamparaContributeModal from "./components/ParamparaContributeModal";
 import JapaView from "./components/JapaView";
@@ -168,6 +170,19 @@ export default function App() {
   // it's fine (and expected) to see it again next time. Skipped entirely
   // below when a family has set neither.
   const [showFamilySplash, setShowFamilySplash] = useState(true);
+  // Reappears every fresh app open (same non-localStorage-gated reasoning
+  // as showFamilySplash above) for as long as the account genuinely hasn't
+  // turned push on yet — this is the prominent, hard-to-miss ask; the
+  // quiet dismissible HomePromoCarousel card stays too, for anyone who
+  // dismisses this and later changes their mind from Home itself.
+  const [notifPromptEligible, setNotifPromptEligible] = useState(false);
+  const [notifPromptDismissed, setNotifPromptDismissed] = useState(false);
+  useEffect(() => {
+    if (IS_DEMO || NEEDS_LOGIN || !CURRENT_USER_ID) return;
+    let cancelled = false;
+    getPushSubscriptionState().then((s) => { if (!cancelled && s === "unsubscribed") setNotifPromptEligible(true); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
   const [contributions, setContributions] = useState(INITIAL_CONTRIBUTIONS);
   // Real per-family role from Supabase Auth (data/session.js), resolved once
   // at boot — the demo family stays fully open to match its original
@@ -1112,6 +1127,15 @@ export default function App() {
       <FamilySplash
         logoUrl={CURRENT_FAMILY_LOGO_URL} tagline={CURRENT_FAMILY_TAGLINE}
         familyName={CURRENT_FAMILY_NAME} onDone={() => setShowFamilySplash(false)}
+      />
+    );
+  }
+
+  if (notifPromptEligible && !notifPromptDismissed) {
+    return (
+      <NotificationPrompt
+        onEnable={async () => { await enablePush(CURRENT_USER_ID); setNotifPromptEligible(false); }}
+        onLater={() => setNotifPromptDismissed(true)}
       />
     );
   }
