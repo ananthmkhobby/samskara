@@ -11,6 +11,18 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.27 — Superadmin broadcast, ScanJunction docs, and rotating promo banner
+
+[PR #18](https://github.com/ananthmkhobby/samskara/pull/18) — three changes. Adds a superadmin-wide recurring push broadcast: the `/superadmin` screen gets a "Platform notification" panel to compose one custom message sent to every subscribed person across every family, on an editable days-based frequency (a daily Vercel Cron — Hobby's actual floor — checks whether the interval has elapsed), plus a manual "send now" for testing. Folded into the existing `provision-family.js` endpoint rather than a new file, same 12/12 Hobby-cap workaround used throughout this project; the send logic itself was extracted into a shared `api/_push.js` rather than duplicated a third time. A same-day follow-up fixed the panel not rendering until the admin secret was typed in — inconsistent with every other section on that page.
+
+Adds `docs/SCANJUNCTION_INTEGRATION.md`, documenting the gallery-export endpoint (already built, now discovered during this cycle) for ScanJunction's engineering team — request/response shape, every error case, the CORS model, and what's guaranteed to never be exposed.
+
+Replaces the login page's dense WhatsApp paragraph and Home's two separate always-on promo cards with one shared `PromoCarousel` — a small rotating "ad slot" that crossfades between short slides every few seconds instead of showing everything at once. The login page cycles two static awareness slides (WhatsApp, notifications — neither actionable pre-auth); Home's version checks real connection/subscription state and only includes whichever slide is still relevant for that account.
+
+Verified on the test environment first (`samskara-koaham.vercel.app`): full broadcast pipeline end to end (save, manual send delivered 1/1, frequency gate correctly blocking a second send with the right next-due timestamp, cron auth path checked with both wrong and correct secrets); migration applied directly to both test and production databases in this same change, not left stranded on one side; promo carousel rotation confirmed on both the login page and Home.
+
+Verified post-deploy: confirmed live on `oursamskara.com` — the new bundle includes the promo carousel styling, and the cron auth gate correctly rejects a wrong secret. No console errors.
+
 ## v2026.10.25.2 — Google Search Console site verification
 
 [PR #17](https://github.com/ananthmkhobby/samskara/pull/17) — adds the `google-site-verification` meta tag to `index.html` so the site can be verified in Search Console (lets Search Console data link into GA4, and enables sitemap submission/crawl monitoring). One line, no behavior change.
