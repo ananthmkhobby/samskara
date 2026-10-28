@@ -870,3 +870,38 @@ export async function bumpFamilyFlame(familyId) {
   if (error) throw new Error(error.message);
   return data?.[0]?.streak ?? 0;
 }
+
+// ---- Photo tags (point-at-a-person-in-a-photo labels) ---------------------
+// See supabase/migrations/20261028150000_photo_tags.sql — a tag is a
+// lightweight annotation (position + either an existing person or a
+// free-text label), not a commitment to add anyone to the tree.
+
+export async function fetchPhotoTags(contributionId) {
+  const db = requireClient();
+  const { data, error } = await db
+    .from("photo_tags").select("id, person_id, label, x, y, created_by")
+    .eq("contribution_id", contributionId);
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function addPhotoTag(familyId, userId, { contributionId, personId, label, x, y }) {
+  const db = requireClient();
+  const { data, error } = await db
+    .from("photo_tags")
+    .insert({
+      family_id: familyId, contribution_id: contributionId, created_by: userId,
+      person_id: personId || null, label: personId ? null : (label?.trim() || null),
+      x, y,
+    })
+    .select("id, person_id, label, x, y, created_by")
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function deletePhotoTag(id) {
+  const db = requireClient();
+  const { error } = await db.from("photo_tags").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}

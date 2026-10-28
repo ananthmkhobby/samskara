@@ -21,7 +21,7 @@ function GalleryCard({ c, onSelectPerson, onOpenPhoto, isPrivate, onShare }) {
   return (
     <div className="card gallery-card">
       {isRealPhoto && (
-        <button type="button" className="gallery-photo-btn" onClick={() => onOpenPhoto(c.mediaUrl)} aria-label="View photo full screen">
+        <button type="button" className="gallery-photo-btn" onClick={() => onOpenPhoto({ mediaUrl: c.mediaUrl, id: c.id })} aria-label="View photo full screen">
           <img src={c.mediaUrl} alt="" className="gallery-photo" />
         </button>
       )}
@@ -66,7 +66,7 @@ export default function TreasuryView({ contributions, onSelectPerson, initialTab
   const [tab, setTab] = useState(initialTab);
   const [filter, setFilter] = useState(null);
   const [typeFilter, setTypeFilter] = useState(null);
-  const [lightboxSrc, setLightboxSrc] = useState(null);
+  const [lightboxPhoto, setLightboxPhoto] = useState(null); // { mediaUrl, id } | null
   const [shareContribution, setShareContribution] = useState(null);
   const [privateItems, setPrivateItems] = useState(null);
   const [privateLoading, setPrivateLoading] = useState(false);
@@ -160,7 +160,7 @@ export default function TreasuryView({ contributions, onSelectPerson, initialTab
           ) : privateItems?.length ? (
             <div className="gallery-grid">
               {privateItems.map((c) => (
-                <GalleryCard key={c.id} c={c} onSelectPerson={onSelectPerson} onOpenPhoto={setLightboxSrc} isPrivate />
+                <GalleryCard key={c.id} c={c} onSelectPerson={onSelectPerson} onOpenPhoto={setLightboxPhoto} isPrivate />
               ))}
             </div>
           ) : (
@@ -178,7 +178,7 @@ export default function TreasuryView({ contributions, onSelectPerson, initialTab
             <div className="gallery-grid">
               {galleryItems.map((c) => (
                 <GalleryCard
-                  key={c.id} c={c} onSelectPerson={onSelectPerson} onOpenPhoto={setLightboxSrc}
+                  key={c.id} c={c} onSelectPerson={onSelectPerson} onOpenPhoto={setLightboxPhoto}
                   onShare={!IS_DEMO && CURRENT_USER_ID ? setShareContribution : null}
                 />
               ))}
@@ -188,7 +188,7 @@ export default function TreasuryView({ contributions, onSelectPerson, initialTab
           )}
         </>
       )}
-      <PhotoLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
+      <PhotoLightbox src={lightboxPhoto?.mediaUrl} contributionId={lightboxPhoto?.id} onClose={() => setLightboxPhoto(null)} />
       {shareContribution && <ShareModal contribution={shareContribution} onClose={() => setShareContribution(null)} />}
     </section>
   );
