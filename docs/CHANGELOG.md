@@ -11,6 +11,18 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.28 — Photo tagging, Share Preview Service, and serverless function cleanup
+
+[PR #21](https://github.com/ananthmkhobby/samskara/pull/21) — three changes. Adds photo tagging: point at a spot in a Gallery photo and label who's there, an existing family member or free text for someone not identified yet — a lightweight, removable annotation (`photo_tags`), not a commitment to add anyone to the tree. Verified end to end: a tag's position survives a full reload and lands in exactly the right spot; delete works and actually removes the row.
+
+Adds the Share Preview Service MVP — a members-only, WhatsApp-rich-preview link for one Gallery photo. Full requirements doc at `docs/SHARE_PREVIEW_SERVICE.md`, including the Next.js→Vite/Vercel adaptation notes (this is a client-rendered SPA, so the OG-tag landing page reuses the same hybrid server-render trick `api/blog-post.js` already uses, and the real photo is resolved client-side under the same Postgres RLS that gates every other read in this app — no bespoke authorization code needed). Along the way, found and fixed a service-worker bug where an already-installed user's browser would serve a stale cached shell for a share link instead of the real per-share preview.
+
+Also splits four serverless functions — `push.js`, `manage-plan.js`, `broadcast.js`, `blog-team.js` — out of files they'd been folded into purely to stay under Vercel's old Hobby-plan 12-function cap, now that the project is on Pro. Every function body moved verbatim; no behavior changes. `provision-family.js` and `create-member-login.js` are back to doing one thing each, matching their names again.
+
+Verified on the test environment first (`samskara-koaham.vercel.app`): photo tagging's full create/persist/reload/delete cycle tested live in the browser; the share landing page's OG tags confirmed correct via a real WhatsApp crawler user-agent (not just a generic curl check); the split endpoints build/lint clean with every frontend call site updated. Migrations for both new tables applied directly to both test and production databases in this same change.
+
+Verified post-deploy: confirmed live on `oursamskara.com` — `photo_tags` and `share_links` tables present, `api/push.js` responding correctly (not a 404) to a probe request.
+
 ## v2026.10.27.3 — Default both notification categories on when push is enabled
 
 [PR #20](https://github.com/ananthmkhobby/samskara/pull/20) — found while testing the new prompt on a real device: the two automated-notification opt-ins (reengagement, photo-prompt) defaulted off even after subscribing, requiring a separate trip to the settings page that most people would never make. `enablePush()` now defaults both on the moment someone turns notifications on at all, from any entry point (the full-screen prompt, the settings page, or the superadmin test panel all share this one function) — someone who wants only one can still turn the other back off right after.
