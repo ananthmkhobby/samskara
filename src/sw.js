@@ -12,9 +12,15 @@ precacheAndRoute(self.__WB_MANIFEST);
 // generateSW's navigateFallbackDenylist doesn't exist in injectManifest
 // mode — this is the hand-written equivalent: every navigation except
 // /api/* falls back to the precached index.html (SPA routing while
-// offline), same as before.
+// offline), same as before. /s/ is excluded too — a share link
+// (api/share.js) must always hit the network, even for a browser that
+// already has this app installed, or it serves a stale cached shell with
+// the wrong (or no) per-share og: tags instead of the real ones. Doesn't
+// affect WhatsApp's own crawler at all (it never has a Samskara service
+// worker in the first place), but does affect this app's own installed
+// users opening a share link, so it's worth excluding anyway.
 registerRoute(new NavigationRoute(createHandlerBoundToURL("/index.html"), {
-  denylist: [/^\/api\//],
+  denylist: [/^\/api\//, /^\/s\//],
 }));
 
 registerRoute(({ url }) => url.pathname.startsWith("/api/"), new NetworkOnly());
