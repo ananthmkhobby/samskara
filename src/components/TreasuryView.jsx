@@ -6,11 +6,12 @@ import PersonAvatar from "./PersonAvatar";
 import PhotoLightbox from "./PhotoLightbox";
 import { fetchMyPrivateContributions } from "../data/familyDb";
 import { batchResolveMediaUrls } from "../lib/mediaUpload";
-import { CURRENT_FAMILY_ID, CURRENT_USER_ID } from "../data/session";
+import { CURRENT_FAMILY_ID, CURRENT_USER_ID, IS_DEMO } from "../data/session";
+import ShareModal from "./ShareModal";
 
 const GALLERY_TYPES = ["photo", "audio", "video", "memory", "document"];
 
-function GalleryCard({ c, onSelectPerson, onOpenPhoto, isPrivate }) {
+function GalleryCard({ c, onSelectPerson, onOpenPhoto, isPrivate, onShare }) {
   const person = c.personId ? byId(c.personId) : null;
   const isRealPhoto = c.type === "photo" && !!c.mediaUrl;
   const isRealAudio = c.type === "audio" && !!c.mediaUrl;
@@ -23,6 +24,11 @@ function GalleryCard({ c, onSelectPerson, onOpenPhoto, isPrivate }) {
         <button type="button" className="gallery-photo-btn" onClick={() => onOpenPhoto(c.mediaUrl)} aria-label="View photo full screen">
           <img src={c.mediaUrl} alt="" className="gallery-photo" />
         </button>
+      )}
+      {/* Gallery photo only, for now — see docs/SHARE_PREVIEW_SERVICE.md's
+          phase breakdown for why audio/video/documents don't get this yet. */}
+      {isRealPhoto && onShare && (
+        <button type="button" className="btn ghost small" style={{ margin: "8px 10px 0" }} onClick={() => onShare(c)}>Share →</button>
       )}
       {isRealAudio && <audio src={c.mediaUrl} controls className="gallery-media-player" />}
       {isRealVideo && <video src={c.mediaUrl} controls className="gallery-media-player gallery-video" />}
@@ -61,6 +67,7 @@ export default function TreasuryView({ contributions, onSelectPerson, initialTab
   const [filter, setFilter] = useState(null);
   const [typeFilter, setTypeFilter] = useState(null);
   const [lightboxSrc, setLightboxSrc] = useState(null);
+  const [shareContribution, setShareContribution] = useState(null);
   const [privateItems, setPrivateItems] = useState(null);
   const [privateLoading, setPrivateLoading] = useState(false);
   const [privateError, setPrivateError] = useState("");
@@ -170,7 +177,10 @@ export default function TreasuryView({ contributions, onSelectPerson, initialTab
           {galleryItems.length ? (
             <div className="gallery-grid">
               {galleryItems.map((c) => (
-                <GalleryCard key={c.id} c={c} onSelectPerson={onSelectPerson} onOpenPhoto={setLightboxSrc} />
+                <GalleryCard
+                  key={c.id} c={c} onSelectPerson={onSelectPerson} onOpenPhoto={setLightboxSrc}
+                  onShare={!IS_DEMO && CURRENT_USER_ID ? setShareContribution : null}
+                />
               ))}
             </div>
           ) : (
@@ -179,6 +189,7 @@ export default function TreasuryView({ contributions, onSelectPerson, initialTab
         </>
       )}
       <PhotoLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
+      {shareContribution && <ShareModal contribution={shareContribution} onClose={() => setShareContribution(null)} />}
     </section>
   );
 }
