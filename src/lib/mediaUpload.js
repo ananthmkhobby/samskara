@@ -2,6 +2,7 @@ import { supabase } from "./supabaseClient";
 import { getEffectiveLimits } from "./planTiers";
 
 const BUCKET = "family-media";
+const PREVIEW_BUCKET = "share-previews";
 const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 365; // 1 year — re-resolved on every boot anyway
 
 function classifyMime(mime) {
@@ -62,6 +63,21 @@ export async function uploadPrivateFamilyMedia(familyId, userId, blob, ext) {
   const path = `${familyId}/__private__/${userId}/${crypto.randomUUID()}.${ext}`;
   await uploadToFamilyMedia(familyId, path, blob);
   return path;
+}
+
+// Uploads an owner-approved share preview image — a derived, resized
+// copy the owner explicitly consented to make public, never the original
+// family-media object or its real storage path. See docs/
+// SHARE_PREVIEW_SERVICE.md's "Preview images" section. Unlike
+// uploadFamilyMedia, this bucket is public — the storage RLS policy only
+// restricts the WRITE path prefix to the uploader's own family, not reads.
+// Returns the object path (api/share.js builds the public URL from it).
+export async function uploadSharePreviewImage(familyId, contentId, blob) {
+  if (!supabase) throw new Error("Media storage isn't configured.");
+  const objectPath = `${familyId}/${contentId}/${crypto.randomUUID()}.jpg`;
+  const { error } = await supabase.storage.from(PREVIEW_BUCKET).upload(objectPath, blob, { contentType: "image/jpeg" });
+  if (error) throw new Error(`Couldn't prepare that preview image: ${error.message}`);
+  return objectPath;
 }
 
 export async function resolveMediaUrl(path) {

@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/blog/:slug", "destination": "/api/blog-post?slug=:slug" },
+    { "source": "/s/:type/:token", "destination": "/api/share?type=:type&token=:token" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "functions": {
@@ -13,7 +14,7 @@
   },
   "crons": [
     {
-      "path": "/api/provision-family",
+      "path": "/api/broadcast",
       "schedule": "30 12 * * *"
     }
   ],

@@ -9,7 +9,7 @@ const QUICK_TARGETS = [
   { key: "custom", label: "Choose people" },
 ];
 
-// Moderator-only compose-and-send panel for api/reset-member-password.js's
+// Moderator-only compose-and-send panel for api/push.js's
 // send_family_notification action. Reuses the same roster fetch the
 // Members tab already uses rather than a new query — this tab doesn't
 // need anything the app doesn't already load elsewhere.
@@ -47,7 +47,7 @@ export default function NotificationsAdminTab() {
         title,
         body,
       };
-      const data = await callApi("/api/reset-member-password", { action: "send_family_notification", ...body2 });
+      const data = await callApi("/api/push", { action: "send_family_notification", ...body2 });
       setResult(
         data.recipients
           ? `Sent to ${data.recipients} of ${data.targeted} targeted member(s) (${data.sent}/${data.total} device(s)).${data.removedDead ? ` Removed ${data.removedDead} dead subscription(s).` : ""}`

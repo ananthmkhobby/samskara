@@ -43,6 +43,7 @@ import ConnectWhatsAppView from "./components/ConnectWhatsAppView";
 import NotificationSettingsView from "./components/NotificationSettingsView";
 import ShareTargetLanding from "./components/ShareTargetLanding";
 import NotificationPrompt from "./components/NotificationPrompt";
+import SharedPhotoLanding from "./components/SharedPhotoLanding";
 import { getPushSubscriptionState, enablePush } from "./lib/push";
 import ParamparaView from "./components/ParamparaView";
 import ParamparaContributeModal from "./components/ParamparaContributeModal";
@@ -91,7 +92,10 @@ const pathForView = (v) => VIEW_PATHS[v] || "/";
 // out of window.location.pathname itself and manages its own list↔post
 // navigation, entirely independent of this app-level state machine (same
 // reasoning AuthPanel.jsx already uses for the ?code= query param).
-const viewForPath = (p) => (p === "/blog" || p.startsWith("/blog/") ? "blog" : (PATH_TO_VIEW[p] || "cover"));
+// Same independence as "blog" above — SharedPhotoLanding.jsx reads
+// /s/:type/:token straight out of window.location.pathname itself,
+// entirely outside this app-level view/path map.
+const viewForPath = (p) => (p === "/blog" || p.startsWith("/blog/") ? "blog" : p.startsWith("/s/") ? "sharedLink" : (PATH_TO_VIEW[p] || "cover"));
 
 // Captured once at module load — before React 18 StrictMode's intentional
 // mount→unmount→remount cycle, and before the mount effect's
@@ -281,12 +285,14 @@ export default function App() {
     // OTHER view is a flat 1:1 path (pathForView(viewForPath(p)) === p
     // already), but "blog" isn't, since BlogView.jsx manages its own
     // list↔post↔editor sub-paths independent of this app-level router (see
-    // its own comment for why). Keep whatever the browser actually has for
-    // that one case, so a direct visit or refresh never loses the slug.
+    // its own comment for why). "sharedLink" has the exact same problem —
+    // SharedPhotoLanding.jsx reads /s/:type/:token straight off the real
+    // path. Keep whatever the browser actually has for both cases, so a
+    // direct visit or refresh never loses the slug/token.
     window.history.replaceState(
       { view: initialView, selectedPersonId: null, biographyPersonId: null, contributeRequest: null, editRequest: null, addFamilyRequest: null, interviewRequest: null, voiceWizardRequest: null, joinFamilyRequest: null, paramparaContributeOpen: false, openBookId: null, addBookOpen: false, libraryEntryRequest: null, roomPersonId: null, chitrashaleAddSpot: null, japaLogOpen: false },
       "",
-      initialView === "blog" ? window.location.pathname : pathForView(initialView)
+      (initialView === "blog" || initialView === "sharedLink") ? window.location.pathname : pathForView(initialView)
     );
 
     function onPopState(e) {
@@ -1007,6 +1013,14 @@ export default function App() {
         </Suspense>
       );
     }
+    // A share link must render identically whether signed in or not —
+    // it handles its own internal signed-in-vs-not branching (sign-in
+    // prompt vs the real photo, gated by RLS), so it bypasses this login
+    // gate entirely rather than forcing a sign-in before even showing
+    // what was shared.
+    if (view === "sharedLink") {
+      return <SharedPhotoLanding onGoHome={() => { window.history.replaceState({}, "", "/"); goTo("cover"); }} />;
+    }
     // /superadmin needs no family data either (it talks to its own API
     // route, not the Supabase family fetch) — it must bypass the login
     // gate the same way Help does, or the provisioning page becomes
@@ -1120,6 +1134,9 @@ export default function App() {
         <PlansView />
       </Suspense>
     );
+  }
+  if (view === "sharedLink") {
+    return <SharedPhotoLanding onGoHome={() => { window.history.replaceState({}, "", "/"); goTo("cover"); }} />;
   }
 
   if (showFamilySplash && (CURRENT_FAMILY_LOGO_URL || CURRENT_FAMILY_TAGLINE)) {

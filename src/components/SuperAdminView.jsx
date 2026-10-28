@@ -94,7 +94,7 @@ function PasswordResetRequestsSection({ adminSecret }) {
 // pipeline (subscribe -> save -> encrypt -> push service -> OS
 // notification) end to end before any real targeting/opt-in UI exists.
 // Sends only to the signed-in superadmin's own subscriptions (see
-// api/reset-member-password.js's send_test_push action).
+// api/push.js's send_test_push action).
 function PushTestSection() {
   const [state, setState] = useState("checking");
   const [busy, setBusy] = useState(false);
@@ -126,7 +126,7 @@ function PushTestSection() {
     setError("");
     setResult("");
     try {
-      const data = await callApi("/api/reset-member-password", { action: "send_test_push" });
+      const data = await callApi("/api/push", { action: "send_test_push" });
       setResult(`Sent ${data.sent}/${data.total} subscription(s).${data.removedDead ? ` Removed ${data.removedDead} dead subscription(s).` : ""}`);
     } catch (err) {
       setError(err.message);
@@ -222,12 +222,10 @@ function AdClickLogSection({ adminSecret }) {
   );
 }
 
-// Creates a Samskara blog-author login — api/create-member-login.js's
-// `kind: "blog"` branch (folded into that one endpoint rather than its own
-// file, to stay under Vercel Hobby's 12-function cap), superadmin-secret
-// gated instead of requireModerator since a blog author isn't scoped to
-// any family. This is the ONLY way a blog author account gets created —
-// no self-signup, no invite link.
+// Creates a Samskara blog-author login — api/blog-team.js, superadmin-
+// secret gated instead of requireModerator since a blog author isn't
+// scoped to any family. This is the ONLY way a blog author account gets
+// created — no self-signup, no invite link.
 // Grants blog access to an account that already exists — a family member,
 // or anyone who self-signed-up with their own email/password — instead of
 // minting a brand-new login just for the blog. No password to generate or
@@ -245,7 +243,7 @@ function GrantBlogAccessSection({ adminSecret }) {
     setError("");
     setResult(null);
     try {
-      const data = await callApi("/api/create-member-login", { kind: "blog", mode: "grant", adminSecret, email, displayName });
+      const data = await callApi("/api/blog-team", { mode: "grant", adminSecret, email, displayName });
       setResult(data);
       setEmail("");
       setDisplayName("");
@@ -300,7 +298,7 @@ function BlogTeamSection({ adminSecret }) {
     setError("");
     setResult(null);
     try {
-      const data = await callApi("/api/create-member-login", { kind: "blog", adminSecret, username, password, displayName });
+      const data = await callApi("/api/blog-team", { adminSecret, username, password, displayName });
       setResult(data);
       setUsername("");
       setPassword("");
@@ -406,7 +404,7 @@ function ManagePlanSection({ adminSecret }) {
     setBusy(true);
     setError("");
     try {
-      const data = await callApi("/api/provision-family", { adminSecret, action: "search-families", query });
+      const data = await callApi("/api/manage-plan", { adminSecret, action: "search-families", query });
       setFamilies(data.families);
     } catch (err) {
       setError(err.message);
@@ -467,7 +465,7 @@ function ManagePlanSection({ adminSecret }) {
         OVERRIDABLE_BOOLEAN_KEYS.filter((k) => overrides[k] !== "").map((k) => [k, overrides[k] === "true"])
       );
       const limitOverrides = { ...numericOverrides, ...booleanOverrides };
-      const data = await callApi("/api/provision-family", {
+      const data = await callApi("/api/manage-plan", {
         adminSecret, action: "update-plan", familyId: selected.id, planTier, moduleFlags, limitOverrides,
       });
       setSelected(data.family);
@@ -484,7 +482,7 @@ function ManagePlanSection({ adminSecret }) {
     setBusy(true);
     setError("");
     try {
-      const data = await callApi("/api/provision-family", { adminSecret, action: "list-upgrade-requests" });
+      const data = await callApi("/api/manage-plan", { adminSecret, action: "list-upgrade-requests" });
       setRequests(data.requests);
     } catch (err) {
       setError(err.message);
@@ -496,7 +494,7 @@ function ManagePlanSection({ adminSecret }) {
   async function resolveRequest(id) {
     setResolvingId(id);
     try {
-      await callApi("/api/provision-family", { adminSecret, action: "resolve-upgrade-request", id });
+      await callApi("/api/manage-plan", { adminSecret, action: "resolve-upgrade-request", id });
       setRequests((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
       setError(err.message);
@@ -614,7 +612,7 @@ function ManagePlanSection({ adminSecret }) {
 // superadmin's own browser, for pipeline testing) and NotificationsAdminTab
 // in AdminView.jsx (a family Head/Admin's one-off send to their own
 // family only). The cron that actually fires this on schedule lives in
-// api/provision-family.js's GET branch — see vercel.json's `crons` entry.
+// api/broadcast.js's GET branch — see vercel.json's `crons` entry.
 function PlatformBroadcastSection({ adminSecret }) {
   const [cfg, setCfg] = useState(null);
   const [title, setTitle] = useState("");
@@ -629,7 +627,7 @@ function PlatformBroadcastSection({ adminSecret }) {
 
   async function load() {
     try {
-      const data = await callApi("/api/provision-family", { adminSecret, action: "get-broadcast" });
+      const data = await callApi("/api/broadcast", { adminSecret, action: "get-broadcast" });
       setCfg(data.broadcast);
       setTitle(data.broadcast.title || "");
       setBody(data.broadcast.body || "");
@@ -649,7 +647,7 @@ function PlatformBroadcastSection({ adminSecret }) {
     setError("");
     setResult("");
     try {
-      const data = await callApi("/api/provision-family", {
+      const data = await callApi("/api/broadcast", {
         adminSecret, action: "set-broadcast", title, body, url, frequencyDays: Number(frequencyDays), enabled,
       });
       setCfg(data.broadcast);
@@ -667,7 +665,7 @@ function PlatformBroadcastSection({ adminSecret }) {
     setError("");
     setResult("");
     try {
-      const data = await callApi("/api/provision-family", { adminSecret, action: "send-broadcast-now" });
+      const data = await callApi("/api/broadcast", { adminSecret, action: "send-broadcast-now" });
       setResult(`Sent to ${data.sent}/${data.total} subscription(s) (${data.recipients} ${data.recipients === 1 ? "person" : "people"}).${data.removedDead ? ` Removed ${data.removedDead} dead subscription(s).` : ""}`);
       await load();
     } catch (err) {

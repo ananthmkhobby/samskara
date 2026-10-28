@@ -51,7 +51,7 @@ export default function NotificationSettingsView({ onDone }) {
     setPhotoPromptResult("");
     setError("");
     try {
-      const data = await callApi("/api/reset-member-password", { action: "send_photo_prompt_test", familyId: CURRENT_FAMILY_ID });
+      const data = await callApi("/api/push", { action: "send_photo_prompt_test", familyId: CURRENT_FAMILY_ID });
       setPhotoPromptResult(data.sent ? "Sent — check your notifications." : "Couldn't reach a device — try enabling notifications again.");
     } catch (err) {
       setError(err.message);
