@@ -14,7 +14,7 @@
   },
   "crons": [
     {
-      "path": "/api/provision-family",
+      "path": "/api/broadcast",
       "schedule": "30 12 * * *"
     }
   ],

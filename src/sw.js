@@ -25,9 +25,8 @@ registerRoute(new NavigationRoute(createHandlerBoundToURL("/index.html"), {
 
 registerRoute(({ url }) => url.pathname.startsWith("/api/"), new NetworkOnly());
 
-// Payload is always JSON — { title, body, url } — sent by
-// api/reset-member-password.js's send_test_push action (and, eventually,
-// whatever real send path replaces it). `url` is where a click on the
+// Payload is always JSON — { title, body, url } — sent by api/push.js
+// and api/broadcast.js. `url` is where a click on the
 // notification should land; defaults to the app's root if the sender
 // didn't specify one, which matters once this moves past the test-only
 // case to real per-event notifications (a review-queue nudge should open

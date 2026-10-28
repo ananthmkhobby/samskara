@@ -1,9 +1,9 @@
-// Shared Web Push sending logic — originally only in
-// api/reset-member-password.js, extracted here once a second caller
-// (api/provision-family.js's superadmin broadcast) needed the exact same
-// setVapid()/sendToUserIds() behavior, including the dead-subscription
-// cleanup. Not a new serverless function — an underscore-prefixed file,
-// same as _memberAuth.js, doesn't count against Vercel's function cap.
+// Shared Web Push sending logic — used by api/push.js (per-family sends)
+// and api/broadcast.js (the app-wide superadmin broadcast), both of which
+// need the exact same setVapid()/sendToUserIds() behavior, including the
+// dead-subscription cleanup. Not a new serverless function — an
+// underscore-prefixed file, same as _memberAuth.js, doesn't count against
+// Vercel's function limit.
 import webpush from "web-push";
 
 export function setVapid() {

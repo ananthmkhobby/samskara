@@ -3,7 +3,7 @@
 // and the engineering decisions behind this file's shape.
 //
 // Two very different jobs share this one file, same hybrid pattern
-// api/provision-family.js already uses for its cron branch:
+// api/broadcast.js already uses for its own cron branch:
 //
 //   GET  /api/share?type=g&token=...  — public, unauthenticated. Routed
 //        from /s/g/:token (vercel.json). Reads the built dist/index.html
