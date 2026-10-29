@@ -9,7 +9,6 @@ import MoreMenu from "./components/MoreMenu";
 import SearchView from "./components/SearchView";
 import TreeView from "./components/TreeView";
 import VaultView from "./components/VaultView";
-import JourneyMapView from "./components/JourneyMapView";
 import FolioModal from "./components/FolioModal";
 import ContributeModal from "./components/ContributeModal";
 import EditModal from "./components/EditModal";
@@ -30,6 +29,11 @@ const ChitrashaleRoom = lazy(() => import("./components/ChitrashaleRoom"));
 const ChitrashaleAddModal = lazy(() => import("./components/ChitrashaleAddModal"));
 const BlogView = lazy(() => import("./components/BlogView"));
 const PlansView = lazy(() => import("./components/PlansView"));
+// Leaflet + react-leaflet alone are a large chunk (~100KB+ gzipped) that
+// every visitor used to pay for on first load even though Journey is a
+// secondary feature most sessions never open — moved to lazy here for
+// exactly that reason (docs/ARCHITECTURE_REVIEW.md §4/§9 action item 9).
+const JourneyMapView = lazy(() => import("./components/JourneyMapView"));
 import WelcomeIntro from "./components/WelcomeIntro";
 import FamilySplash from "./components/FamilySplash";
 import SuperAdminView from "./components/SuperAdminView";
