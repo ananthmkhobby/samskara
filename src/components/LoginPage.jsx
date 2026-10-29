@@ -65,6 +65,12 @@ export default function LoginPage({ onShowHelp, onShowPrivacy, onShowTerms }) {
           <p className="login-hero-sub">
             Samskara is where you finally do — the scooter, the kitchen, the everyday things that made up a life, kept for good this time.
           </p>
+          {/* No account needed to try this — pick a photo and preview it
+              right here; signing in only happens once they choose to save
+              it. See FirstMemoryWizard.jsx. */}
+          <button type="button" className="btn primary" style={{ marginTop: 6, marginBottom: 10 }} onClick={() => { window.location.href = "/first-memory"; }}>
+            Preserve your first memory →
+          </button>
           <button type="button" className="login-hero-blog-cta" onClick={() => { window.location.href = "/blog"; }}>
             <span className="login-hero-blog-cta-icon" aria-hidden="true">📖</span>
             Read our stories on the Blog →

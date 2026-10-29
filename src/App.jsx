@@ -44,6 +44,7 @@ import NotificationSettingsView from "./components/NotificationSettingsView";
 import ShareTargetLanding from "./components/ShareTargetLanding";
 import NotificationPrompt from "./components/NotificationPrompt";
 import SharedPhotoLanding from "./components/SharedPhotoLanding";
+import FirstMemoryWizard from "./components/FirstMemoryWizard";
 import { getPushSubscriptionState, enablePush } from "./lib/push";
 import ParamparaView from "./components/ParamparaView";
 import ParamparaContributeModal from "./components/ParamparaContributeModal";
@@ -77,7 +78,7 @@ async function withMediaUrl(contribution) {
   return { ...contribution, mediaUrl };
 }
 
-const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp", notifications: "/notifications", blog: "/blog", plans: "/plans" };
+const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp", notifications: "/notifications", blog: "/blog", plans: "/plans", firstMemory: "/first-memory" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
 // Maps a view to its families.module_flags entitlement key — a view with no
 // entry here (Tree, Folios, Search, Gallery, Activity, Admin, ...) is never
@@ -1021,6 +1022,15 @@ export default function App() {
     if (view === "sharedLink") {
       return <SharedPhotoLanding onGoHome={() => { window.history.replaceState({}, "", "/"); goTo("cover"); }} />;
     }
+    // Same reasoning as sharedLink above — the whole point of this flow is
+    // letting an anonymous visitor pick a photo and preview it before ever
+    // being asked to sign in, so it must bypass the login gate entirely.
+    // FirstMemoryWizard.jsx handles its own internal signed-in-vs-not
+    // branching (shows the inline auth/signup step only once "Save" is
+    // actually pressed).
+    if (view === "firstMemory") {
+      return <FirstMemoryWizard onGoHome={() => { window.history.replaceState({}, "", "/"); goTo("cover"); }} />;
+    }
     // /superadmin needs no family data either (it talks to its own API
     // route, not the Supabase family fetch) — it must bypass the login
     // gate the same way Help does, or the provisioning page becomes
@@ -1137,6 +1147,9 @@ export default function App() {
   }
   if (view === "sharedLink") {
     return <SharedPhotoLanding onGoHome={() => { window.history.replaceState({}, "", "/"); goTo("cover"); }} />;
+  }
+  if (view === "firstMemory") {
+    return <FirstMemoryWizard onGoHome={() => { window.history.replaceState({}, "", "/"); goTo("cover"); }} />;
   }
 
   if (showFamilySplash && (CURRENT_FAMILY_LOGO_URL || CURRENT_FAMILY_TAGLINE)) {
