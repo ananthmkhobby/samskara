@@ -16,7 +16,22 @@ const GATABLE_MODULES = [
   { key: "japa", label: "Japa & Chanting" },
   { key: "vault", label: "Vault" },
   { key: "aiFeatures", label: "AI features (interview, photo-scan, translate)" },
+  // Unlike every other key above, this one is false by DEFAULT in every
+  // plan tier (see planTiers.js) — it's an opt-in pilot cohort flag, not
+  // an opt-out module, so checking this box for a family is what actually
+  // turns Fast Family Onboarding on for them specifically.
+  { key: "fastOnboarding", label: "Fast Family Onboarding (pilot — off by default)" },
 ];
+
+// Every key above defaults to pre-checked in the "provision a new family"
+// form except the opt-in pilot flags — checking one of those by default
+// would silently write nothing to module_flags (only explicit `false`s are
+// ever sent) and leave the superadmin thinking it's on when the tier
+// default (false) actually wins.
+const OPT_IN_MODULES = new Set(["fastOnboarding"]);
+function defaultEnabledModules() {
+  return Object.fromEntries(GATABLE_MODULES.map((m) => [m.key, !OPT_IN_MODULES.has(m.key)]));
+}
 
 // Interim stopgap until a real email service exists (see api/
 // api/password-reset-requests.js) — lists requests filed from the login page's
@@ -736,7 +751,7 @@ export default function SuperAdminView() {
   // module for this family from day one. Only the unchecked ones are ever
   // sent as explicit `false`s; module_flags stays an empty object (meaning
   // "everything enabled") when nothing's been unchecked.
-  const [enabledModules, setEnabledModules] = useState(() => Object.fromEntries(GATABLE_MODULES.map((m) => [m.key, true])));
+  const [enabledModules, setEnabledModules] = useState(() => defaultEnabledModules());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
@@ -760,7 +775,7 @@ export default function SuperAdminView() {
       setFamilyName("");
       setHeadEmail("");
       setHeadName("");
-      setEnabledModules(Object.fromEntries(GATABLE_MODULES.map((m) => [m.key, true])));
+      setEnabledModules(defaultEnabledModules());
     } catch (err) {
       setError(err.message);
     } finally {

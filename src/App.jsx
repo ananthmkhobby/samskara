@@ -34,6 +34,7 @@ const PlansView = lazy(() => import("./components/PlansView"));
 // secondary feature most sessions never open — moved to lazy here for
 // exactly that reason (docs/ARCHITECTURE_REVIEW.md §4/§9 action item 9).
 const JourneyMapView = lazy(() => import("./components/JourneyMapView"));
+const ConnectionWorkbenchView = lazy(() => import("./components/ConnectionWorkbenchView"));
 import WelcomeIntro from "./components/WelcomeIntro";
 import FamilySplash from "./components/FamilySplash";
 import SuperAdminView from "./components/SuperAdminView";
@@ -46,6 +47,7 @@ import JoinFamilyModal from "./components/JoinFamilyModal";
 import ConnectWhatsAppView from "./components/ConnectWhatsAppView";
 import NotificationSettingsView from "./components/NotificationSettingsView";
 import AccountSettingsView from "./components/AccountSettingsView";
+import RelationshipPathBuilder from "./components/RelationshipPathBuilder";
 import ShareTargetLanding from "./components/ShareTargetLanding";
 import NotificationPrompt from "./components/NotificationPrompt";
 import SharedPhotoLanding from "./components/SharedPhotoLanding";
@@ -66,7 +68,7 @@ import ConsentGate from "./components/ConsentGate";
 import { PEOPLE, INITIAL_CONTRIBUTIONS, BOOKS, BOOK_OWNERSHIP, BOOK_READERS, PRACTICE_LOGS, addPerson, addBook, makeUniquePersonId } from "./data/people";
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
 import { verifiedObjectsBySpot, hasAnyRoomObjects } from "./lib/chitrashale";
-import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, IS_BLOG_AUTHOR, NEEDS_LOGIN, NEEDS_CONSENT, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL, isModuleEnabled } from "./data/session";
+import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, IS_BLOG_AUTHOR, NEEDS_LOGIN, NEEDS_CONSENT, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL, MY_PLACEMENT_STATUS, isModuleEnabled } from "./data/session";
 import { insertContribution, updateContribution, updateContributionStatus, deleteContribution as dbDeleteContribution, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus, insertPracticeLog } from "./data/familyDb";
 import { resolveMediaUrl, uploadFamilyMedia } from "./lib/mediaUpload";
 import { parseParamparaContent } from "./lib/parampara";
@@ -83,7 +85,7 @@ async function withMediaUrl(contribution) {
   return { ...contribution, mediaUrl };
 }
 
-const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp", notifications: "/notifications", account: "/account", blog: "/blog", plans: "/plans", firstMemory: "/first-memory" };
+const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp", notifications: "/notifications", account: "/account", connectionWorkbench: "/needs-connection", relationshipPathBuilder: "/my-connection", blog: "/blog", plans: "/plans", firstMemory: "/first-memory" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
 // Maps a view to its families.module_flags entitlement key — a view with no
 // entry here (Tree, Folios, Search, Gallery, Activity, Admin, ...) is never
@@ -221,6 +223,10 @@ export default function App() {
   // Seeded from the boot-time lookup; the gate clears it on acceptance so
   // the app appears without a reload.
   const [needsConsent, setNeedsConsent] = useState(NEEDS_CONSENT);
+  // Shown once per boot while still UNANCHORED, right after a join — if
+  // they skip it, the Home "Finish My Connection" card is the standing
+  // re-entry point, not a repeat of this full-screen gate every reload.
+  const [skippedPathBuilder, setSkippedPathBuilder] = useState(false);
   useEffect(() => {
     if (!supabase) return;
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
@@ -1066,6 +1072,22 @@ export default function App() {
     return <ConsentGate userId={CURRENT_USER_ID} onAccepted={() => setNeedsConsent(false)} />;
   }
 
+  // Fast Family Onboarding Phase 1 — see docs/FAST_FAMILY_ONBOARDING.md.
+  // Shown automatically only once, right after a fresh join that left the
+  // member UNANCHORED (never engaged with this at all yet) — NOT on every
+  // subsequent login while still unresolved, which would turn "admin
+  // handles exceptions, member keeps using the app meanwhile" into a nag
+  // screen. Once they've engaged (ANCHORED_UNRESOLVED), reopening this is
+  // a deliberate action from the Home "Finish My Connection" card
+  // (view === "relationshipPathBuilder" below), not automatic.
+  if (!IS_DEMO && !ACCOUNT_NEEDS_FAMILY && !IS_BLOG_AUTHOR && isModuleEnabled("fastOnboarding") && MY_PLACEMENT_STATUS === "UNANCHORED" && !skippedPathBuilder) {
+    return (
+      <RelationshipPathBuilder
+        onDone={() => setSkippedPathBuilder(true)}
+      />
+    );
+  }
+
   // The OS share sheet's redirect (src/sw.js's fetch handler, via the
   // share_target manifest entry) lands here as a plain path, not a `view`
   // this app's own nav ever sets — caught before the normal view switch so
@@ -1244,6 +1266,8 @@ export default function App() {
         {view === "connectWhatsapp" && <ConnectWhatsAppView token={WHATSAPP_LINK_TOKEN_FROM_URL} onDone={() => goTo("cover")} />}
         {view === "notifications" && <NotificationSettingsView onDone={() => goTo("more")} />}
         {view === "account" && <AccountSettingsView onDone={() => goTo("more")} />}
+        {view === "connectionWorkbench" && <ConnectionWorkbenchView onDone={() => goTo("more")} />}
+        {view === "relationshipPathBuilder" && <RelationshipPathBuilder onDone={() => goTo("cover")} />}
         {/* view === "blog" is handled by its own early return above this
             whole TopBar/BottomBar frame — never reaches here. */}
       </main>

@@ -77,6 +77,15 @@ export default function MoreMenu({ onNav, canModerate }) {
             </span>
           </button>
         )}
+        {!IS_DEMO && canModerate && isModuleEnabled("fastOnboarding") && (
+          <button type="button" className="card more-menu-item" onClick={() => onNav("connectionWorkbench")}>
+            <span className="more-menu-icon">🔗</span>
+            <span className="more-menu-text">
+              <b>Needs Connection</b>
+              <span>Members and people Fast Family Onboarding couldn't place yet</span>
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Until now these were only linked from the sign-in screen, so anyone

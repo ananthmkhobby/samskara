@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { MIN_GEN, MAX_GEN, byId, yearsLabel } from "../data/helpers";
-import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL, CURRENT_USER_ID, CURRENT_ROLE, CURRENT_FAMILY_PLAN_TIER } from "../data/session";
+import { IS_DEMO, CURRENT_FAMILY_ID, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL, CURRENT_USER_ID, CURRENT_ROLE, CURRENT_FAMILY_PLAN_TIER, isModuleEnabled } from "../data/session";
 import { PLAN_TIERS } from "../lib/planTiers";
 import { useMediaLimit } from "../hooks/useMediaLimit";
 import {
@@ -225,13 +225,18 @@ function InviteCard({ onCreated }) {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [personId, setPersonId] = useState("");
+  // "not-yet" is only meaningful with Fast Family Onboarding on — without
+  // it there's nowhere downstream that reads proposed_person_name, so the
+  // option would just be a dead end.
+  const ffoEnabled = isModuleEnabled("fastOnboarding");
+  const [notYetName, setNotYetName] = useState("");
 
   async function generate() {
     setBusy(true);
     setError("");
     setCopied(false);
     try {
-      const code = await createInvite(CURRENT_FAMILY_ID, CURRENT_USER_ID, personId || null);
+      const code = await createInvite(CURRENT_FAMILY_ID, CURRENT_USER_ID, personId === "__not_yet__" ? null : (personId || null), personId === "__not_yet__" ? notYetName.trim() : null);
       setLink(`${window.location.origin}/?code=${code}`);
       onCreated?.();
     } catch (err) {
@@ -259,10 +264,17 @@ function InviteCard({ onCreated }) {
         </label>
         <select value={personId} onChange={(e) => setPersonId(e.target.value)} style={{ fontSize: 13, padding: "4px 6px" }}>
           <option value="">— not sure yet, they'll pick themselves —</option>
+          {ffoEnabled && <option value="__not_yet__">— name someone not in the tree yet —</option>}
           {[...PEOPLE].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
             <option key={p.id} value={p.id}>{p.name}{yearsLabel(p) ? ` (${yearsLabel(p)})` : ""}</option>
           ))}
         </select>
+        {personId === "__not_yet__" && (
+          <input
+            type="text" value={notYetName} onChange={(e) => setNotYetName(e.target.value)}
+            placeholder="e.g. my cousin Ramesh" style={{ marginTop: 6, fontSize: 13, padding: "4px 6px", width: "100%" }}
+          />
+        )}
       </div>
       {link ? (
         <div className="tag-row" style={{ alignItems: "center" }}>

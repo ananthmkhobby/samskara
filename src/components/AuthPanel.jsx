@@ -354,7 +354,17 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
   // signup, sidesteps Supabase Auth's email-enumeration protection, which
   // deliberately makes "does this email already exist" unreliable to
   // detect from a signUp() error alone.
-  const [isNewAccount, setIsNewAccount] = useState(true);
+  //
+  // Defaults to "I already have an account" (not new), deliberately —
+  // defaulting to sign-up was a silent duplicate-account trap: someone who
+  // already has a Samskara login but doesn't notice this toggle would sign
+  // up fresh instead, ending up with two separate accounts for the same
+  // person (one of them typically becoming an orphaned, unlinked family
+  // membership). Opening an invite link is at least as likely to be an
+  // existing user as a brand-new one, so the safer default costs a
+  // genuinely new person nothing (one extra click to switch) while
+  // removing the trap for an existing one.
+  const [isNewAccount, setIsNewAccount] = useState(false);
   // The code is already baked into the link and pre-filled here — showing
   // it as an editable field anyway reads as "asking again" even though
   // nothing needs re-typing. Only show the field when there's genuinely no

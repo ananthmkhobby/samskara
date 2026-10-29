@@ -56,6 +56,12 @@ export let FAMILY_FLAME_STREAK = 0;
 // themselves to — null in demo mode, or for a real account that hasn't
 // picked one yet via Admin → Roster. Lets the Tree view highlight "you".
 export let MY_PERSON_ID = null;
+// 'UNANCHORED' | 'ANCHORED_UNRESOLVED' | 'PLACED_CONFIRMED' | null (demo,
+// or no real membership row yet) — Fast Family Onboarding Phase 1's
+// placement status, read straight off the caller's own family_members
+// row. Gates the post-join RelationshipPathBuilder prompt and the Home
+// "Finish My Connection" card; see docs/FAST_FAMILY_ONBOARDING.md.
+export let MY_PLACEMENT_STATUS = null;
 // True when a real account is signed in but hasn't accepted the current
 // version of the Privacy Policy and Terms. Covers three cases with one
 // check: accounts an Admin created directly (which never touch the signup
@@ -88,6 +94,7 @@ export function setSession(next) {
   MY_FAMILIES = next.myFamilies ?? [];
   FAMILY_FLAME_STREAK = next.flameStreak ?? 0;
   MY_PERSON_ID = next.myPersonId ?? null;
+  MY_PLACEMENT_STATUS = next.myPlacementStatus ?? null;
   NEEDS_CONSENT = next.needsConsent ?? false;
 }
 

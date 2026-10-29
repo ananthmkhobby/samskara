@@ -424,9 +424,11 @@ export async function reassignParents(familyId, personId, parentIds) {
 
 // ---- Invites ---------------------------------------------------------------
 
-export async function createInvite(familyId, userId, personId) {
+export async function createInvite(familyId, userId, personId, proposedPersonName) {
   const db = requireClient();
-  const { data, error } = await db.from("invites").insert({ family_id: familyId, created_by: userId, person_id: personId || null }).select().single();
+  const { data, error } = await db.from("invites")
+    .insert({ family_id: familyId, created_by: userId, person_id: personId || null, proposed_person_name: proposedPersonName || null })
+    .select().single();
   if (error) throw new Error(error.message);
   return data.code;
 }
@@ -729,9 +731,9 @@ export async function registerNewFamily(familyName, displayName) {
 
 export async function fetchFamilyMembers(familyId) {
   const db = requireClient();
-  const { data, error } = await db.from("family_members").select("id, user_id, role, display_name, person_id, created_at").eq("family_id", familyId);
+  const { data, error } = await db.from("family_members").select("id, user_id, role, display_name, person_id, placement_status, created_at").eq("family_id", familyId);
   if (error) throw new Error(error.message);
-  return data.map((r) => ({ id: r.id, userId: r.user_id, role: r.role, displayName: r.display_name, personId: r.person_id, createdAt: r.created_at }));
+  return data.map((r) => ({ id: r.id, userId: r.user_id, role: r.role, displayName: r.display_name, personId: r.person_id, placementStatus: r.placement_status, createdAt: r.created_at }));
 }
 
 // Only ever succeeds when the acting session is the Family Head — enforced
@@ -755,6 +757,72 @@ export async function updateMemberRole(memberRowId, role) {
 export async function setMemberPersonLink(memberRowId, personId) {
   const db = requireClient();
   const { error } = await db.rpc("set_member_person_link", { p_member_id: memberRowId, p_person_id: personId });
+  if (error) throw new Error(error.message);
+}
+
+// ---- Fast Family Onboarding (FFO) ------------------------------------------
+// See docs/FAST_FAMILY_ONBOARDING.md. Any active member can call the first
+// two (self-only, enforced server-side) — only resolveWorkbenchTask is
+// moderator-gated.
+
+export async function submitRelationshipPathClaim(anchorPersonId, relationship, branchSide, connectingPersonName) {
+  const db = requireClient();
+  const { data, error } = await db.rpc("submit_relationship_path_claim", {
+    p_anchor_person_id: anchorPersonId || null, p_relationship: relationship,
+    p_branch_side: branchSide || null, p_connecting_person_name: connectingPersonName || null,
+  });
+  if (error) throw new Error(error.message);
+  return data; // claim id
+}
+
+export async function createProvisionalPerson(pathClaimId, name) {
+  const db = requireClient();
+  const { data, error } = await db.rpc("create_provisional_person", { p_path_claim_id: pathClaimId, p_name: name });
+  if (error) throw new Error(error.message);
+  return data; // new person id
+}
+
+// My own current-family placement status, read straight off my own
+// family_members row — used by the Home "Finish My Connection" card and
+// the post-redeem/post-register flow to decide whether to show the path
+// builder at all.
+export async function fetchMyPlacementStatus(familyId, userId) {
+  const db = requireClient();
+  const { data, error } = await db.from("family_members").select("placement_status").eq("family_id", familyId).eq("user_id", userId).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.placement_status || null;
+}
+
+export async function fetchWorkbenchTasks(familyId) {
+  const db = requireClient();
+  const { data, error } = await db
+    .from("ffo_workbench_tasks")
+    .select("id, family_member_id, path_claim_id, provisional_person_id, task_type, status, note, created_at, resolved_at")
+    .eq("family_id", familyId)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data.map((r) => ({
+    id: r.id, familyMemberId: r.family_member_id, pathClaimId: r.path_claim_id, provisionalPersonId: r.provisional_person_id,
+    taskType: r.task_type, status: r.status, note: r.note, createdAt: r.created_at, resolvedAt: r.resolved_at,
+  }));
+}
+
+export async function fetchWorkbenchClaims(familyId) {
+  const db = requireClient();
+  const { data, error } = await db
+    .from("relationship_path_claims")
+    .select("id, family_member_id, anchor_person_id, asserted_relationship, branch_side, connecting_person_name, status, created_at")
+    .eq("family_id", familyId);
+  if (error) throw new Error(error.message);
+  return data.map((r) => ({
+    id: r.id, familyMemberId: r.family_member_id, anchorPersonId: r.anchor_person_id, relationship: r.asserted_relationship,
+    branchSide: r.branch_side, connectingPersonName: r.connecting_person_name, status: r.status, createdAt: r.created_at,
+  }));
+}
+
+export async function resolveWorkbenchTask(taskId, action, payload) {
+  const db = requireClient();
+  const { error } = await db.rpc("resolve_workbench_task", { p_task_id: taskId, p_action: action, p_payload: payload || {} });
   if (error) throw new Error(error.message);
 }
 
