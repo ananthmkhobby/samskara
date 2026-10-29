@@ -398,8 +398,18 @@ next feature push, not deferred further:
    (migration `20261029180000_superadmins.sql`,
    `api/_superadminAuth.js`). `CRON_SECRET` deliberately kept as-is — see
    `docs/ENVIRONMENTS.md`.
-9. Address the 500KB+ bundle-size warnings — `familyTemplate` and
-   `BlogEditorView` are the two worth a direct look first.
+9. ✅ Partially fixed 29 Oct 2026 — investigation found `familyTemplate`
+   (the `xlsx` library) and `BlogEditorView` (Tiptap) were already
+   correctly lazy-loaded, never part of the eager bundle every visitor
+   pays for. The real find: `JourneyMapView` pulled in `leaflet` +
+   `react-leaflet` (~47KB gzipped) **eagerly**, for every visitor,
+   despite Journey being a secondary feature most sessions never open.
+   Made it `lazy()` like its siblings — main bundle dropped from 190KB
+   to 143KB gzipped. Functionally verified the map still renders
+   correctly (pins, routes, generation filters) after the change. The
+   main chunk is still ~513KB raw (above the 500KB warning threshold)
+   but that's component code, not an obvious further win — diminishing
+   returns past this point.
 10. Complete the Meta/Twilio business-verification checklist before any
     production WhatsApp send — a business-process task, not engineering,
     but blocking real use of an already-built feature.

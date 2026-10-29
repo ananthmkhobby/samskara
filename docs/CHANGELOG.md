@@ -11,6 +11,14 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.29.3 — Cap recorded video/audio size and duration
+
+[PR #24](https://github.com/ananthmkhobby/samskara/pull/24) — closes action item #7 from `docs/ARCHITECTURE_REVIEW.md`. A single in-browser recording had no cap at all — only a plan-tier COUNT limit on photos/recordings/videos existed, nothing stopped one very long recording from being disproportionately large.
+
+Two layers: `family-media`'s Storage `file_size_limit` is now 250MB, enforced server-side by Supabase Storage itself before the object is ever written (verified directly — a service-role upload just over the limit is rejected, bypassing RLS but not this check); and `useMediaRecorder.js` auto-stops a recording at 10 minutes (video) / 20 minutes (audio), with a live countdown shown in `ContributeModal` and `ChitrashaleAddModal`.
+
+**Post-deploy verified**: migration applied to production, `file_size_limit` confirmed set; new code confirmed present in the deployed bundle. The real-device click-through of a recording actually hitting the auto-stop wasn't practical to test in this session (no mic/camera, 10-20 minute wait) — worth a quick spot-check on a phone when convenient.
+
 ## v2026.10.29.2 — Replace shared admin secret with per-operator superadmin auth
 
 [PR #23](https://github.com/ananthmkhobby/samskara/pull/23) — closes action item #8 from `docs/ARCHITECTURE_REVIEW.md`. Every human-operator superadmin endpoint (`provision-family`, `manage-plan`, `broadcast`, `blog-team`, `track-click`, `password-reset-requests`) was gated by one shared `ADMIN_PROVISION_SECRET` string, typed into a browser field and kept in `sessionStorage` — can't be revoked for one person without breaking it for everyone, never expires.
