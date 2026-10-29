@@ -11,6 +11,16 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.29 — Blog stored-XSS fix, self-service account deletion/export, grievance redressal
+
+[PR #22](https://github.com/ananthmkhobby/samskara/pull/22) — three changes, all out of a full architecture/security/compliance review (`docs/ARCHITECTURE_REVIEW.md`). Fixes a stored-XSS gap: blog `body_html` was written and rendered with zero sanitization (RLS gates who can write a post, never what the HTML contains) — adds `isomorphic-dompurify` in `blogDb.js`'s write path and `api/blog-post.js`'s render path as defense-in-depth. Verified a `<script>`/`onerror`/`javascript:` payload all come out stripped.
+
+Adds self-service account deletion and data export (More → Account), closing a long-tracked `SECURITY.md` gap and a real DPDPA exposure — there was previously no way to exercise erasure/access rights except asking a human by hand. Several tables referenced `auth.users` with no delete action (defaults to `RESTRICT` in Postgres), which would have made a plain `deleteUser()` call fail for most active users — fixed with `ON DELETE SET NULL` across the affected FKs (migration `20261029160000_account_deletion.sql`). Deletion semantics (confirmed with the product owner): shared-family content stays but loses its identity link; a solo family is deleted entirely; a sole Head/Admin of a shared family is blocked until they promote someone else. Verified against three disposable test accounts covering each branch before cleanup, applied to both Supabase projects.
+
+Also publishes a Grievance Officer line in the Privacy Policy (DPDPA requirement — name is currently a placeholder, flagged in `docs/ACCOUNT_DELETION.md`) and documents the manual, human-verified fallback for someone who can't sign in to use the self-service flow. `POLICY_VERSION` bumped.
+
+**Post-deploy verified**: `/api/account` live on production, returns the expected "Not signed in." for an unauthenticated call; `/blog` and `/` both responding 200; both new RPCs (`request_account_deletion`, `export_my_data`) confirmed present on production.
+
 ## v2026.10.28 — Photo tagging, Share Preview Service, and serverless function cleanup
 
 [PR #21](https://github.com/ananthmkhobby/samskara/pull/21) — three changes. Adds photo tagging: point at a spot in a Gallery photo and label who's there, an existing family member or free text for someone not identified yet — a lightweight, removable annotation (`photo_tags`), not a commitment to add anyone to the tree. Verified end to end: a tag's position survives a full reload and lands in exactly the right spot; delete works and actually removes the row.

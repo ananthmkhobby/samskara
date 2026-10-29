@@ -2,12 +2,13 @@
 // stopgap in one endpoint (merged from two separate files to stay under
 // Vercel's Hobby-plan 12-function limit): action:"submit" is public/
 // unauthenticated (filed from the login page's "No admin to ask?" link),
-// action:"list"/"resolve" are gated by the same shared-secret trust model
-// as provision-family.js. Actually changing anyone's password still
+// action:"list"/"resolve" require a signed-in superadmin (see
+// api/_superadminAuth.js). Actually changing anyone's password still
 // happens manually (a service-role script, same call
 // api/reset-member-password.js already uses) — this endpoint only tracks
 // the request, it never resets a password itself.
 import { createClient } from "@supabase/supabase-js";
+import { requireSuperadmin } from "./_superadminAuth.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -17,18 +18,16 @@ export default async function handler(req, res) {
     return;
   }
 
-  const secret = process.env.ADMIN_PROVISION_SECRET;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const url = process.env.VITE_SUPABASE_URL;
-  if (!secret || !serviceKey || !url) {
-    res.status(500).json({ error: "This isn't configured on this deployment yet." });
-    return;
-  }
-
-  const { action, adminSecret, email, note, id } = req.body || {};
-  const supabase = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
+  const { action, email, note, id } = req.body || {};
 
   if (action === "submit") {
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const url = process.env.VITE_SUPABASE_URL;
+    if (!serviceKey || !url) {
+      res.status(500).json({ error: "This isn't configured on this deployment yet." });
+      return;
+    }
+    const supabase = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
     if (!email?.trim() || !EMAIL_RE.test(email.trim())) {
       res.status(400).json({ error: "Enter a valid email address." });
       return;
@@ -50,11 +49,9 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Everything below (list, resolve) requires the admin secret.
-  if (adminSecret !== secret) {
-    res.status(401).json({ error: "Incorrect admin secret." });
-    return;
-  }
+  // Everything below (list, resolve) requires a signed-in superadmin.
+  const supabase = await requireSuperadmin(req, res);
+  if (!supabase) return;
 
   if (action === "resolve") {
     if (!id) {

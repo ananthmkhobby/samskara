@@ -6,14 +6,17 @@
 // announcement" and "create a new family" were never actually the same
 // feature. vercel.json's `crons` entry points here now.
 import { createClient } from "@supabase/supabase-js";
-import { requireAdminSecret } from "./_adminAuth.js";
+import { requireSuperadmin } from "./_superadminAuth.js";
 import { setVapid, sendToUserIds } from "./_push.js";
 
 export default async function handler(req, res) {
   // Vercel Cron hits this once a day as a plain GET, authenticated by the
-  // CRON_SECRET env var Vercel itself auto-sends as a bearer token — not
-  // the adminSecret the browser-facing actions below use, since cron has
-  // no way to carry a POST body secret.
+  // CRON_SECRET env var Vercel itself auto-sends as a bearer token — kept
+  // as a shared secret deliberately, unlike the browser-facing actions
+  // below: this is a service-to-service call with no human operator
+  // behind it, so there's no "second admin" story that applies here the
+  // way there was for ADMIN_PROVISION_SECRET (see
+  // supabase/migrations/20261029180000_superadmins.sql).
   if (req.method === "GET") {
     const cronSecret = process.env.CRON_SECRET;
     if (!cronSecret || req.headers.authorization !== `Bearer ${cronSecret}`) {
@@ -28,7 +31,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const supabase = requireAdminSecret(req, res);
+  const supabase = await requireSuperadmin(req, res);
   if (!supabase) return;
 
   const { action } = req.body || {};

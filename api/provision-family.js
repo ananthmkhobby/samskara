@@ -8,7 +8,7 @@
 // api/manage-plan.js and api/broadcast.js (2026-10-28) once the project
 // moved to Pro.
 import crypto from "node:crypto";
-import { requireAdminSecret } from "./_adminAuth.js";
+import { requireSuperadmin } from "./_superadminAuth.js";
 
 function generatePassword() {
   return crypto.randomBytes(9).toString("base64").replace(/[/+=]/g, "").slice(0, 12);
@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const supabase = requireAdminSecret(req, res);
+  const supabase = await requireSuperadmin(req, res);
   if (!supabase) return;
 
   const { familyName, headEmail, headName, moduleFlags } = req.body || {};

@@ -20,11 +20,21 @@ over a single shared backend).
 Every environment variable in `vercel.json`'s referenced API functions
 (`VITE_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `VITE_SUPABASE_ANON_KEY`,
 `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`,
-`TWILIO_NUDGE_TEMPLATE_SID`, `OPENAI_API_KEY`, `ADMIN_PROVISION_SECRET`,
+`TWILIO_NUDGE_TEMPLATE_SID`, `OPENAI_API_KEY`, `CRON_SECRET`,
 `APP_URL`, `SCANJUNCTION_ALLOWED_ORIGIN`) is configured **per Vercel
 project**, never shared. The production project's Supabase keys point at
 the production Supabase project; the test project's point at the test one.
 Rotating a key in one environment never touches the other.
+
+`ADMIN_PROVISION_SECRET` is retired (2026-10-29) — every human-operator
+superadmin endpoint now authenticates via the caller's own session and a
+`superadmins` table instead of a shared secret (see
+`docs/ARCHITECTURE_REVIEW.md` §9 action item 8 and
+`supabase/migrations/20261029180000_superadmins.sql`). Adding a new
+superadmin is a direct SQL insert, no env var involved. `CRON_SECRET`
+still gates Vercel Cron's own GET request to `api/broadcast.js` — kept as
+a shared secret deliberately, since that's a service-to-service call with
+no human operator behind it.
 
 `VITE_WHATSAPP_DISPLAY_NUMBER` is the one WhatsApp-related var exposed to
 the browser (hence the `VITE_` prefix) — a human-formatted number (e.g.

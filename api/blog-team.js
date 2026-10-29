@@ -8,7 +8,7 @@
 // scoped to a family at all), just two unrelated features sharing one
 // account-creation code path.
 import { usernameToEmail } from "./_memberAuth.js";
-import { requireAdminSecret } from "./_adminAuth.js";
+import { requireSuperadmin } from "./_superadminAuth.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -41,7 +41,7 @@ async function findUserByEmail(supabase, email) {
 // of requireModerator — a blog author isn't scoped to any family, so
 // there's no Head/Admin to delegate this to.
 async function createBlogAuthor(req, res) {
-  const supabase = requireAdminSecret(req, res);
+  const supabase = await requireSuperadmin(req, res);
   if (!supabase) return;
 
   const { username, password, displayName } = req.body || {};
@@ -92,7 +92,7 @@ async function createBlogAuthor(req, res) {
 // who self-signed-up with their own email/password and just needs the
 // flag flipped on.
 async function grantBlogAccess(req, res) {
-  const supabase = requireAdminSecret(req, res);
+  const supabase = await requireSuperadmin(req, res);
   if (!supabase) return;
 
   const { email, displayName } = req.body || {};

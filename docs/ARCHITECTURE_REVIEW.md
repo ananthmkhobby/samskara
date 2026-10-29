@@ -388,8 +388,12 @@ next feature push, not deferred further:
    not just a role-based email). See `docs/ACCOUNT_DELETION.md`.
 7. Add a duration/size cap on recorded video/audio (scoped and designed
    in an earlier session pass, not yet built).
-8. Move `ADMIN_PROVISION_SECRET`/`CRON_SECRET` off a shared-string model
-   before adding a second admin operator.
+8. ✅ ~~Move `ADMIN_PROVISION_SECRET` off a shared-string model~~ —
+   **fixed 29 Oct 2026**: every human-operator superadmin endpoint now
+   authenticates via the caller's own session + a `superadmins` table
+   (migration `20261029180000_superadmins.sql`,
+   `api/_superadminAuth.js`). `CRON_SECRET` deliberately kept as-is — see
+   `docs/ENVIRONMENTS.md`.
 9. Address the 500KB+ bundle-size warnings — `familyTemplate` and
    `BlogEditorView` are the two worth a direct look first.
 10. Complete the Meta/Twilio business-verification checklist before any

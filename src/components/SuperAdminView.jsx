@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { callApi } from "../lib/apiFetch";
+import { supabase } from "../lib/supabaseClient";
 import { PLAN_TIERS, PLAN_ORDER, LIMIT_LABELS } from "../lib/planTiers";
 import { CURRENT_USER_ID } from "../data/session";
 import { getPushSubscriptionState, enablePush, disablePush } from "../lib/push";
-
-const SECRET_SESSION_KEY = "vamsha.superadminSecret";
 
 // Mirrors the gatable-module list in src/data/session.js's isModuleEnabled()
 // / the `families.module_flags` column — kept here as the one place that
@@ -25,18 +24,17 @@ const GATABLE_MODULES = [
 // (a service-role script, same call api/reset-member-password.js already
 // makes) — this list only tracks who's waiting, "Mark resolved" is just
 // bookkeeping once you've actually reset them and told them the new one.
-function PasswordResetRequestsSection({ adminSecret }) {
+function PasswordResetRequestsSection() {
   const [requests, setRequests] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [resolvingId, setResolvingId] = useState(null);
 
   async function load() {
-    if (!adminSecret) { setError("Enter the admin secret above first."); return; }
     setBusy(true);
     setError("");
     try {
-      const data = await callApi("/api/password-reset-requests", { adminSecret, action: "list" });
+      const data = await callApi("/api/password-reset-requests", { action: "list" });
       setRequests(data.requests);
     } catch (err) {
       setError(err.message);
@@ -48,7 +46,7 @@ function PasswordResetRequestsSection({ adminSecret }) {
   async function resolve(id) {
     setResolvingId(id);
     try {
-      await callApi("/api/password-reset-requests", { adminSecret, action: "resolve", id });
+      await callApi("/api/password-reset-requests", { action: "resolve", id });
       setRequests((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
       setError(err.message);
@@ -176,17 +174,16 @@ function PushTestSection() {
   );
 }
 
-function AdClickLogSection({ adminSecret }) {
+function AdClickLogSection() {
   const [clicks, setClicks] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   async function load() {
-    if (!adminSecret) { setError("Enter the admin secret above first."); return; }
     setBusy(true);
     setError("");
     try {
-      const data = await callApi("/api/track-click", { adminSecret, action: "list" });
+      const data = await callApi("/api/track-click", { action: "list" });
       setClicks(data.clicks);
     } catch (err) {
       setError(err.message);
@@ -230,7 +227,7 @@ function AdClickLogSection({ adminSecret }) {
 // or anyone who self-signed-up with their own email/password — instead of
 // minting a brand-new login just for the blog. No password to generate or
 // hand over; they keep using whatever they already log in with.
-function GrantBlogAccessSection({ adminSecret }) {
+function GrantBlogAccessSection() {
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -243,7 +240,7 @@ function GrantBlogAccessSection({ adminSecret }) {
     setError("");
     setResult(null);
     try {
-      const data = await callApi("/api/blog-team", { mode: "grant", adminSecret, email, displayName });
+      const data = await callApi("/api/blog-team", { mode: "grant", email, displayName });
       setResult(data);
       setEmail("");
       setDisplayName("");
@@ -283,7 +280,7 @@ function GrantBlogAccessSection({ adminSecret }) {
   );
 }
 
-function BlogTeamSection({ adminSecret }) {
+function BlogTeamSection() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -298,7 +295,7 @@ function BlogTeamSection({ adminSecret }) {
     setError("");
     setResult(null);
     try {
-      const data = await callApi("/api/blog-team", { adminSecret, username, password, displayName });
+      const data = await callApi("/api/blog-team", { username, password, displayName });
       setResult(data);
       setUsername("");
       setPassword("");
@@ -359,7 +356,7 @@ function BlogTeamSection({ adminSecret }) {
           </div>
         )}
       </div>
-      <GrantBlogAccessSection adminSecret={adminSecret} />
+      <GrantBlogAccessSection />
     </>
   );
 }
@@ -385,7 +382,7 @@ function emptyOverrides() {
 // the same GATABLE_MODULES checkboxes as the provisioning form above (this
 // is already exactly "pick and choose a feature, on/off"), add numeric
 // limit overrides, and review/resolve that family's upgrade requests.
-function ManagePlanSection({ adminSecret }) {
+function ManagePlanSection() {
   const [query, setQuery] = useState("");
   const [families, setFamilies] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -400,11 +397,10 @@ function ManagePlanSection({ adminSecret }) {
 
   async function search(e) {
     e.preventDefault();
-    if (!adminSecret) { setError("Enter the admin secret above first."); return; }
     setBusy(true);
     setError("");
     try {
-      const data = await callApi("/api/manage-plan", { adminSecret, action: "search-families", query });
+      const data = await callApi("/api/manage-plan", { action: "search-families", query });
       setFamilies(data.families);
     } catch (err) {
       setError(err.message);
@@ -466,7 +462,7 @@ function ManagePlanSection({ adminSecret }) {
       );
       const limitOverrides = { ...numericOverrides, ...booleanOverrides };
       const data = await callApi("/api/manage-plan", {
-        adminSecret, action: "update-plan", familyId: selected.id, planTier, moduleFlags, limitOverrides,
+        action: "update-plan", familyId: selected.id, planTier, moduleFlags, limitOverrides,
       });
       setSelected(data.family);
       setSaved(true);
@@ -478,11 +474,10 @@ function ManagePlanSection({ adminSecret }) {
   }
 
   async function loadRequests() {
-    if (!adminSecret) { setError("Enter the admin secret above first."); return; }
     setBusy(true);
     setError("");
     try {
-      const data = await callApi("/api/manage-plan", { adminSecret, action: "list-upgrade-requests" });
+      const data = await callApi("/api/manage-plan", { action: "list-upgrade-requests" });
       setRequests(data.requests);
     } catch (err) {
       setError(err.message);
@@ -494,7 +489,7 @@ function ManagePlanSection({ adminSecret }) {
   async function resolveRequest(id) {
     setResolvingId(id);
     try {
-      await callApi("/api/manage-plan", { adminSecret, action: "resolve-upgrade-request", id });
+      await callApi("/api/manage-plan", { action: "resolve-upgrade-request", id });
       setRequests((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
       setError(err.message);
@@ -613,7 +608,7 @@ function ManagePlanSection({ adminSecret }) {
 // in AdminView.jsx (a family Head/Admin's one-off send to their own
 // family only). The cron that actually fires this on schedule lives in
 // api/broadcast.js's GET branch — see vercel.json's `crons` entry.
-function PlatformBroadcastSection({ adminSecret }) {
+function PlatformBroadcastSection() {
   const [cfg, setCfg] = useState(null);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -627,7 +622,7 @@ function PlatformBroadcastSection({ adminSecret }) {
 
   async function load() {
     try {
-      const data = await callApi("/api/broadcast", { adminSecret, action: "get-broadcast" });
+      const data = await callApi("/api/broadcast", { action: "get-broadcast" });
       setCfg(data.broadcast);
       setTitle(data.broadcast.title || "");
       setBody(data.broadcast.body || "");
@@ -638,17 +633,16 @@ function PlatformBroadcastSection({ adminSecret }) {
       setError(err.message);
     }
   }
-  useEffect(() => { if (adminSecret) load(); }, [adminSecret]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function save(e) {
     e.preventDefault();
-    if (!adminSecret) { setError("Enter the admin secret above first."); return; }
     setBusy(true);
     setError("");
     setResult("");
     try {
       const data = await callApi("/api/broadcast", {
-        adminSecret, action: "set-broadcast", title, body, url, frequencyDays: Number(frequencyDays), enabled,
+        action: "set-broadcast", title, body, url, frequencyDays: Number(frequencyDays), enabled,
       });
       setCfg(data.broadcast);
       setResult("Saved.");
@@ -660,12 +654,11 @@ function PlatformBroadcastSection({ adminSecret }) {
   }
 
   async function sendNow() {
-    if (!adminSecret) { setError("Enter the admin secret above first."); return; }
     setSending(true);
     setError("");
     setResult("");
     try {
-      const data = await callApi("/api/broadcast", { adminSecret, action: "send-broadcast-now" });
+      const data = await callApi("/api/broadcast", { action: "send-broadcast-now" });
       setResult(`Sent to ${data.sent}/${data.total} subscription(s) (${data.recipients} ${data.recipients === 1 ? "person" : "people"}).${data.removedDead ? ` Removed ${data.removedDead} dead subscription(s).` : ""}`);
       await load();
     } catch (err) {
@@ -718,8 +711,24 @@ function PlatformBroadcastSection({ adminSecret }) {
   );
 }
 
+// A plain RLS self-read (not a serverless round trip) — superadmins' own
+// policy lets a signed-in user see only their own row, so "null back" and
+// "no row" are indistinguishable from "not a superadmin," which is exactly
+// the behavior wanted here: no information leak either way.
+function useSuperadminCheck() {
+  const [state, setState] = useState("checking"); // "checking" | "signed-out" | "denied" | "ok"
+  useEffect(() => {
+    let cancelled = false;
+    if (!CURRENT_USER_ID || !supabase) { setState("signed-out"); return; }
+    supabase.from("superadmins").select("user_id").eq("user_id", CURRENT_USER_ID).maybeSingle()
+      .then(({ data }) => { if (!cancelled) setState(data ? "ok" : "denied"); })
+      .catch(() => { if (!cancelled) setState("denied"); });
+    return () => { cancelled = true; };
+  }, []);
+  return state;
+}
+
 export default function SuperAdminView() {
-  const [adminSecret, setAdminSecret] = useState(() => sessionStorage.getItem(SECRET_SESSION_KEY) || "");
   const [familyName, setFamilyName] = useState("");
   const [headEmail, setHeadEmail] = useState("");
   const [headName, setHeadName] = useState("");
@@ -746,9 +755,8 @@ export default function SuperAdminView() {
       const moduleFlags = Object.fromEntries(
         Object.entries(enabledModules).filter(([, enabled]) => !enabled).map(([key]) => [key, false])
       );
-      const data = await callApi("/api/provision-family", { adminSecret, familyName, headEmail, headName, moduleFlags });
+      const data = await callApi("/api/provision-family", { familyName, headEmail, headName, moduleFlags });
       setResult(data);
-      sessionStorage.setItem(SECRET_SESSION_KEY, adminSecret);
       setFamilyName("");
       setHeadEmail("");
       setHeadName("");
@@ -768,6 +776,33 @@ export default function SuperAdminView() {
     } catch { /* clipboard unavailable */ }
   }
 
+  const superadminState = useSuperadminCheck();
+
+  if (superadminState === "checking") {
+    return (
+      <section className="wrap">
+        <div className="section-head"><h2>Provision a new family</h2></div>
+        <p className="form-hint">Checking…</p>
+      </section>
+    );
+  }
+  if (superadminState === "signed-out") {
+    return (
+      <section className="wrap">
+        <div className="section-head"><h2>Provision a new family</h2></div>
+        <p className="form-hint">You need to be signed in with a superadmin account to see this — log in at the main site first, then come back to this page in the same browser tab.</p>
+      </section>
+    );
+  }
+  if (superadminState === "denied") {
+    return (
+      <section className="wrap">
+        <div className="section-head"><h2>Provision a new family</h2></div>
+        <p className="form-hint">Your account isn't a superadmin.</p>
+      </section>
+    );
+  }
+
   return (
     <section className="wrap">
       <div className="section-head">
@@ -775,10 +810,6 @@ export default function SuperAdminView() {
         <p>Internal tool — not linked from anywhere in the app. Creates a real login account and hands the family head credentials to pass along yourself.</p>
       </div>
       <form onSubmit={submit} className="card" style={{ maxWidth: 460, padding: 20 }}>
-        <div className="form-row">
-          <label>Admin secret</label>
-          <input type="password" required value={adminSecret} onChange={(e) => setAdminSecret(e.target.value)} />
-        </div>
         <div className="form-row">
           <label>Family name</label>
           <input type="text" required placeholder="e.g. The Sharma Family" value={familyName} onChange={(e) => setFamilyName(e.target.value)} />
@@ -826,12 +857,12 @@ export default function SuperAdminView() {
         </div>
       )}
 
-      <ManagePlanSection adminSecret={adminSecret} />
-      <BlogTeamSection adminSecret={adminSecret} />
-      <PasswordResetRequestsSection adminSecret={adminSecret} />
-      <AdClickLogSection adminSecret={adminSecret} />
+      <ManagePlanSection />
+      <BlogTeamSection />
+      <PasswordResetRequestsSection />
+      <AdClickLogSection />
       <PushTestSection />
-      <PlatformBroadcastSection adminSecret={adminSecret} />
+      <PlatformBroadcastSection />
     </section>
   );
 }
