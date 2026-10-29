@@ -44,15 +44,22 @@ alter table people add column created_via text;
 -- picking an EXISTING person. Purely additive to the existing invites row.
 alter table invites add column proposed_person_name text;
 
--- Re-creates redeem_invite() to correctly set the new placement_status
--- column (PLACED_CONFIRMED only when the invite actually carried a
--- surviving person_id link, UNANCHORED otherwise) — everything else in
--- this function is byte-for-byte identical to the version from
--- 20260803120100_fix_redeem_invite_person_link_ambiguity.sql. No
--- existing behavior changes for any caller; this only correctly
--- populates a column that didn't exist before this migration.
-create or replace function public.redeem_invite(p_code text, p_display_name text default null)
-returns table(family_id uuid, role family_role)
+-- Re-creates redeem_invite() to (a) correctly set the new
+-- placement_status column (PLACED_CONFIRMED only when the invite
+-- actually carried a surviving person_id link, UNANCHORED otherwise) and
+-- (b) hand back proposed_person_name so the joiner's RelationshipPathBuilder
+-- can pre-fill it — a client-side member has no SELECT access to invites
+-- at all (moderator-only read policy), so the only way to surface this
+-- without a new RLS hole is to return it from here, where the invite row
+-- is already loaded under security-definer privileges. The return TYPE
+-- is changing (one more column), which Postgres doesn't allow via a bare
+-- CREATE OR REPLACE, hence the explicit DROP first. Everything else is
+-- byte-for-byte identical to the version from
+-- 20260803120100_fix_redeem_invite_person_link_ambiguity.sql — no
+-- existing behavior changes for any caller.
+drop function if exists public.redeem_invite(text, text);
+create function public.redeem_invite(p_code text, p_display_name text default null)
+returns table(family_id uuid, role family_role, proposed_person_name text)
 language plpgsql security definer set search_path = public as $$
 declare
   v_invite invites%rowtype;
@@ -82,7 +89,7 @@ begin
   insert into user_preferences (user_id, active_family_id) values (auth.uid(), v_invite.family_id)
     on conflict (user_id) do update set active_family_id = excluded.active_family_id;
 
-  return query select v_invite.family_id, 'member'::family_role;
+  return query select v_invite.family_id, 'member'::family_role, v_invite.proposed_person_name;
 end;
 $$;
 grant execute on function public.redeem_invite(text, text) to authenticated;

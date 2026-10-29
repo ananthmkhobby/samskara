@@ -713,10 +713,21 @@ export async function setReaderStatus(familyId, bookId, personId, status) {
   return mapReaderRow(data);
 }
 
+// Both callers (AuthPanel's JoinForm, JoinFamilyModal) do a hard
+// window.location.reload() right after this resolves, so a plain return
+// value can't reach the next page load — redeem_invite() hands back
+// proposed_person_name specifically so this can stash it in
+// sessionStorage (survives the reload, not the DB round trip a member
+// has no read access to anyway — invites is moderator-read-only RLS) for
+// App.jsx to pick up once, on next boot, and clear.
 export async function redeemInvite(code, displayName) {
   const db = requireClient();
   const { data, error } = await db.rpc("redeem_invite", { p_code: code, p_display_name: displayName || null });
   if (error) throw new Error(error.message);
+  const proposedName = data?.[0]?.proposed_person_name;
+  if (proposedName) {
+    try { sessionStorage.setItem("vamsha.ffoProposedName", proposedName); } catch { /* storage unavailable */ }
+  }
   return data;
 }
 

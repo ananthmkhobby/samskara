@@ -137,6 +137,21 @@ const INVITE_CODE_FROM_URL = typeof window !== "undefined" ? new URLSearchParams
 // this module evaluates (see main.jsx's initDataLayer().finally(...)), so
 // there's no risk of racing an empty tree.
 const PERSON_ID_FROM_URL = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("person") : null;
+// Written by redeemInvite() (familyDb.js) right before the hard reload
+// that follows every invite redemption — the one way to carry
+// invites.proposed_person_name across that reload to the
+// RelationshipPathBuilder gate below, since a member has no direct read
+// access to the invites table at all. Read once, at module level (same
+// reasoning as PERSON_ID_FROM_URL above), then cleared so it doesn't
+// leak into a later, unrelated join.
+const FFO_PROPOSED_NAME_FROM_SESSION = (() => {
+  if (typeof window === "undefined") return null;
+  try {
+    const v = sessionStorage.getItem("vamsha.ffoProposedName");
+    sessionStorage.removeItem("vamsha.ffoProposedName");
+    return v;
+  } catch { return null; }
+})();
 // Read here, not inside TreasuryView.jsx itself — that's lazy-loaded, and
 // this app's own boot effect (below) replaces the URL to strip query
 // strings for any view except a few special-cased ones, which fires
@@ -1084,6 +1099,7 @@ export default function App() {
   if (!IS_DEMO && !ACCOUNT_NEEDS_FAMILY && !IS_BLOG_AUTHOR && isModuleEnabled("fastOnboarding") && MY_PLACEMENT_STATUS === "UNANCHORED" && !skippedPathBuilder) {
     return (
       <RelationshipPathBuilder
+        initialProposedName={FFO_PROPOSED_NAME_FROM_SESSION}
         onDone={() => setSkippedPathBuilder(true)}
       />
     );
