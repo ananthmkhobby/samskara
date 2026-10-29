@@ -47,8 +47,13 @@ security doc nobody can check is worth nothing:
 
 Tracked openly in `docs/SDLC.md` rather than left implicit: no automated
 test suite yet, no error/incident monitoring, no dependency vulnerability
-scanning enabled, no account-deletion flow, and Supabase Auth accounts
-aren't covered by the backup script (`docs/BACKUPS.md`).
+scanning enabled, and Supabase Auth accounts aren't covered by the backup
+script (`docs/BACKUPS.md`).
+
+Self-service account deletion and data export now exist (More → Account) —
+see `docs/ACCOUNT_DELETION.md` for the design, including the manual,
+human-verified fallback for someone who can't sign in. The Privacy Policy's
+published Grievance Officer name is still a placeholder — see that doc.
 
 ## Scope
 

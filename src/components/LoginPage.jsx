@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import AuthPanel from "./AuthPanel";
 import PromoCarousel from "./PromoCarousel";
 import { WHATSAPP_DISPLAY_NUMBER } from "../lib/whatsapp";
@@ -38,9 +39,31 @@ const HERO_IMAGES = [
 ];
 
 export default function LoginPage({ onShowHelp, onShowPrivacy, onShowTerms }) {
+  const heroRef = useRef(null);
+
+  // A small cursor-reactive depth effect, desktop only (no pointer to
+  // react to on mobile, so this simply never fires there — nothing to
+  // guard separately). Writes CSS custom properties rather than React
+  // state, so a fast mouse doesn't cause a re-render on every move; the
+  // actual motion is pure CSS (see .login-hero-brand/.login-hero-copy's
+  // transform in login.css), just driven by these two variables.
+  useEffect(() => {
+    const el = heroRef.current;
+    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    function onMove(e) {
+      const rect = el.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width - 0.5; // -0.5..0.5
+      const y = (e.clientY - rect.top) / rect.height - 0.5;
+      el.style.setProperty("--parallax-x", x.toFixed(3));
+      el.style.setProperty("--parallax-y", y.toFixed(3));
+    }
+    el.addEventListener("mousemove", onMove);
+    return () => el.removeEventListener("mousemove", onMove);
+  }, []);
+
   return (
     <div className="login-page login-page--hero">
-      <div className="login-hero-pane">
+      <div className="login-hero-pane" ref={heroRef}>
         <div className="login-hero-slides" aria-hidden="true">
           {HERO_IMAGES.map((src, i) => (
             <img
@@ -65,10 +88,19 @@ export default function LoginPage({ onShowHelp, onShowPrivacy, onShowTerms }) {
           <p className="login-hero-sub">
             Samskara is where you finally do — the scooter, the kitchen, the everyday things that made up a life, kept for good this time.
           </p>
-          <button type="button" className="login-hero-blog-cta" onClick={() => { window.location.href = "/blog"; }}>
-            <span className="login-hero-blog-cta-icon" aria-hidden="true">📖</span>
-            Read our stories on the Blog →
-          </button>
+          {/* No account needed to try this — pick a photo and preview it
+              right here; signing in only happens once they choose to save
+              it. See FirstMemoryWizard.jsx. */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+            <button type="button" className="login-hero-primary-cta" onClick={() => { window.location.href = "/first-memory"; }}>
+              <span aria-hidden="true">🪔</span>
+              Preserve your first memory →
+            </button>
+            <button type="button" className="login-hero-blog-cta" style={{ marginTop: 10 }} onClick={() => { window.location.href = "/blog"; }}>
+              <span className="login-hero-blog-cta-icon" aria-hidden="true">📖</span>
+              Read our stories on the Blog →
+            </button>
+          </div>
         </div>
       </div>
 

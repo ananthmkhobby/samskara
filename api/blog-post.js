@@ -10,8 +10,23 @@
 // to produce real markup for a crawler (and a brief flash for a human
 // visitor before the SPA takes over) — no hydration-mismatch risk either way.
 import { createClient } from "@supabase/supabase-js";
+import DOMPurify from "isomorphic-dompurify";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+
+// Defense-in-depth: blogDb.js already sanitizes body_html before it's ever
+// written, but this is the one path that renders it unescaped into raw
+// HTML a crawler/browser parses directly — a row written before that fix
+// existed (or via a direct SQL edit) shouldn't be able to run script here.
+function sanitizeBodyHtml(html) {
+  return DOMPurify.sanitize(html || "", {
+    ALLOWED_TAGS: [
+      "p", "br", "strong", "em", "s", "u", "code", "pre", "blockquote",
+      "h1", "h2", "h3", "ul", "ol", "li", "a", "img", "hr",
+    ],
+    ALLOWED_ATTR: ["href", "src", "alt", "title", "target", "rel"],
+  });
+}
 
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -93,7 +108,7 @@ export default async function handler(req, res) {
         coverUrl ? `<img src="${coverUrl}" alt="" style="width:100%;border-radius:8px;margin-bottom:20px;">` : "",
         `<h1>${escapeHtml(post.title)}</h1>`,
         `<p style="color:#7a5c2e;font-size:14px;">By ${escapeHtml(post.author_display_name)}${publishedDate ? ` · ${publishedDate}` : ""}</p>`,
-        post.body_html,
+        sanitizeBodyHtml(post.body_html),
         "</article>",
       ].filter(Boolean).join("\n")
     );

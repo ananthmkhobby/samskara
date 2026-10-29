@@ -51,24 +51,58 @@
   display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden;
   background: var(--maroon-deep);
 }
-.login-hero-slides { position: absolute; inset: 0; }
+.login-hero-slides {
+  position: absolute; inset: -2%; /* small overscan so the parallax shift below never exposes an edge */
+  transform: translate(calc(var(--parallax-x, 0) * 6px), calc(var(--parallax-y, 0) * 6px));
+  transition: transform .25s ease-out;
+}
 .login-hero-slide {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center;
-  filter: saturate(.92) contrast(1.03); opacity: 0;
-  animation: login-hero-fade 40s ease-in-out infinite;
+  filter: saturate(.92) contrast(1.03); opacity: 0; transform: scale(1);
+  animation: login-hero-ken-burns 40s ease-in-out infinite;
+  will-change: transform, opacity;
 }
-@keyframes login-hero-fade { 0% { opacity: 1; } 8% { opacity: 1; } 10% { opacity: 0; } 98.5% { opacity: 0; } 100% { opacity: 1; } }
+/* Each image gets one ~4s "turn" (10 images × 4s = the shared 40s loop,
+   staggered via animationDelay in LoginPage.jsx) — a slow zoom + pan while
+   it's visible, instead of the old flat crossfade. Opacity and transform
+   share one timeline so the zoom is always mid-motion exactly while the
+   photo is on screen, reset invisibly before its next turn comes back
+   around. Direction alternates per slide (see the nth-child rules below)
+   so ten photos in a row don't all drift the same way. */
+@keyframes login-hero-ken-burns {
+  0% { opacity: 0; transform: scale(1) translate(0, 0); }
+  1% { opacity: 1; }
+  8% { opacity: 1; transform: scale(1.09) translate(var(--kb-x, -1.5%), var(--kb-y, -1%)); }
+  10% { opacity: 0; }
+  100% { opacity: 0; transform: scale(1) translate(0, 0); }
+}
+.login-hero-slide:nth-child(3n+1) { --kb-x: -1.5%; --kb-y: -1%; }
+.login-hero-slide:nth-child(3n+2) { --kb-x: 1.5%; --kb-y: -1.2%; }
+.login-hero-slide:nth-child(3n) { --kb-x: -1%; --kb-y: 1.3%; }
 .login-hero-scrim {
   position: absolute; inset: 0;
   background: linear-gradient(190deg, rgba(28,10,8,.12) 0%, rgba(28,10,8,.38) 42%, rgba(20,7,6,.94) 100%);
 }
-.login-hero-brand { position: relative; z-index: 2; padding: 30px 32px; }
+/* --parallax-x/-y are set by LoginPage.jsx's mousemove listener on
+   .login-hero-pane (desktop only — never set on mobile, so these default
+   to 0 and nothing moves there). A few pixels of opposite-direction drift
+   reads as depth without calling attention to itself; much more than
+   this starts to feel gimmicky rather than premium. */
+.login-hero-brand {
+  position: relative; z-index: 2; padding: 30px 32px;
+  transform: translate(calc(var(--parallax-x, 0) * -10px), calc(var(--parallax-y, 0) * -10px));
+  transition: transform .25s ease-out;
+}
 .login-hero-devanagari { font-family: var(--font-devanagari); font-size: 21px; color: #FBF4E2; }
 .login-hero-translit {
   margin-top: 4px; font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase;
   color: rgba(251,244,226,.68); font-weight: 700;
 }
-.login-hero-copy { position: relative; z-index: 2; padding: 0 44px 48px; max-width: 560px; }
+.login-hero-copy {
+  position: relative; z-index: 2; padding: 0 44px 48px; max-width: 560px;
+  transform: translate(calc(var(--parallax-x, 0) * -16px), calc(var(--parallax-y, 0) * -16px));
+  transition: transform .25s ease-out;
+}
 .login-hero-caption { margin: 0 0 14px; font-family: var(--font-display); font-style: italic; font-size: 14px; color: #E7BBA9; }
 .login-hero-hook {
   margin: 0; font-family: var(--font-display); font-weight: 600; font-size: clamp(26px, 3.4vw, 38px);
@@ -83,6 +117,22 @@
 }
 .login-hero-blog-cta:hover { background: rgba(251,244,226,.18); transform: translateY(-1px); }
 .login-hero-blog-cta .login-hero-blog-cta-icon { font-size: 15px; }
+
+/* The hero pane's own primary action (FirstMemoryWizard's entry point) —
+   deliberately NOT .btn.primary, which resolves to the same maroon-deep
+   as this pane's own background and all but disappears into it. A warm
+   gold fill is the one color in this app's palette that reads as "the
+   main thing to tap" against a dark backdrop without fighting the
+   secondary (outlined) blog button right below it. Hardcoded, not a CSS
+   variable, same reasoning as .login-hero-blog-cta's own hardcoded
+   light colors — this pane is always dark, regardless of site theme. */
+.login-hero-primary-cta {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 22px; padding: 13px 26px;
+  border-radius: 999px; border: 1px solid #E3B558; background: linear-gradient(135deg, #E3B558, #C9941F);
+  color: #2A1C05; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer;
+  box-shadow: 0 4px 18px rgba(227,181,88,.35); transition: transform .15s ease, box-shadow .15s ease;
+}
+.login-hero-primary-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(227,181,88,.45); }
 
 .login-form-pane {
   position: relative; flex: 1 1 440px; min-width: 320px; display: flex; flex-direction: column;
@@ -103,6 +153,10 @@
   .login-form-pane { padding-top: 90px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .login-hero-slide { animation: none !important; opacity: 0 !important; }
+  .login-hero-slide { animation: none !important; opacity: 0 !important; transform: none !important; }
   .login-hero-slide:first-child { opacity: 1 !important; }
+  /* The parallax listener itself already skips attaching under this same
+     media query (see LoginPage.jsx) — these are just a hard backstop in
+     case the custom properties were ever set some other way. */
+  .login-hero-slides, .login-hero-brand, .login-hero-copy { transform: none !important; transition: none !important; }
 }

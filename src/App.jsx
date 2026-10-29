@@ -41,9 +41,11 @@ import TermsOfServiceStandalone from "./components/TermsOfServiceStandalone";
 import JoinFamilyModal from "./components/JoinFamilyModal";
 import ConnectWhatsAppView from "./components/ConnectWhatsAppView";
 import NotificationSettingsView from "./components/NotificationSettingsView";
+import AccountSettingsView from "./components/AccountSettingsView";
 import ShareTargetLanding from "./components/ShareTargetLanding";
 import NotificationPrompt from "./components/NotificationPrompt";
 import SharedPhotoLanding from "./components/SharedPhotoLanding";
+import FirstMemoryWizard from "./components/FirstMemoryWizard";
 import { getPushSubscriptionState, enablePush } from "./lib/push";
 import ParamparaView from "./components/ParamparaView";
 import ParamparaContributeModal from "./components/ParamparaContributeModal";
@@ -77,7 +79,7 @@ async function withMediaUrl(contribution) {
   return { ...contribution, mediaUrl };
 }
 
-const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp", notifications: "/notifications", blog: "/blog", plans: "/plans" };
+const VIEW_PATHS = { cover: "/", tree: "/tree", parampara: "/parampara", library: "/library", treasury: "/treasury", gallery: "/gallery", search: "/search", more: "/more", vault: "/vault", map: "/journey", japa: "/japa", activity: "/activity", admin: "/admin", builder: "/builder", superadmin: "/superadmin", help: "/help", privacy: "/privacy", terms: "/terms", connectWhatsapp: "/connect-whatsapp", notifications: "/notifications", account: "/account", blog: "/blog", plans: "/plans", firstMemory: "/first-memory" };
 const PATH_TO_VIEW = Object.fromEntries(Object.entries(VIEW_PATHS).map(([k, v]) => [v, k]));
 // Maps a view to its families.module_flags entitlement key — a view with no
 // entry here (Tree, Folios, Search, Gallery, Activity, Admin, ...) is never
@@ -129,6 +131,15 @@ const INVITE_CODE_FROM_URL = typeof window !== "undefined" ? new URLSearchParams
 // this module evaluates (see main.jsx's initDataLayer().finally(...)), so
 // there's no risk of racing an empty tree.
 const PERSON_ID_FROM_URL = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("person") : null;
+// Read here, not inside TreasuryView.jsx itself — that's lazy-loaded, and
+// this app's own boot effect (below) replaces the URL to strip query
+// strings for any view except a few special-cased ones, which fires
+// after the very first render but well before a lazy chunk's dynamic
+// import() could possibly have resolved. A module-level read inside the
+// lazy component loses that race every time; reading it here, at real
+// top-level module load (same moment PERSON_ID_FROM_URL above is read),
+// doesn't have that problem.
+const GALLERY_TAB_FROM_URL = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : null;
 const WHATSAPP_LINK_TOKEN_FROM_URL = (() => {
   if (typeof window === "undefined") return null;
   const fromUrl = new URLSearchParams(window.location.search).get("token");
@@ -1021,6 +1032,15 @@ export default function App() {
     if (view === "sharedLink") {
       return <SharedPhotoLanding onGoHome={() => { window.history.replaceState({}, "", "/"); goTo("cover"); }} />;
     }
+    // Same reasoning as sharedLink above — the whole point of this flow is
+    // letting an anonymous visitor pick a photo and preview it before ever
+    // being asked to sign in, so it must bypass the login gate entirely.
+    // FirstMemoryWizard.jsx handles its own internal signed-in-vs-not
+    // branching (shows the inline auth/signup step only once "Save" is
+    // actually pressed).
+    if (view === "firstMemory") {
+      return <FirstMemoryWizard onGoHome={() => { window.history.replaceState({}, "", "/"); goTo("cover"); }} />;
+    }
     // /superadmin needs no family data either (it talks to its own API
     // route, not the Supabase family fetch) — it must bypass the login
     // gate the same way Help does, or the provisioning page becomes
@@ -1138,6 +1158,9 @@ export default function App() {
   if (view === "sharedLink") {
     return <SharedPhotoLanding onGoHome={() => { window.history.replaceState({}, "", "/"); goTo("cover"); }} />;
   }
+  if (view === "firstMemory") {
+    return <FirstMemoryWizard onGoHome={() => { window.history.replaceState({}, "", "/"); goTo("cover"); }} />;
+  }
 
   if (showFamilySplash && (CURRENT_FAMILY_LOGO_URL || CURRENT_FAMILY_TAGLINE)) {
     return (
@@ -1196,7 +1219,7 @@ export default function App() {
         {view === "parampara" && !moduleBlocked && <ParamparaView contributions={contributions} canModerate={canModerate} onContribute={() => openParamparaContribute()} onEdit={openParamparaContribute} />}
         {view === "library" && !moduleBlocked && <LibraryView onOpenBook={openBook} onAddBook={openAddBook} />}
         {view === "treasury" && !moduleBlocked && <TreasuryView contributions={contributions} onSelectPerson={selectPerson} initialTab="Wisdom" />}
-        {view === "gallery" && <TreasuryView contributions={contributions} onSelectPerson={selectPerson} initialTab="Gallery" />}
+        {view === "gallery" && <TreasuryView contributions={contributions} onSelectPerson={selectPerson} initialTab={GALLERY_TAB_FROM_URL === "private" ? "Private to me" : "Gallery"} />}
         {view === "search" && <SearchView onSelectPerson={selectPerson} />}
         {view === "more" && <MoreMenu onNav={goTo} canModerate={canModerate} />}
         {view === "vault" && !moduleBlocked && <VaultView contributions={contributions} />}
@@ -1216,6 +1239,7 @@ export default function App() {
         {view === "terms" && <TermsOfServiceView />}
         {view === "connectWhatsapp" && <ConnectWhatsAppView token={WHATSAPP_LINK_TOKEN_FROM_URL} onDone={() => goTo("cover")} />}
         {view === "notifications" && <NotificationSettingsView onDone={() => goTo("more")} />}
+        {view === "account" && <AccountSettingsView onDone={() => goTo("more")} />}
         {/* view === "blog" is handled by its own early return above this
             whole TopBar/BottomBar frame — never reaches here. */}
       </main>

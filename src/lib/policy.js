@@ -10,8 +10,8 @@
 // we do with someone's data) should NOT bump this — asking a family to
 // re-consent for a comma trains them to click through without reading, which
 // is precisely what invalidates consent.
-export const POLICY_VERSION = "2026-10-16";
+export const POLICY_VERSION = "2026-10-29";
 
 // Shown to the person so the thing they're agreeing to is identifiable, not
 // just an opaque version string.
-export const POLICY_VERSION_LABEL = "16 October 2026";
+export const POLICY_VERSION_LABEL = "29 October 2026";

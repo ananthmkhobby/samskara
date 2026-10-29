@@ -4,10 +4,28 @@
 // supabase/migrations/20261015150000_blog_posts_and_authors.sql), same
 // convention as the rest of the app's data modules: no bespoke CRUD API
 // routes, the database is the actual authority either way.
+import DOMPurify from "isomorphic-dompurify";
 import { supabase } from "../lib/supabaseClient";
 import { resizeImage } from "../lib/imageResize";
 
 const BUCKET = "blog-media";
+
+// RLS (`is_blog_team()`) gates WHO can write a post, never WHAT the HTML
+// contains — a direct REST call with a hand-crafted body_html bypasses the
+// Tiptap editor entirely. This is the one place both write paths funnel
+// through, so it's the one place sanitization has to happen for it to be
+// real. Mirrors the actual Tiptap extension set in use (starter-kit +
+// extension-image + extension-link) — nothing broader is ever needed.
+function sanitizeBodyHtml(html) {
+  return DOMPurify.sanitize(html || "", {
+    ALLOWED_TAGS: [
+      "p", "br", "strong", "em", "s", "u", "code", "pre", "blockquote",
+      "h1", "h2", "h3", "ul", "ol", "li", "a", "img", "hr",
+    ],
+    ALLOWED_ATTR: ["href", "src", "alt", "title", "target", "rel"],
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.:-]|$))/i,
+  });
+}
 
 function requireClient() {
   if (!supabase) throw new Error("Backend isn't configured.");
@@ -108,7 +126,7 @@ export async function createPost({ slug, title, excerpt, coverImagePath, bodyJso
   const db = requireClient();
   const { data, error } = await db.from("blog_posts").insert({
     slug, title, excerpt: excerpt || null, cover_image_path: coverImagePath || null,
-    body_json: bodyJson, body_html: bodyHtml, language: language || null, status,
+    body_json: bodyJson, body_html: sanitizeBodyHtml(bodyHtml), language: language || null, status,
     author_user_id: authorUserId, author_display_name: authorDisplayName,
     published_at: status === "published" ? new Date().toISOString() : null,
   }).select().single();
@@ -120,7 +138,7 @@ export async function updatePost(id, { title, excerpt, coverImagePath, bodyJson,
   const db = requireClient();
   const patch = {
     title, excerpt: excerpt || null, cover_image_path: coverImagePath || null,
-    body_json: bodyJson, body_html: bodyHtml, language: language || null, status,
+    body_json: bodyJson, body_html: sanitizeBodyHtml(bodyHtml), language: language || null, status,
     updated_at: new Date().toISOString(),
   };
   // Only stamp published_at the first time a post goes live — re-saving an
