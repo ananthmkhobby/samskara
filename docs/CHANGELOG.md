@@ -11,6 +11,14 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.29.2 — Replace shared admin secret with per-operator superadmin auth
+
+[PR #23](https://github.com/ananthmkhobby/samskara/pull/23) — closes action item #8 from `docs/ARCHITECTURE_REVIEW.md`. Every human-operator superadmin endpoint (`provision-family`, `manage-plan`, `broadcast`, `blog-team`, `track-click`, `password-reset-requests`) was gated by one shared `ADMIN_PROVISION_SECRET` string, typed into a browser field and kept in `sessionStorage` — can't be revoked for one person without breaking it for everyone, never expires.
+
+Adds a `superadmins` table (security-definer `is_superadmin()` helper, self-read-only RLS) and `api/_superadminAuth.js`'s `requireSuperadmin()`, authenticating via the caller's own bearer token instead — same posture as every other member-facing endpoint. `SuperAdminView.jsx`'s "enter the admin secret" field is gone; the view now checks the signed-in account against `superadmins` directly. `CRON_SECRET` deliberately untouched — it gates Vercel Cron's own service-to-service call, which has no human operator behind it.
+
+**Post-deploy verified**: live check against the deployed endpoint (not just locally) — a real superadmin bearer token gets 200, a plain signed-in user gets 403, no token gets 401. Seeded `anantht@gmail.com` as the first production superadmin.
+
 ## v2026.10.29 — Blog stored-XSS fix, self-service account deletion/export, grievance redressal
 
 [PR #22](https://github.com/ananthmkhobby/samskara/pull/22) — three changes, all out of a full architecture/security/compliance review (`docs/ARCHITECTURE_REVIEW.md`). Fixes a stored-XSS gap: blog `body_html` was written and rendered with zero sanitization (RLS gates who can write a post, never what the HTML contains) — adds `isomorphic-dompurify` in `blogDb.js`'s write path and `api/blog-post.js`'s render path as defense-in-depth. Verified a `<script>`/`onerror`/`javascript:` payload all come out stripped.
