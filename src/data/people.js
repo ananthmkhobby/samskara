@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabaseClient";
 import { batchResolveMediaUrls, resolveMediaUrl } from "../lib/mediaUpload";
-import { fetchFamilyData, fetchFamilyDetails, fetchMyFamilies, fetchActiveFamilyId, fetchLibraryData, fetchPracticeLogs, mapContributionRow, insertPerson as dbInsertPerson, insertMarriage as dbInsertMarriage, insertBook as dbInsertBook, bumpFamilyFlame, fetchMyPersonLink, fetchMyPlacementStatus, hasAcceptedPolicy } from "./familyDb";
+import { fetchFamilyData, fetchFamilyDetails, fetchMyFamilies, fetchActiveFamilyId, fetchLibraryData, fetchPracticeLogs, mapContributionRow, insertPerson as dbInsertPerson, insertMarriage as dbInsertMarriage, insertBook as dbInsertBook, bumpFamilyFlame, fetchMyPersonLink, fetchMyPlacementStatus, fetchMyDisplayName, hasAcceptedPolicy } from "./familyDb";
 import { setSession, DEMO_FAMILY_ID, CURRENT_FAMILY_ID } from "./session";
 import { POLICY_VERSION } from "../lib/policy";
 import { getEffectiveModules } from "../lib/planTiers";
@@ -126,7 +126,7 @@ export async function initDataLayer() {
 
   const familyId = resolved.familyId;
 
-  const [{ people, marriages, contributions, experienceEntries }, familyDetails, libraryData, practiceLogs, flameStreak, myPersonId, myPlacementStatus, needsConsent] = await Promise.all([
+  const [{ people, marriages, contributions, experienceEntries }, familyDetails, libraryData, practiceLogs, flameStreak, myPersonId, myPlacementStatus, currentDisplayName, needsConsent] = await Promise.all([
     fetchFamilyData(familyId),
     fetchFamilyDetails(familyId),
     fetchLibraryData(familyId),
@@ -141,6 +141,7 @@ export async function initDataLayer() {
     // "Finish My Connection" card gate; a failed lookup just hides those,
     // it never blocks boot.
     resolved.userId ? fetchMyPlacementStatus(familyId, resolved.userId).catch(() => null) : Promise.resolve(null),
+    resolved.userId ? fetchMyDisplayName(familyId, resolved.userId).catch(() => null) : Promise.resolve(null),
     // Fails *closed* — if the consent lookup itself errors we'd rather show
     // the acceptance screen a second time than let someone through unrecorded,
     // since the whole value of this table is being able to demonstrate consent.
@@ -223,6 +224,7 @@ export async function initDataLayer() {
     flameStreak,
     myPersonId,
     myPlacementStatus,
+    currentDisplayName,
     needsConsent,
   });
 }

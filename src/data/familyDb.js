@@ -793,6 +793,21 @@ export async function fetchMyPlacementStatus(familyId, userId) {
   return data?.placement_status || null;
 }
 
+export async function fetchMyDisplayName(familyId, userId) {
+  const db = requireClient();
+  const { data, error } = await db.from("family_members").select("display_name").eq("family_id", familyId).eq("user_id", userId).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.display_name || null;
+}
+
+// Self-only — see 20261029210000_self_display_name.sql for why this
+// exists (updateMemberDisplayName below is Head-only by RLS).
+export async function setMyDisplayName(displayName) {
+  const db = requireClient();
+  const { error } = await db.rpc("set_my_display_name", { p_display_name: displayName });
+  if (error) throw new Error(error.message);
+}
+
 export async function fetchWorkbenchTasks(familyId) {
   const db = requireClient();
   const { data, error } = await db

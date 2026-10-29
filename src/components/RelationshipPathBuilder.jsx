@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PEOPLE } from "../data/people";
-import { submitRelationshipPathClaim, createProvisionalPerson } from "../data/familyDb";
+import { CURRENT_DISPLAY_NAME } from "../data/session";
+import { submitRelationshipPathClaim, createProvisionalPerson, setMyDisplayName } from "../data/familyDb";
 
 const RELATIONSHIPS = [
   "parent", "child", "sibling", "spouse", "cousin", "cousin's spouse",
@@ -14,7 +15,14 @@ const RELATIONSHIPS = [
 // missing person) per docs/FAST_FAMILY_ONBOARDING.md — never invents a
 // parent/grandparent; "not sure"/skip is always a valid, complete answer.
 export default function RelationshipPathBuilder({ initialProposedName, onDone }) {
-  const [step, setStep] = useState("anchor"); // "anchor" | "relationship" | "followups" | "done"
+  // "name" is first, always — relying on an earlier step (signup, an
+  // admin-created login) having already collected a display name turned
+  // out not to be safe: the "I already have an account" sign-in path
+  // never asks for one, and create-member-login.js doesn't either. This
+  // is the one screen every unanchored member is guaranteed to reach, so
+  // it confirms/collects the name directly rather than assuming.
+  const [step, setStep] = useState(CURRENT_DISPLAY_NAME ? "anchor" : "name");
+  const [myName, setMyName] = useState(CURRENT_DISPLAY_NAME || "");
   const [anchorId, setAnchorId] = useState("");
   const [relationship, setRelationship] = useState("");
   const [branchSide, setBranchSide] = useState("");
@@ -25,6 +33,21 @@ export default function RelationshipPathBuilder({ initialProposedName, onDone })
   const [error, setError] = useState("");
 
   const needsSide = relationship === "cousin" || relationship === "cousin's spouse" || relationship === "in-law";
+  const anchorPerson = anchorId ? PEOPLE.find((p) => p.id === anchorId) : null;
+
+  async function confirmName() {
+    if (!myName.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      if (myName.trim() !== CURRENT_DISPLAY_NAME) await setMyDisplayName(myName.trim());
+      setStep("anchor");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submit() {
     setBusy(true);
@@ -65,6 +88,20 @@ export default function RelationshipPathBuilder({ initialProposedName, onDone })
       </div>
 
       <div className="card" style={{ padding: 24 }}>
+        {step === "name" && (
+          <>
+            <label>Your name, as the family should see it</label>
+            <input
+              type="text" value={myName} onChange={(e) => setMyName(e.target.value)}
+              placeholder="e.g. Kavya Reddy" style={{ marginBottom: 14 }}
+            />
+            {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
+            <button type="button" className="btn primary small" disabled={!myName.trim() || busy} onClick={confirmName}>
+              {busy ? "Saving…" : "Continue →"}
+            </button>
+          </>
+        )}
+
         {step === "anchor" && (
           <>
             <label>Do you recognize anyone already in the tree?</label>
@@ -74,6 +111,11 @@ export default function RelationshipPathBuilder({ initialProposedName, onDone })
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
+            {!anchorId && (
+              <p className="form-hint" style={{ marginBottom: 10 }}>
+                That's fine — you'll stay a full member either way. An Admin will reach out to figure out where you fit.
+              </p>
+            )}
             <button type="button" className="btn primary small" onClick={() => setStep("relationship")}>Continue →</button>
             <button type="button" className="btn ghost small" style={{ marginLeft: 8 }} onClick={onDone}>Skip for now</button>
           </>
@@ -81,7 +123,15 @@ export default function RelationshipPathBuilder({ initialProposedName, onDone })
 
         {step === "relationship" && (
           <>
-            <label>How are you related to them?</label>
+            <label>
+              {anchorPerson ? `How are you related to ${anchorPerson.name}?` : "How are you related to the family, generally?"}
+            </label>
+            {!anchorPerson && (
+              <p className="form-hint" style={{ marginTop: -8, marginBottom: 10 }}>
+                You didn't pick anyone in the last step, so just describe your relationship in general terms — an Admin
+                will follow up to work out the specifics.
+              </p>
+            )}
             <select value={relationship} onChange={(e) => setRelationship(e.target.value)} style={{ marginBottom: 14 }}>
               <option value="">— choose one —</option>
               {RELATIONSHIPS.map((r) => <option key={r} value={r}>{r}</option>)}
