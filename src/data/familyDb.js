@@ -115,6 +115,7 @@ export async function insertContribution(familyId, c) {
     relation: c.relation ?? null,
     name: c.name ?? null,
     birth_year: c.birthYear ?? null,
+    gender: c.gender ?? null,
     geo: c.geo ?? null,
     title: c.title ?? null,
     body_text: c.text ?? null,
@@ -199,6 +200,7 @@ export function mapContributionRow(row) {
     relation: row.relation,
     name: row.name,
     birthYear: row.birth_year,
+    gender: row.gender,
     geo: row.geo,
     title: row.title,
     text: row.body_text,
@@ -232,6 +234,7 @@ export async function insertPerson(familyId, p, sortIndex) {
     born_year_only: p.bornYearOnly ?? false,
     died_year_only: p.diedYearOnly ?? false,
     died_unknown: p.diedUnknown ?? false,
+    gender: p.gender ?? null,
   };
   const { error } = await db.from("people").insert(row);
   if (error) throw new Error(error.message);

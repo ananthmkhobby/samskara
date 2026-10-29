@@ -707,6 +707,7 @@ export default function App() {
         // it so the Vault doesn't list this as a real January 1st event.
         if (c.birthYear) { newPerson.born = `${c.birthYear}-01-01`; newPerson.bornYearOnly = true; }
         if (c.geo) newPerson.geo = c.geo;
+        if (c.gender) newPerson.gender = c.gender;
         if (c.relation === "spouse") {
           newPerson.gen = anchor.gen;
           newPerson.parents = [];
