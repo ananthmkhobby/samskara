@@ -1,0 +1,18 @@
+-- Backstop for docs/ARCHITECTURE_REVIEW.md §4/§9 action item 7: there was
+-- no cap on an individual video/audio recording's size, only a plan-tier
+-- COUNT cap on how many photos/recordings/videos a family can have
+-- (20261017120000_plan_enforcement.sql). A single very long recording
+-- could be disproportionately large relative to a plan's actual storage
+-- intent, with nothing stopping it.
+--
+-- The real enforcement belongs here, not only in client code — Supabase
+-- Storage checks file_size_limit itself before the object is ever
+-- written, so this holds even against a client that skips the app's own
+-- recording-duration cap (src/hooks/useMediaRecorder.js) entirely, e.g. a
+-- direct REST upload.
+--
+-- 250MB is a generous ceiling, chosen to comfortably fit every real use
+-- of this bucket (10-minute webcam video, 20-minute audio, a scanned book
+-- PDF via AddBookModal.jsx) while still stopping anything runaway — not a
+-- tight quota, just a sanity backstop.
+update storage.buckets set file_size_limit = 262144000 where id = 'family-media';

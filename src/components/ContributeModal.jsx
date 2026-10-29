@@ -25,8 +25,14 @@ const SPEECH_LANGS = [
   { code: "kn-IN", label: "ಕನ್ನಡ (Kannada)" }
 ];
 
+function formatDuration(totalSeconds) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 function RecorderPanel({ kind, onMediaReady }) {
-  const { recording, mediaUrl, mediaBlob, stream, error, start, stop, reset } = useMediaRecorder(kind);
+  const { recording, mediaUrl, mediaBlob, stream, error, start, stop, reset, elapsedSeconds, maxSeconds, autoStopped } = useMediaRecorder(kind);
   const videoRef = useRef(null);
 
   useEffect(() => {
@@ -64,9 +70,14 @@ function RecorderPanel({ kind, onMediaReady }) {
           <button type="button" className="btn small" onClick={reset}>Re-record</button>
         )}
         <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>
-          {recording ? "Recording…" : mediaUrl ? "Recorded — ready to submit" : "Not recording"}
+          {recording
+            ? `Recording… ${formatDuration(elapsedSeconds)} / ${formatDuration(maxSeconds)}`
+            : mediaUrl ? "Recorded — ready to submit" : "Not recording"}
         </span>
       </div>
+      {autoStopped && (
+        <p className="form-hint">Stopped automatically at {formatDuration(maxSeconds)}, the longest a single recording can be.</p>
+      )}
       {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
     </div>
   );
