@@ -11,6 +11,14 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.29.4 — Lazy-load JourneyMapView to shrink the eager bundle
+
+[PR #25](https://github.com/ananthmkhobby/samskara/pull/25) — closes action item #9 from `docs/ARCHITECTURE_REVIEW.md`. The two chunks the review originally flagged — `familyTemplate` (`xlsx`) and `BlogEditorView` (Tiptap) — turned out to already be correctly lazy-loaded. The real find: `JourneyMapView` pulled in `leaflet` + `react-leaflet` (~47KB gzipped) eagerly, despite Journey being a secondary feature most sessions never open.
+
+Made it `lazy()` like its siblings — main bundle dropped from 190KB to 143KB gzipped. Functionally verified the map still renders correctly (pins, routes, generation filters) via the dev preview in demo mode.
+
+**Post-deploy verified**: confirmed `leaflet` no longer appears in production's main bundle at all (0 matches), after confirming the new deploy had actually propagated (the first check caught the previous deploy's bundle still live — a timing gap, not a failure).
+
 ## v2026.10.29.3 — Cap recorded video/audio size and duration
 
 [PR #24](https://github.com/ananthmkhobby/samskara/pull/24) — closes action item #7 from `docs/ARCHITECTURE_REVIEW.md`. A single in-browser recording had no cap at all — only a plan-tier COUNT limit on photos/recordings/videos existed, nothing stopped one very long recording from being disproportionately large.
