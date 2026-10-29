@@ -326,16 +326,28 @@ function SignUpForm({ email, setEmail, password, setPassword, name, setName, bus
         <label>Choose a password</label>
         <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
-      <label className="consent-check" style={{ marginTop: 14, marginBottom: 4, ...(!bothViewed ? { opacity: 0.5, cursor: "not-allowed" } : {}) }}>
+      {/* Stated before the checkbox is ever touched, not just as an
+          after-the-fact hint once it's found disabled — the opacity alone
+          reads as "broken" to real users, not "do something first." */}
+      {!bothViewed && (
+        <p className="form-hint" style={{ marginTop: 10, fontWeight: 700, color: "var(--ink)" }}>
+          Tap both links below first — the checkbox unlocks once you've opened each one.
+        </p>
+      )}
+      <label className="consent-check" style={{ marginTop: 10, marginBottom: 4, ...(!bothViewed ? { opacity: 0.5, cursor: "not-allowed" } : {}) }}>
         <input type="checkbox" checked={agreed} disabled={!bothViewed} onChange={(e) => setAgreed(e.target.checked)} />
         <span>
           I agree to the{" "}
-          <button type="button" className="link-btn" onClick={() => { setViewedPrivacy(true); setReading("privacy"); }}>Privacy Policy{viewedPrivacy ? " ✓" : ""}</button>
+          <button type="button" className="link-btn" style={viewedPrivacy ? { color: "#2f7d3f" } : { fontWeight: 700 }} onClick={() => { setViewedPrivacy(true); setReading("privacy"); }}>
+            {viewedPrivacy ? "✓ Privacy Policy" : "Privacy Policy →"}
+          </button>
           {" "}and{" "}
-          <button type="button" className="link-btn" onClick={() => { setViewedTerms(true); setReading("terms"); }}>Terms &amp; Conditions{viewedTerms ? " ✓" : ""}</button>
+          <button type="button" className="link-btn" style={viewedTerms ? { color: "#2f7d3f" } : { fontWeight: 700 }} onClick={() => { setViewedTerms(true); setReading("terms"); }}>
+            {viewedTerms ? "✓ Terms & Conditions" : "Terms & Conditions →"}
+          </button>
         </span>
       </label>
-      {!bothViewed && <p className="form-hint">Open both above at least once to check this box.</p>}
+      {bothViewed && <p className="form-hint" style={{ fontWeight: 700, color: "#2f7d3f" }}>✓ Both opened — you can check the box above now.</p>}
       {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
       <button type="submit" className="btn primary small" disabled={busy || !agreed} style={{ marginTop: 10 }}>
         {busy ? "Creating account…" : "Create account →"}
@@ -496,16 +508,25 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
       )}
       {!alreadySignedIn && isNewAccount && (
         <>
-          <label className="consent-check" style={{ marginTop: 14, marginBottom: 4, ...(!bothViewed ? { opacity: 0.5, cursor: "not-allowed" } : {}) }}>
+          {!bothViewed && (
+            <p className="form-hint" style={{ marginTop: 10, fontWeight: 700, color: "var(--ink)" }}>
+              Tap both links below first — the checkbox unlocks once you've opened each one.
+            </p>
+          )}
+          <label className="consent-check" style={{ marginTop: 10, marginBottom: 4, ...(!bothViewed ? { opacity: 0.5, cursor: "not-allowed" } : {}) }}>
             <input type="checkbox" checked={agreed} disabled={!bothViewed} onChange={(e) => setAgreed(e.target.checked)} />
             <span>
               I agree to the{" "}
-              <button type="button" className="link-btn" onClick={() => { setViewedPrivacy(true); setReading("privacy"); }}>Privacy Policy{viewedPrivacy ? " ✓" : ""}</button>
+              <button type="button" className="link-btn" style={viewedPrivacy ? { color: "#2f7d3f" } : { fontWeight: 700 }} onClick={() => { setViewedPrivacy(true); setReading("privacy"); }}>
+                {viewedPrivacy ? "✓ Privacy Policy" : "Privacy Policy →"}
+              </button>
               {" "}and{" "}
-              <button type="button" className="link-btn" onClick={() => { setViewedTerms(true); setReading("terms"); }}>Terms &amp; Conditions{viewedTerms ? " ✓" : ""}</button>
+              <button type="button" className="link-btn" style={viewedTerms ? { color: "#2f7d3f" } : { fontWeight: 700 }} onClick={() => { setViewedTerms(true); setReading("terms"); }}>
+                {viewedTerms ? "✓ Terms & Conditions" : "Terms & Conditions →"}
+              </button>
             </span>
           </label>
-          {!bothViewed && <p className="form-hint">Open both above at least once to check this box.</p>}
+          {bothViewed && <p className="form-hint" style={{ fontWeight: 700, color: "#2f7d3f" }}>✓ Both opened — you can check the box above now.</p>}
         </>
       )}
       {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
