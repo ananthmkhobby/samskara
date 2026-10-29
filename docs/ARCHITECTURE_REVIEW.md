@@ -386,8 +386,12 @@ next feature push, not deferred further:
    Privacy Policy (29 Oct 2026), but with a **placeholder name**; a real
    named individual still needs to be published (DPDPA requires a name,
    not just a role-based email). See `docs/ACCOUNT_DELETION.md`.
-7. Add a duration/size cap on recorded video/audio (scoped and designed
-   in an earlier session pass, not yet built).
+7. ✅ ~~Add a duration/size cap on recorded video/audio~~ — **fixed 29
+   Oct 2026**: `family-media`'s Storage `file_size_limit` set to 250MB
+   (`20261029190000_media_size_caps.sql`, verified it actually rejects an
+   oversized upload server-side, bypassing RLS), plus a client-side
+   recording-duration cap with a visible countdown and auto-stop (10 min
+   video / 20 min audio, `src/hooks/useMediaRecorder.js`).
 8. ✅ ~~Move `ADMIN_PROVISION_SECRET` off a shared-string model~~ —
    **fixed 29 Oct 2026**: every human-operator superadmin endpoint now
    authenticates via the caller's own session + a `superadmins` table

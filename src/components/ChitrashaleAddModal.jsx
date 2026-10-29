@@ -8,8 +8,14 @@ import { uploadFamilyMedia } from "../lib/mediaUpload";
 import { CURRENT_FAMILY_ID } from "../data/session";
 import { useModalA11y } from "../hooks/useModalA11y";
 
+function formatDuration(totalSeconds) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 function AudioRecorderRow({ onMediaReady }) {
-  const { recording, mediaUrl, mediaBlob, error, start, stop, reset } = useMediaRecorder("audio");
+  const { recording, mediaUrl, mediaBlob, error, start, stop, reset, elapsedSeconds, maxSeconds, autoStopped } = useMediaRecorder("audio");
 
   useEffect(() => { onMediaReady(mediaBlob, mediaUrl); }, [mediaBlob, mediaUrl, onMediaReady]);
 
@@ -25,9 +31,14 @@ function AudioRecorderRow({ onMediaReady }) {
           <button type="button" className="btn small" onClick={reset}>Re-record</button>
         )}
         <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>
-          {recording ? "Recording…" : mediaUrl ? "Recorded" : "Not recording"}
+          {recording
+            ? `Recording… ${formatDuration(elapsedSeconds)} / ${formatDuration(maxSeconds)}`
+            : mediaUrl ? "Recorded" : "Not recording"}
         </span>
       </div>
+      {autoStopped && (
+        <p className="form-hint">Stopped automatically at {formatDuration(maxSeconds)}, the longest a single recording can be.</p>
+      )}
       {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
       <p className="form-hint">A relative's own voice, or just a sound — no words needed either way.</p>
     </div>
