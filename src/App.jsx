@@ -130,6 +130,15 @@ const INVITE_CODE_FROM_URL = typeof window !== "undefined" ? new URLSearchParams
 // this module evaluates (see main.jsx's initDataLayer().finally(...)), so
 // there's no risk of racing an empty tree.
 const PERSON_ID_FROM_URL = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("person") : null;
+// Read here, not inside TreasuryView.jsx itself — that's lazy-loaded, and
+// this app's own boot effect (below) replaces the URL to strip query
+// strings for any view except a few special-cased ones, which fires
+// after the very first render but well before a lazy chunk's dynamic
+// import() could possibly have resolved. A module-level read inside the
+// lazy component loses that race every time; reading it here, at real
+// top-level module load (same moment PERSON_ID_FROM_URL above is read),
+// doesn't have that problem.
+const GALLERY_TAB_FROM_URL = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : null;
 const WHATSAPP_LINK_TOKEN_FROM_URL = (() => {
   if (typeof window === "undefined") return null;
   const fromUrl = new URLSearchParams(window.location.search).get("token");
@@ -1209,7 +1218,7 @@ export default function App() {
         {view === "parampara" && !moduleBlocked && <ParamparaView contributions={contributions} canModerate={canModerate} onContribute={() => openParamparaContribute()} onEdit={openParamparaContribute} />}
         {view === "library" && !moduleBlocked && <LibraryView onOpenBook={openBook} onAddBook={openAddBook} />}
         {view === "treasury" && !moduleBlocked && <TreasuryView contributions={contributions} onSelectPerson={selectPerson} initialTab="Wisdom" />}
-        {view === "gallery" && <TreasuryView contributions={contributions} onSelectPerson={selectPerson} initialTab="Gallery" />}
+        {view === "gallery" && <TreasuryView contributions={contributions} onSelectPerson={selectPerson} initialTab={GALLERY_TAB_FROM_URL === "private" ? "Private to me" : "Gallery"} />}
         {view === "search" && <SearchView onSelectPerson={selectPerson} />}
         {view === "more" && <MoreMenu onNav={goTo} canModerate={canModerate} />}
         {view === "vault" && !moduleBlocked && <VaultView contributions={contributions} />}
