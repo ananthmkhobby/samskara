@@ -275,7 +275,7 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
 
       {!IS_DEMO && isModuleEnabled("fastOnboarding") && MY_PLACEMENT_STATUS && MY_PLACEMENT_STATUS !== "PLACED_CONFIRMED" && (
         <div className="cover-enter" style={{ "--enter-delay": "0.085s" }}>
-          <FinishConnectionCard onOpen={() => onNav("relationshipPathBuilder")} />
+          <FinishConnectionCard placementStatus={MY_PLACEMENT_STATUS} onOpen={() => onNav("relationshipPathBuilder")} />
         </div>
       )}
 
