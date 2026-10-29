@@ -518,11 +518,13 @@ function BlogPost({ slug, onBack }) {
         {SHOW_BLOG_READ_ALOUD && <ReadAloudBar title={post.title} textRef={bodyRef} />}
         <TableOfContents items={tocItems} activeId={activeTocId} />
         <div className="blog-post-divider" aria-hidden="true"><span>॥</span></div>
-        {/* Trusted markup — only blog_authors (a small, admin-created team,
-            see supabase/migrations/20261015150000_blog_posts_and_authors.sql)
-            can ever write body_html, via Tiptap's own serializer, never
-            arbitrary visitor input. bodyHtml is that same trusted string
-            with h2 ids stamped in (addHeadingIds), not user input. */}
+        {/* body_html is sanitized (DOMPurify, allow-listed tags/attrs) at
+            write time in blogDb.js's createPost/updatePost — RLS only
+            gates WHO can write a post, not WHAT the HTML contains, so that
+            sanitization step is the real reason this is safe to render
+            unescaped, not merely who's on the blog_authors team. bodyHtml
+            is that same sanitized string with h2 ids stamped in
+            (addHeadingIds). */}
         <div ref={bodyRef} className="blog-post-body blog-post-body--dropcap" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
         <div className="blog-post-end-mark" aria-hidden="true"><span>॥</span></div>
         <div className="blog-post-footer">

@@ -68,6 +68,15 @@ export default function MoreMenu({ onNav, canModerate }) {
             </span>
           </button>
         )}
+        {!IS_DEMO && (
+          <button type="button" className="card more-menu-item" onClick={() => onNav("account")}>
+            <span className="more-menu-icon">⚙️</span>
+            <span className="more-menu-text">
+              <b>Account</b>
+              <span>Download your data, or delete your account</span>
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Until now these were only linked from the sign-in screen, so anyone

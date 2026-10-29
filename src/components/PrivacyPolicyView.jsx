@@ -150,10 +150,30 @@ export default function PrivacyPolicyView() {
 
       <div className="card" style={{ marginBottom: 18, padding: 20 }}>
         <h4 style={{ fontSize: 15, marginBottom: 10 }}>Deleting your account or your family's data</h4>
+        <p className="folio-summary" style={{ marginBottom: 8 }}>
+          If you're signed in, you can delete your own account yourself — go to <b>More → Account</b>, which also
+          lets you download a copy of your data first. If you contributed something to a family others still
+          share, that content stays in the archive (it's part of the family's shared history) but is no longer
+          linked to your account; a family only you were ever part of is removed entirely.
+        </p>
         <p className="folio-summary">
-          Contact <b>support@oursamskara.com</b> with your family name and what you'd like deleted (your own account
-          only, or the whole family's archive — the latter requires confirmation from a Family Head or Admin).
-          We'll confirm the request and expected timeline before proceeding.
+          Can't sign in, or want the whole family's archive deleted rather than just your own account? Contact{" "}
+          <b>support@oursamskara.com</b> with your family name and what you'd like deleted — deleting a whole
+          family's archive requires confirmation from a Family Head or Admin. We'll verify the request and confirm
+          the expected timeline before proceeding.
+        </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+        <h4 style={{ fontSize: 15, marginBottom: 10 }}>Grievance redressal</h4>
+        <p className="folio-summary">
+          Grievance Officer (under the Digital Personal Data Protection Act, 2023):{" "}
+          {/* Placeholder name — DPDPA requires a real, named individual here before this
+              is relied on as the actual published grievance contact. Swap in before shipping
+              to production; see docs/ACCOUNT_DELETION.md. */}
+          <b>[Grievance Officer name — to be designated]</b>, Samskara —{" "}
+          <b>support@oursamskara.com</b>. Write here for any complaint about how your personal data is handled; we
+          aim to acknowledge within 7 days and resolve within 30.
         </p>
       </div>
 

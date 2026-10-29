@@ -19,6 +19,8 @@
     "@tiptap/extension-link": "^3.32.0",
     "@tiptap/react": "^3.32.0",
     "@tiptap/starter-kit": "^3.32.0",
+    "dompurify": "^3.4.17",
+    "isomorphic-dompurify": "^3.19.0",
     "jimp": "^1.6.1",
     "leaflet": "^1.9.4",
     "react": "^19.2.7",
