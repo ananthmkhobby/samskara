@@ -466,8 +466,19 @@ function ManagePlanSection() {
     setError("");
     setSaved(false);
     try {
+      // Write an explicit flag only when a module's checked state DIFFERS
+      // from the selected tier's own default for that key — in EITHER
+      // direction. This used to only ever write explicit `false`s, which
+      // silently dropped any attempt to turn on an opt-in module whose
+      // tier default is false (fastOnboarding) — checking its box saved
+      // nothing, every time, with no error. Every ordinary opt-out module
+      // (tier default true) behaves identically to before: unchecking it
+      // still writes `false`, leaving it checked still omits the key.
+      const tierModuleDefaults = PLAN_TIERS[planTier].modules;
       const moduleFlags = Object.fromEntries(
-        Object.entries(enabledModules).filter(([, enabled]) => !enabled).map(([key]) => [key, false])
+        Object.entries(enabledModules)
+          .filter(([key, enabled]) => enabled !== (tierModuleDefaults[key] !== false))
+          .map(([key, enabled]) => [key, enabled])
       );
       const numericOverrides = Object.fromEntries(
         OVERRIDABLE_LIMIT_KEYS.filter((k) => overrides[k] !== "").map((k) => [k, Number(overrides[k])])
@@ -767,8 +778,15 @@ export default function SuperAdminView() {
     setError("");
     setResult(null);
     try {
+      // Same fix as ManagePlanSection's savePlan() — compare against the
+      // tier's actual default (a new family always starts on 'starter'),
+      // not just "unchecked = false", so checking an opt-in module like
+      // fastOnboarding here doesn't silently get dropped.
+      const starterModuleDefaults = PLAN_TIERS.starter.modules;
       const moduleFlags = Object.fromEntries(
-        Object.entries(enabledModules).filter(([, enabled]) => !enabled).map(([key]) => [key, false])
+        Object.entries(enabledModules)
+          .filter(([key, enabled]) => enabled !== (starterModuleDefaults[key] !== false))
+          .map(([key, enabled]) => [key, enabled])
       );
       const data = await callApi("/api/provision-family", { familyName, headEmail, headName, moduleFlags });
       setResult(data);
