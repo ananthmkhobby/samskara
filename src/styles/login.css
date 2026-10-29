@@ -84,6 +84,22 @@
 .login-hero-blog-cta:hover { background: rgba(251,244,226,.18); transform: translateY(-1px); }
 .login-hero-blog-cta .login-hero-blog-cta-icon { font-size: 15px; }
 
+/* The hero pane's own primary action (FirstMemoryWizard's entry point) —
+   deliberately NOT .btn.primary, which resolves to the same maroon-deep
+   as this pane's own background and all but disappears into it. A warm
+   gold fill is the one color in this app's palette that reads as "the
+   main thing to tap" against a dark backdrop without fighting the
+   secondary (outlined) blog button right below it. Hardcoded, not a CSS
+   variable, same reasoning as .login-hero-blog-cta's own hardcoded
+   light colors — this pane is always dark, regardless of site theme. */
+.login-hero-primary-cta {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 22px; padding: 13px 26px;
+  border-radius: 999px; border: 1px solid #E3B558; background: linear-gradient(135deg, #E3B558, #C9941F);
+  color: #2A1C05; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer;
+  box-shadow: 0 4px 18px rgba(227,181,88,.35); transition: transform .15s ease, box-shadow .15s ease;
+}
+.login-hero-primary-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(227,181,88,.45); }
+
 .login-form-pane {
   position: relative; flex: 1 1 440px; min-width: 320px; display: flex; flex-direction: column;
   align-items: center; justify-content: center; padding: 70px 32px;

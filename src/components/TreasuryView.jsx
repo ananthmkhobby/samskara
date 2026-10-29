@@ -11,6 +11,13 @@ import ShareModal from "./ShareModal";
 
 const GALLERY_TYPES = ["photo", "audio", "video", "memory", "document"];
 
+// Read once, same pattern as App.jsx's PERSON_ID_FROM_URL — lets a caller
+// (FirstMemoryWizard's "done" screen, since a freshly-saved memory is
+// private by default and so only ever shows up here, not in the main
+// Gallery tab someone would otherwise land on by default) deep-link
+// straight into this one sub-tab instead of leaving it undiscoverable.
+const PRIVATE_TAB_REQUESTED = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "private";
+
 function GalleryCard({ c, onSelectPerson, onOpenPhoto, isPrivate, onShare }) {
   const person = c.personId ? byId(c.personId) : null;
   const isRealPhoto = c.type === "photo" && !!c.mediaUrl;
@@ -63,7 +70,7 @@ function GalleryCard({ c, onSelectPerson, onOpenPhoto, isPrivate, onShare }) {
 }
 
 export default function TreasuryView({ contributions, onSelectPerson, initialTab = "Wisdom" }) {
-  const [tab, setTab] = useState(initialTab);
+  const [tab, setTab] = useState(() => (PRIVATE_TAB_REQUESTED && CURRENT_USER_ID ? "Private to me" : initialTab));
   const [filter, setFilter] = useState(null);
   const [typeFilter, setTypeFilter] = useState(null);
   const [lightboxPhoto, setLightboxPhoto] = useState(null); // { mediaUrl, id } | null

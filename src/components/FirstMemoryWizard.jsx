@@ -298,7 +298,14 @@ export default function FirstMemoryWizard({ onGoHome }) {
             </button>
           )}
           {saveError && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{saveError}</p>}
-          <button type="button" className="btn primary" onClick={onGoHome}>Go to Samskara →</button>
+          {/* Straight to the one tab a private memory actually shows up
+              in — the main Gallery tab it would otherwise land on by
+              default never shows a private item at all, which is exactly
+              what looked like "it didn't save" before this existed. */}
+          <button type="button" className="btn primary" onClick={() => { window.location.href = "/gallery?tab=private"; }}>
+            See it in My Memories →
+          </button>
+          <button type="button" className="btn ghost" style={{ marginTop: 10 }} onClick={onGoHome}>Go to Samskara →</button>
         </section>
       </div>
     </div>

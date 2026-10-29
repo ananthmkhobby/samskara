@@ -68,13 +68,16 @@ export default function LoginPage({ onShowHelp, onShowPrivacy, onShowTerms }) {
           {/* No account needed to try this — pick a photo and preview it
               right here; signing in only happens once they choose to save
               it. See FirstMemoryWizard.jsx. */}
-          <button type="button" className="btn primary" style={{ marginTop: 6, marginBottom: 10 }} onClick={() => { window.location.href = "/first-memory"; }}>
-            Preserve your first memory →
-          </button>
-          <button type="button" className="login-hero-blog-cta" onClick={() => { window.location.href = "/blog"; }}>
-            <span className="login-hero-blog-cta-icon" aria-hidden="true">📖</span>
-            Read our stories on the Blog →
-          </button>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+            <button type="button" className="login-hero-primary-cta" onClick={() => { window.location.href = "/first-memory"; }}>
+              <span aria-hidden="true">🪔</span>
+              Preserve your first memory →
+            </button>
+            <button type="button" className="login-hero-blog-cta" style={{ marginTop: 10 }} onClick={() => { window.location.href = "/blog"; }}>
+              <span className="login-hero-blog-cta-icon" aria-hidden="true">📖</span>
+              Read our stories on the Blog →
+            </button>
+          </div>
         </div>
       </div>
 
