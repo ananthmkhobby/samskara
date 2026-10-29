@@ -18,11 +18,12 @@ browser click-throughs for the user-facing screens (signup form,
 Relationship Path Builder, admin Workbench, invite list) to confirm the
 UI actually reflects what the database shows.
 
-**Result summary**: 31 scenarios run, 31 passing as of the final run.
-**3 real defects found and fixed during this testing cycle** — see the
-Defects Log at the end. Two of the three were found specifically because
-testing deliberately went looking for "could this leave someone
-orphaned/stuck/crashed," not from the happy path.
+**Result summary**: 65 scenarios documented, all passing as of the final
+run. **6 real defects found and fixed during this testing cycle** — see
+the Defects Log at the end, including one **critical cross-family
+security bypass** (Defect #6) found specifically by testing the
+multi-family scenario. Most were found by deliberately testing "could
+this leave someone orphaned/stuck/crashed/exposed," not the happy path.
 
 ---
 
@@ -141,10 +142,34 @@ connection.
 
 ### 3.4 Multi-family & role boundaries
 
+Prompted directly by a real-world scenario: the same person belongs to
+two or more families (e.g. birth family and in-law family), each with
+its own, different admin, and commonly goes by a different name
+(nickname, short name, married name) in each. Tested explicitly, not
+assumed — this round caught the most serious defect of the whole
+testing cycle (Defect #6).
+
 | ID | Scenario | Expected | Actual |
 |---|---|---|---|
-| E11 | A multi-family admin cannot resolve another family's task | `resolve_workbench_task()` checks role against the **task's own** `family_id`, not whatever family happens to be "active" for that session | ✅ Pass (same pattern as `reassign_parents`/`delete_person`) |
+| E11 | A multi-family admin cannot resolve another family's task | `resolve_workbench_task()` checks role against the **task's own** `family_id` | ❌ **FAIL** — a Head of a *completely different* family, with zero membership in the task's family, could successfully resolve it → Fixed → ✅ Pass (**Defect #6, critical**) |
 | E12 | A member's placement status in Family A is fully independent of their status in Family B | Confirmed via direct multi-family redemption test | ✅ Pass |
+| E13 | `display_name` is genuinely independent per family — a nickname in one family never leaks into or overwrites the legal/full name used in another | Same person redeems invites into two families with two different names ("Priya Lakshmi Narasimhan" vs. "Lakshmi") | ✅ Pass — `family_members.display_name` is a per-row field, no shared/global identity record exists to conflict |
+| E14 | Submitting a claim in one family never touches the other family's placement status | Member submits a claim while active-family is A | ✅ Pass — B stays untouched |
+| E15 | Each family's admin only ever sees *their own* family's Workbench tasks, never the other's | Cross-checked both directions (admin A reading/resolving B's task, and vice versa) | ✅ Pass once Defect #6 was fixed |
+| E16 | A provisional person created in Family B is not visible or queryable from Family A's namespace | Checked directly under Family A admin's own session | ✅ Pass — `people` is strictly family-scoped, no cross-family person directory exists by design |
+| E17 | Switching active family (`FamilySwitcher`) correctly re-evaluates the FFO gate for the *new* family, with no leftover "already dismissed" state leaking from the previous family | Confirmed `FamilySwitcher` always does a full page reload on switch, which resets the in-memory "skipped the gate" state — so a dismissal in Family A can never suppress the gate in Family B | ✅ Pass (verified by code inspection + the reload mechanism, consistent with every other family-switch behavior in the app) |
+
+**Answering the question directly**: the same person being in two or
+more families, each with a different admin and possibly a different
+name, is **fully and safely supported** — by the pre-existing
+multi-family architecture (separate `family_members` row per family,
+independent `display_name`/`role`/`person_id` per row), not by anything
+new FFO had to build. FFO's own state (`placement_status`, claims,
+provisional people, Workbench tasks) correctly inherits that same
+per-family isolation. The one place it *wasn't* actually isolated
+correctly — a different family's admin being able to resolve your
+family's Workbench tasks — was a real bug, found by this exact
+question, and is now fixed and verified in both directions.
 
 ---
 
@@ -157,8 +182,9 @@ connection.
 | 3 | A19, A20, E03 | `delete_person()` crashed with a NOT NULL constraint violation when deleting anyone referenced by `relationship_path_claims.anchor_person_id` or `ffo_workbench_tasks.provisional_person_id` — same composite-FK trap the function's own original migration had already documented and fixed for four *other* tables, just not updated for these two new ones | Added the same explicit null-out pattern for both new tables | Direct test — both deletion paths now succeed cleanly |
 | 4 (UX) | M26 | Home "Finish My Connection" card showed identical "tell us who you are" copy whether a member had never engaged or had already fully submitted — reads as if the submission vanished | Card now takes `placementStatus` and shows distinct, reassuring copy once a claim is already in | Visual browser confirmation |
 | 5 (UX) | — | Admin invite list never showed the proposed person's name, even though it was being collected at creation time | `fetchInvites()`/`InvitesList` now surface it (`For X (not yet in tree)`) | Visual browser confirmation |
+| 6 (critical) | E11 | **`resolve_workbench_task()` had a cross-family authorization bypass**: `if v_role not in ('head','admin')` evaluates to SQL `NULL` (not true) when the caller has no `family_members` row in that family at all, and PL/pgSQL treats `if null then` as false — so the exception never fired. A Head of a completely *different* family, with zero membership in the task's actual family, could successfully resolve it. This is the exact same bug class this codebase had already hit and fixed once before, in `reassign_parents()` — reproduced here without being carried over to the new function | `v_role is null or v_role not in (...)`, the same safe pattern already used everywhere else | Direct test, both directions: the unrelated family's Head is now blocked with the correct error; the task's real admin still works |
 
-All five were found and fixed within this testing cycle, before shipping to production.
+All six were found and fixed within this testing cycle, before shipping to production. **Defect #6 was never exposed in production** — it only ever existed on the `dev`/test branch; the PR introducing the whole FFO feature had not yet been merged when it was found and fixed.
 
 ## What's explicitly out of scope for this report
 
