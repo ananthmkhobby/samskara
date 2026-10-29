@@ -7,6 +7,7 @@
 // the same shared secret as provision-family.js.
 import crypto from "node:crypto";
 import { serviceClient } from "./_memberAuth.js";
+import { requireSuperadmin } from "./_superadminAuth.js";
 
 const MAX_FIELD_LEN = 300;
 function clip(v) {
@@ -60,16 +61,8 @@ async function handleTrack(req, res) {
 }
 
 async function handleList(req, res) {
-  const secret = process.env.ADMIN_PROVISION_SECRET;
-  if (!secret) {
-    res.status(500).json({ error: "This isn't configured on this deployment yet." });
-    return;
-  }
-  if (req.body?.adminSecret !== secret) {
-    res.status(401).json({ error: "Incorrect admin secret." });
-    return;
-  }
-  const supabase = serviceClient();
+  const supabase = await requireSuperadmin(req, res);
+  if (!supabase) return;
   try {
     const { data, error } = await supabase
       .from("ad_click_log")

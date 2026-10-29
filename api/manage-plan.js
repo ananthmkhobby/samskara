@@ -4,7 +4,7 @@
 // Split out of api/provision-family.js (2026-10-28), where it was folded
 // in purely to stay under Vercel's Hobby-plan 12-function cap — "manage a
 // plan" and "create a new family" were never actually the same feature.
-import { requireAdminSecret } from "./_adminAuth.js";
+import { requireSuperadmin } from "./_superadminAuth.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const supabase = requireAdminSecret(req, res);
+  const supabase = await requireSuperadmin(req, res);
   if (!supabase) return;
 
   const body = req.body || {};
