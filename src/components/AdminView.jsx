@@ -346,7 +346,7 @@ function InvitesList({ refreshKey }) {
         return (
           <div className="queue-row" key={inv.id} style={{ gridTemplateColumns: "1fr auto", padding: "10px 0" }}>
             <div className="queue-main">
-              <b>{person ? `For ${person.name}` : "Open invite"}</b>
+              <b>{person ? `For ${person.name}` : inv.proposedPersonName ? `For ${inv.proposedPersonName} (not yet in tree)` : "Open invite"}</b>
               <div className="queue-meta">
                 {status === "used" && `Used by ${usedByMember?.displayName || "a member"} · ${inv.usedAt.slice(0, 10)}`}
                 {status === "expired" && `Expired ${inv.expiresAt.slice(0, 10)} · never used`}

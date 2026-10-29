@@ -442,12 +442,12 @@ export async function fetchInvites(familyId) {
   const db = requireClient();
   const { data, error } = await db
     .from("invites")
-    .select("id, code, person_id, used_by, used_at, expires_at, created_at")
+    .select("id, code, person_id, proposed_person_name, used_by, used_at, expires_at, created_at")
     .eq("family_id", familyId)
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return data.map((r) => ({
-    id: r.id, code: r.code, personId: r.person_id, usedBy: r.used_by, usedAt: r.used_at,
+    id: r.id, code: r.code, personId: r.person_id, proposedPersonName: r.proposed_person_name, usedBy: r.used_by, usedAt: r.used_at,
     expiresAt: r.expires_at, createdAt: r.created_at,
   }));
 }
