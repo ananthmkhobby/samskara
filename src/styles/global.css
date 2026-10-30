@@ -1,7 +1,15 @@
 @import "./tokens.css";
 
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
+/* Safety net: if any component ever overflows the viewport width again (a
+   wide icon cluster, an unwrapped flex row, a long untruncated name), mobile
+   browsers expand the whole *layout* viewport to fit it instead of clipping
+   — which is what produces the "page loads zoomed in, one pinch-zoom-out
+   fixes it" symptom site-wide, not just on the page that actually overflows.
+   This clips any future overflow at the html/body boundary so a single
+   mis-sized element can never again drag the entire page's effective zoom
+   level with it. */
+html, body { margin: 0; padding: 0; overflow-x: hidden; }
 #root { min-height: 100vh; }
 body {
   background: var(--parchment); color: var(--ink); font-family: var(--font-body);
@@ -112,6 +120,28 @@ a { color: inherit; }
   }
   .bottombar-fab svg { width: 24px; height: 24px; }
   main { padding-bottom: 70px; }
+}
+/* Measured: the topbar's action cluster (record-memory + bell + blog + help
+   + family switcher, each already sized for tap targets) doesn't fit in the
+   ~347px of content width a 375px-wide phone (iPhone SE class) leaves after
+   the hamburger + logo mark — topbar-actions alone measured ~400px wide,
+   forcing the whole topbar (a no-wrap flex row) wider than the device,
+   which is the actual overflow this round's "zoomed in" report traced to.
+   Blog and Help are both already reachable from the More overflow page (see
+   TopBar.jsx's own comments), so they're safe to drop from this bar only —
+   nothing becomes unreachable, just not duplicated here below this width. */
+@media (max-width: 430px) {
+  /* `.icon-only` (below) sets display on the same specificity tier and is
+     declared later in this file, so it would otherwise win — the extra
+     `.topbar-actions` ancestor qualifier is what actually wins the tie. */
+  .topbar-actions .topbar-blog-btn, .topbar-actions .topbar-help-btn { display: none; }
+  /* The role pill ("Family Head"/"Admin"/"Member") has no width cap and was
+     the single biggest remaining contributor to the overflow — it's
+     secondary info (already shown again inside the switcher's own open
+     menu context) so it's safe to drop at this width, same reasoning as
+     Blog/Help above. */
+  .family-switcher-trigger .role-badge { display: none; }
+  .family-switcher-name { max-width: 90px; }
 }
 
 main { flex: 1; width: 100%; }
