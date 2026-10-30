@@ -11,6 +11,18 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.30 — Fast Family Onboarding (Phase 1, pilot) + mobile layout overflow fix
+
+[PR #27](https://github.com/ananthmkhobby/samskara/pull/27) — lets a joining member assert who they are relative to someone already in the family tree, even when the connecting people in between aren't known or don't exist yet, without ever fabricating a parent/grandparent/spouse. Ships opt-in only (`module_flags.fastOnboarding`, default off) behind a new per-family pilot flag — existing onboarding (`register_new_family`, `redeem_invite`'s non-FFO path, manual admin entry) is completely unchanged for every family that doesn't turn it on.
+
+New schema: `family_members.placement_status`, `people.provisional_status`/`created_via`, `invites.proposed_person_name`, `relationship_path_claims`, `ffo_workbench_tasks` — plus three new security-definer RPCs (`submit_relationship_path_claim`, `create_provisional_person`, `resolve_workbench_task`) and a new admin "Connection Workbench" surface for resolving unlinked members, unresolved relationship claims, and provisional people, four tabs, never a dead end.
+
+**Testing**: 65 scenarios in `docs/FAST_FAMILY_ONBOARDING_TEST_REPORT.md` plus a 41-check full-app regression pass in `docs/FULL_APP_REGRESSION_TEST_REPORT.md`, both run live against disposable accounts on the test database. Found and fixed 6 real defects during this cycle, the most serious being a cross-family authorization bypass in `resolve_workbench_task()` (a `NULL`-evaluates-to-false bug in the role check — the same bug class already fixed once before in `reassign_parents()` — that let an admin of one family resolve a workbench task belonging to a completely unrelated family). Confirmed via `gh pr view` that this was never live in production before this release.
+
+Also in this release: a site-wide mobile layout fix for a long-standing "page loads zoomed in until you pinch-zoom-out once" bug, traced to the top bar's action cluster (record-memory/bell/blog/help/family-switcher) overflowing a 375px-wide phone's content width and dragging the whole page's layout viewport wider than the device — not Folio-specific, present on every page. Blog/Help (both already reachable via the More menu) and the role pill now hide below 430px width; added `overflow-x: hidden` on html/body as a standing safety net against any future recurrence.
+
+**Post-deploy**: 7 pending migrations applied to production (`flvxeoawvuvrlondqnci`) via the Management API, including one (`media_size_caps`) left over from an earlier already-merged PR whose migration had never been applied. Verified live: `relationship_path_claims`/`ffo_workbench_tasks` tables exist, `resolve_workbench_task()`'s fixed null-role check is the live version, production site responds 200.
+
 ## v2026.10.29.5 — Document Meta Business verification + Twilio production setup
 
 [PR #26](https://github.com/ananthmkhobby/samskara/pull/26) — closes action item #10 from `docs/ARCHITECTURE_REVIEW.md`. Docs-only, no code change: `docs/META_WHATSAPP_VERIFICATION.md` is a step-by-step checklist for Meta Business verification, Twilio WhatsApp Sender registration with the "Samskara" display name, Content Template submission, and the exact production-only env vars to set — account-level work on Meta's/Twilio's own platforms, not something further engineering resolves.
