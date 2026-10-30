@@ -21,7 +21,7 @@ export const PLAN_TIERS = {
       people: 25, photos: 100, recordings: 3, videos: 1,
       aiCallsPerMonth: 0, pdfExport: false, printedBook: false,
     },
-    modules: { treasury: false, journey: false, japa: false, aiFeatures: false },
+    modules: { treasury: false, journey: false, japa: false, aiFeatures: false, fastOnboarding: false },
   },
   rooted: {
     label: "Rooted",
@@ -32,7 +32,7 @@ export const PLAN_TIERS = {
       people: null, photos: 5000, recordings: 100, videos: 10,
       aiCallsPerMonth: 20, pdfExport: true, printedBook: false,
     },
-    modules: { treasury: true, journey: true, japa: true, aiFeatures: true },
+    modules: { treasury: true, journey: true, japa: true, aiFeatures: true, fastOnboarding: false },
   },
   legacy: {
     label: "Legacy",
@@ -43,7 +43,7 @@ export const PLAN_TIERS = {
       people: null, photos: 20000, recordings: null, videos: 50,
       aiCallsPerMonth: 75, pdfExport: true, printedBook: true,
     },
-    modules: { treasury: true, journey: true, japa: true, aiFeatures: true },
+    modules: { treasury: true, journey: true, japa: true, aiFeatures: true, fastOnboarding: false },
   },
 };
 

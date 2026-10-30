@@ -44,8 +44,8 @@ export default function TopBar({ view, onNav, pendingCount, unseenCount = 0, onJ
             and the Home dashboard's dismissible promo card are the other
             two discovery points, but neither is on screen all the time the
             way this top bar is. */}
-        <button className="icon-only" style={{ width: 34, height: 34 }} onClick={() => onNav("blog")} aria-label="Blog"><BlogIcon /></button>
-        <button className="icon-only" style={{ width: 34, height: 34 }} onClick={() => onNav("help")} aria-label="Help">?</button>
+        <button className="icon-only topbar-blog-btn" style={{ width: 34, height: 34 }} onClick={() => onNav("blog")} aria-label="Blog"><BlogIcon /></button>
+        <button className="icon-only topbar-help-btn" style={{ width: 34, height: 34 }} onClick={() => onNav("help")} aria-label="Help">?</button>
         {IS_DEMO ? (
           <button className="btn small ghost" onClick={() => {
             onNav("cover");

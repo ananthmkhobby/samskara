@@ -11,6 +11,10 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.29.5 — Document Meta Business verification + Twilio production setup
+
+[PR #26](https://github.com/ananthmkhobby/samskara/pull/26) — closes action item #10 from `docs/ARCHITECTURE_REVIEW.md`. Docs-only, no code change: `docs/META_WHATSAPP_VERIFICATION.md` is a step-by-step checklist for Meta Business verification, Twilio WhatsApp Sender registration with the "Samskara" display name, Content Template submission, and the exact production-only env vars to set — account-level work on Meta's/Twilio's own platforms, not something further engineering resolves.
+
 ## v2026.10.29.4 — Lazy-load JourneyMapView to shrink the eager bundle
 
 [PR #25](https://github.com/ananthmkhobby/samskara/pull/25) — closes action item #9 from `docs/ARCHITECTURE_REVIEW.md`. The two chunks the review originally flagged — `familyTemplate` (`xlsx`) and `BlogEditorView` (Tiptap) — turned out to already be correctly lazy-loaded. The real find: `JourneyMapView` pulled in `leaflet` + `react-leaflet` (~47KB gzipped) eagerly, despite Journey being a secondary feature most sessions never open.

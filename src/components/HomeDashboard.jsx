@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { PEOPLE, CHALLENGES } from "../data/people";
-import { IS_DEMO, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL, FAMILY_FLAME_STREAK } from "../data/session";
+import { IS_DEMO, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL, FAMILY_FLAME_STREAK, MY_PLACEMENT_STATUS, isModuleEnabled } from "../data/session";
 import { useCountUp } from "../hooks/useCountUp";
 import { parseParamparaContent } from "../lib/parampara";
 import { personIdsWithRooms } from "../lib/chitrashale";
@@ -10,6 +10,7 @@ import { TreeIcon, DiyaGlyph } from "./NavIcons";
 import AuthPanel from "./AuthPanel";
 import InstallAppCard from "./InstallAppCard";
 import BlogPromoCard from "./BlogPromoCard";
+import FinishConnectionCard from "./FinishConnectionCard";
 import HomePromoCarousel from "./HomePromoCarousel";
 import HeritageIntro, { FamilyBondIcon } from "./HeritageIntro";
 import FamilyFlame from "./FamilyFlame";
@@ -271,6 +272,12 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
       <div className="cover-enter" style={{ "--enter-delay": "0.08s" }}>
         <BlogPromoCard onNav={onNav} />
       </div>
+
+      {!IS_DEMO && isModuleEnabled("fastOnboarding") && MY_PLACEMENT_STATUS && MY_PLACEMENT_STATUS !== "PLACED_CONFIRMED" && (
+        <div className="cover-enter" style={{ "--enter-delay": "0.085s" }}>
+          <FinishConnectionCard placementStatus={MY_PLACEMENT_STATUS} onOpen={() => onNav("relationshipPathBuilder")} />
+        </div>
+      )}
 
       <div className="cover-enter" style={{ "--enter-delay": "0.09s" }}>
         <HomePromoCarousel onNav={onNav} />

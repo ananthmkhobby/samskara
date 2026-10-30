@@ -72,20 +72,41 @@ export default function ConsentGate({ userId, onAccepted }) {
             </p>
           </div>
 
+          {/* Stated as an explicit numbered sequence, not just two buttons
+              followed by a greyed-out checkbox — the opacity alone read as
+              "broken" to real users in testing, not "do something first."
+              Naming the two steps up front, before either button is ever
+              clicked, is what actually fixes that — a checkmark that only
+              appears after the fact doesn't help someone who hasn't
+              clicked yet and doesn't know why the checkbox won't respond. */}
+          <p className="form-hint" style={{ margin: "0 0 10px", fontWeight: 700, color: "var(--ink)" }}>
+            Step 1 — open both of these at least once. Step 2 — the checkbox below unlocks.
+          </p>
+
           <div className="consent-doc-links">
             <button type="button" className="card more-menu-item" onClick={() => { setViewedPrivacy(true); setReading("privacy"); }}>
+              <span className="more-menu-icon" aria-hidden="true" style={{ fontSize: 13, fontWeight: 700, color: viewedPrivacy ? "#2f7d3f" : "var(--ink-faint)" }}>
+                {viewedPrivacy ? "✓" : "1"}
+              </span>
               <span className="more-menu-text">
-                <b>Privacy Policy{viewedPrivacy ? " ✓" : ""}</b>
-                <span>What's collected, who can see it, and how to get it deleted</span>
+                <b>Privacy Policy</b>
+                <span>{viewedPrivacy ? "Opened — thanks" : "What's collected, who can see it, and how to get it deleted"}</span>
               </span>
             </button>
             <button type="button" className="card more-menu-item" onClick={() => { setViewedTerms(true); setReading("terms"); }}>
+              <span className="more-menu-icon" aria-hidden="true" style={{ fontSize: 13, fontWeight: 700, color: viewedTerms ? "#2f7d3f" : "var(--ink-faint)" }}>
+                {viewedTerms ? "✓" : "2"}
+              </span>
               <span className="more-menu-text">
-                <b>Terms &amp; Conditions{viewedTerms ? " ✓" : ""}</b>
-                <span>What you can expect from us, and what we ask of you</span>
+                <b>Terms &amp; Conditions</b>
+                <span>{viewedTerms ? "Opened — thanks" : "What you can expect from us, and what we ask of you"}</span>
               </span>
             </button>
           </div>
+
+          <p className="form-hint" style={{ margin: "10px 0 0", fontWeight: bothViewed ? 700 : 400, color: bothViewed ? "#2f7d3f" : undefined }}>
+            {bothViewed ? "✓ Both opened — you can check the box below now." : `${[viewedPrivacy, viewedTerms].filter(Boolean).length} of 2 opened so far.`}
+          </p>
 
           <label className="consent-check" style={!bothViewed ? { opacity: 0.5, cursor: "not-allowed" } : undefined}>
             <input type="checkbox" checked={agreed} disabled={!bothViewed} onChange={(e) => setAgreed(e.target.checked)} />
@@ -94,9 +115,6 @@ export default function ConsentGate({ userId, onAccepted }) {
               <em> (version of {POLICY_VERSION_LABEL})</em>
             </span>
           </label>
-          {!bothViewed && (
-            <p className="form-hint" style={{ marginTop: 6 }}>Open both documents above at least once to check this box.</p>
-          )}
 
           {error && <p className="form-hint" style={{ color: "var(--maroon-ink)" }}>{error}</p>}
 

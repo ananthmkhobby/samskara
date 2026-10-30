@@ -64,6 +64,10 @@ export default async function handler(req, res) {
     const { error: memberErr } = await supabase.from("family_members").insert({
       family_id: familyId, user_id: userData.user.id, role: "member",
       display_name: displayName?.trim() || null, person_id: personId || null,
+      // Explicit, not relying on the column default (UNANCHORED) — this
+      // is the one write path here that DOES sometimes carry a real
+      // person_id at creation time, so it has to say so.
+      placement_status: personId ? "PLACED_CONFIRMED" : "UNANCHORED",
     });
     if (memberErr) {
       await supabase.auth.admin.deleteUser(userData.user.id);

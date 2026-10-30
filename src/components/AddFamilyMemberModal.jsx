@@ -12,8 +12,22 @@ export default function AddFamilyMemberModal({ request, onCancel, onSubmit, canM
   const [birthYear, setBirthYear] = useState("");
   const [city, setCity] = useState("");
   const [contributor, setContributor] = useState("");
+  // Optional, same "never guessed, never required" posture as the
+  // existing bulk Admin -> Genders tool (people.gender's own column
+  // comment) -- this just asks it at the one moment it's most naturally
+  // already known, instead of only ever being a separate admin trip
+  // afterward. Labels adapt to the relation being added so "Father" reads
+  // as an actual question, not a raw "Male/Female" picker.
+  const [gender, setGender] = useState("");
   const [busy, setBusy] = useState(false);
   const [geoError, setGeoError] = useState("");
+  const genderLabels = isParent
+    ? [["male", "Father"], ["female", "Mother"]]
+    : isSpouse
+    ? [["male", "Husband"], ["female", "Wife"]]
+    : isSibling
+    ? [["male", "Brother"], ["female", "Sister"]]
+    : [["male", "Son"], ["female", "Daughter"]];
 
   async function submit(e) {
     e.preventDefault();
@@ -31,7 +45,7 @@ export default function AddFamilyMemberModal({ request, onCancel, onSubmit, canM
       }
       setBusy(false);
     }
-    onSubmit({ name: name.trim(), birthYear: birthYear.trim(), geo, contributor: contributor.trim() || "Anonymous" });
+    onSubmit({ name: name.trim(), birthYear: birthYear.trim(), geo, contributor: contributor.trim() || "Anonymous", gender: gender || null });
   }
 
   return (
@@ -54,6 +68,20 @@ export default function AddFamilyMemberModal({ request, onCancel, onSubmit, canM
             <div className="form-row">
               <label>{isSpouse ? "Spouse's name" : "Their name"}</label>
               <input type="text" placeholder="e.g. Lakshmamma" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div className="form-row">
+              <label>{genderLabels[0][1]} or {genderLabels[1][1]}? (optional)</label>
+              <div className="tag-row">
+                {genderLabels.map(([value, label]) => (
+                  <button
+                    key={value} type="button" className={`chip${gender === value ? " active" : ""}`}
+                    onClick={() => setGender((g) => (g === value ? "" : value))}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="form-hint">Used to say things like "Father" or "Mother" elsewhere in the record — never required, never guessed.</p>
             </div>
             <div className="form-row">
               <label>Birth year (optional)</label>

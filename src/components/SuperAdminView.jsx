@@ -16,7 +16,22 @@ const GATABLE_MODULES = [
   { key: "japa", label: "Japa & Chanting" },
   { key: "vault", label: "Vault" },
   { key: "aiFeatures", label: "AI features (interview, photo-scan, translate)" },
+  // Unlike every other key above, this one is false by DEFAULT in every
+  // plan tier (see planTiers.js) — it's an opt-in pilot cohort flag, not
+  // an opt-out module, so checking this box for a family is what actually
+  // turns Fast Family Onboarding on for them specifically.
+  { key: "fastOnboarding", label: "Fast Family Onboarding (pilot — off by default)" },
 ];
+
+// Every key above defaults to pre-checked in the "provision a new family"
+// form except the opt-in pilot flags — checking one of those by default
+// would silently write nothing to module_flags (only explicit `false`s are
+// ever sent) and leave the superadmin thinking it's on when the tier
+// default (false) actually wins.
+const OPT_IN_MODULES = new Set(["fastOnboarding"]);
+function defaultEnabledModules() {
+  return Object.fromEntries(GATABLE_MODULES.map((m) => [m.key, !OPT_IN_MODULES.has(m.key)]));
+}
 
 // Interim stopgap until a real email service exists (see api/
 // api/password-reset-requests.js) — lists requests filed from the login page's
@@ -451,8 +466,19 @@ function ManagePlanSection() {
     setError("");
     setSaved(false);
     try {
+      // Write an explicit flag only when a module's checked state DIFFERS
+      // from the selected tier's own default for that key — in EITHER
+      // direction. This used to only ever write explicit `false`s, which
+      // silently dropped any attempt to turn on an opt-in module whose
+      // tier default is false (fastOnboarding) — checking its box saved
+      // nothing, every time, with no error. Every ordinary opt-out module
+      // (tier default true) behaves identically to before: unchecking it
+      // still writes `false`, leaving it checked still omits the key.
+      const tierModuleDefaults = PLAN_TIERS[planTier].modules;
       const moduleFlags = Object.fromEntries(
-        Object.entries(enabledModules).filter(([, enabled]) => !enabled).map(([key]) => [key, false])
+        Object.entries(enabledModules)
+          .filter(([key, enabled]) => enabled !== (tierModuleDefaults[key] !== false))
+          .map(([key, enabled]) => [key, enabled])
       );
       const numericOverrides = Object.fromEntries(
         OVERRIDABLE_LIMIT_KEYS.filter((k) => overrides[k] !== "").map((k) => [k, Number(overrides[k])])
@@ -736,7 +762,7 @@ export default function SuperAdminView() {
   // module for this family from day one. Only the unchecked ones are ever
   // sent as explicit `false`s; module_flags stays an empty object (meaning
   // "everything enabled") when nothing's been unchecked.
-  const [enabledModules, setEnabledModules] = useState(() => Object.fromEntries(GATABLE_MODULES.map((m) => [m.key, true])));
+  const [enabledModules, setEnabledModules] = useState(() => defaultEnabledModules());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
@@ -752,15 +778,22 @@ export default function SuperAdminView() {
     setError("");
     setResult(null);
     try {
+      // Same fix as ManagePlanSection's savePlan() — compare against the
+      // tier's actual default (a new family always starts on 'starter'),
+      // not just "unchecked = false", so checking an opt-in module like
+      // fastOnboarding here doesn't silently get dropped.
+      const starterModuleDefaults = PLAN_TIERS.starter.modules;
       const moduleFlags = Object.fromEntries(
-        Object.entries(enabledModules).filter(([, enabled]) => !enabled).map(([key]) => [key, false])
+        Object.entries(enabledModules)
+          .filter(([key, enabled]) => enabled !== (starterModuleDefaults[key] !== false))
+          .map(([key, enabled]) => [key, enabled])
       );
       const data = await callApi("/api/provision-family", { familyName, headEmail, headName, moduleFlags });
       setResult(data);
       setFamilyName("");
       setHeadEmail("");
       setHeadName("");
-      setEnabledModules(Object.fromEntries(GATABLE_MODULES.map((m) => [m.key, true])));
+      setEnabledModules(defaultEnabledModules());
     } catch (err) {
       setError(err.message);
     } finally {

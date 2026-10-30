@@ -1,0 +1,13 @@
+-- Real gap reported while testing: adding a parent (or spouse/sibling/child)
+-- through Folio's "+ Add..." flow never asked Father vs Mother, even though
+-- people.gender already exists specifically to compute those terms
+-- (20261012120000_people_gender.sql) — it was only ever set later, through
+-- a separate bulk Admin -> Genders trip. insertPerson() didn't even write
+-- the column, so setting it client-side wouldn't have persisted anyway.
+--
+-- This column mirrors how 'newPerson' contributions already carry name/
+-- birth_year/geo as dedicated columns, not just the direct-apply path's
+-- in-memory object — so gender set here also survives into the admin
+-- approval path for a non-moderator's proposed new person, not only the
+-- immediate-apply path for a Head/Admin.
+alter table contributions add column gender text check (gender in ('male', 'female') or gender is null);
