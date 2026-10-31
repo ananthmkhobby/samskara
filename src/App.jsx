@@ -68,7 +68,7 @@ import ConsentGate from "./components/ConsentGate";
 import { PEOPLE, INITIAL_CONTRIBUTIONS, BOOKS, BOOK_OWNERSHIP, BOOK_READERS, PRACTICE_LOGS, addPerson, addBook, makeUniquePersonId } from "./data/people";
 import { byId, todayStr, getBiographyChapters, getBiographyTimeline } from "./data/helpers";
 import { verifiedObjectsBySpot, hasAnyRoomObjects } from "./lib/chitrashale";
-import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, IS_BLOG_AUTHOR, NEEDS_LOGIN, NEEDS_CONSENT, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL, MY_PLACEMENT_STATUS, isModuleEnabled } from "./data/session";
+import { CURRENT_ROLE, IS_DEMO, CURRENT_FAMILY_ID, CURRENT_USER_ID, ACCOUNT_NEEDS_FAMILY, IS_BLOG_AUTHOR, NEEDS_LOGIN, NEEDS_CONSENT, CURRENT_FAMILY_NAME, CURRENT_FAMILY_TAGLINE, CURRENT_FAMILY_LOGO_URL, MY_PLACEMENT_STATUS, isModuleEnabled, isExplicitSignInInProgress } from "./data/session";
 import { insertContribution, updateContribution, updateContributionStatus, deleteContribution as dbDeleteContribution, updatePersonFields, updatePersonSpouse, mergeLifeLesson, appendChapter, insertExperienceEntry, updateExperienceCaption, deleteExperienceEntry as dbDeleteExperienceEntry, updateBookFields, insertOwnership, setReaderStatus, insertPracticeLog } from "./data/familyDb";
 import { resolveMediaUrl, uploadFamilyMedia } from "./lib/mediaUpload";
 import { parseParamparaContent } from "./lib/parampara";
@@ -262,10 +262,21 @@ export default function App() {
       // do that from, since nothing in this app's own code runs the moment
       // the magic link actually gets processed — only this listener does.
       // Scoped to NEEDS_LOGIN so it only fires on the one case that
-      // matters (we'd concluded "anonymous" and now the opposite is true)
-      // rather than redundantly reloading every normal sign-in a second
-      // time on top of its own explicit reload.
-      if (event === "SIGNED_IN" && NEEDS_LOGIN) window.location.reload();
+      // matters (we'd concluded "anonymous" and now the opposite is true).
+      //
+      // Also gated on !isExplicitSignInInProgress() — a real regression,
+      // found testing: that comment above was wrong. A form's own
+      // "explicit reload" happens *after* its submit() does more work
+      // first (JoinForm calls redeemInvite() before reloading) — this
+      // listener fired immediately on SIGNED_IN and won the race, reloading
+      // before JoinForm's own in-flight await ever reached redeemInvite(),
+      // silently dropping the invite redemption. Every call site that signs
+      // in/up itself (LoginForm, JoinForm, SignUpForm) now sets this flag
+      // immediately before calling supabase.auth.signIn*()/signUp(), so
+      // this listener only auto-reloads for the one case with no form
+      // already handling it — a magic link finishing asynchronously with
+      // no foreground code awaiting it.
+      if (event === "SIGNED_IN" && NEEDS_LOGIN && !isExplicitSignInInProgress()) window.location.reload();
     });
     return () => sub.subscription.unsubscribe();
   }, []);
