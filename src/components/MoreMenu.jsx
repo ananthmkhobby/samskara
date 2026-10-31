@@ -22,6 +22,17 @@ export default function MoreMenu({ onNav, canModerate }) {
         <p>Everything else the archive holds.</p>
       </div>
       <div className="more-menu-grid">
+        {/* Previously only reachable via a small text link in the footer
+            below — the same visual weight as Admin/Notifications/etc.
+            here, since "how do I find out what this app can do" shouldn't
+            need more digging than any other feature. */}
+        <button type="button" className="card more-menu-item" onClick={() => onNav("help")}>
+          <span className="more-menu-icon">❓</span>
+          <span className="more-menu-text">
+            <b>Help &amp; Feature Guide</b>
+            <span>What Samskara can do, and how to use it</span>
+          </span>
+        </button>
         {ITEMS.map(({ key, label, sub, Icon, gateKey }) => {
           const enabled = isModuleEnabled(gateKey);
           // Named rather than a vague "upgrade required" — the tier whose

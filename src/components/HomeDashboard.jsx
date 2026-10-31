@@ -9,6 +9,7 @@ import { DateIcon, MemoryIcon, PhotoIcon, PeopleIcon } from "./Icons";
 import { TreeIcon, DiyaGlyph } from "./NavIcons";
 import AuthPanel from "./AuthPanel";
 import InstallAppCard from "./InstallAppCard";
+import FeatureGuideCard from "./FeatureGuideCard";
 import BlogPromoCard from "./BlogPromoCard";
 import FinishConnectionCard from "./FinishConnectionCard";
 import HomePromoCarousel from "./HomePromoCarousel";
@@ -265,7 +266,11 @@ export default function HomeDashboard({ contributions, onNav, onContribute, onPa
           specifically (per request); the feature itself is unchanged and
           still fully reachable via More → Japa & Chanting. */}
 
-      <div className="cover-enter" style={{ "--enter-delay": "0.06s", marginTop: 24 }}>
+      <div className="cover-enter" style={{ "--enter-delay": "0.055s", marginTop: 24 }}>
+        <FeatureGuideCard onNav={onNav} />
+      </div>
+
+      <div className="cover-enter" style={{ "--enter-delay": "0.06s" }}>
         <InstallAppCard dismissible />
       </div>
 
