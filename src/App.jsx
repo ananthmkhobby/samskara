@@ -246,6 +246,26 @@ export default function App() {
     if (!supabase) return;
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
+      // Clicking an email-confirmation link lands here as a brand-new page
+      // load, not an SPA-internal transition — but supabase-js's own
+      // detectSessionInUrl resolves the magic-link token *asynchronously*,
+      // after the client is constructed. initDataLayer() (awaited before
+      // this component even mounts, see main.jsx) can race ahead of that
+      // and call getSession() before the token's been processed, seeing no
+      // session yet and resolving the same "anonymous visitor" fallback a
+      // first-time visit gets — landing a freshly-confirmed new account on
+      // the public demo family instead of the "create your family" prompt,
+      // with no obvious way out. Every *other* sign-in path in this app
+      // (LoginForm, JoinForm, SignUpForm's own immediate-session case)
+      // already reloads manually right after supabase.auth.signIn*()
+      // resolves; this is the one path with no corresponding call site to
+      // do that from, since nothing in this app's own code runs the moment
+      // the magic link actually gets processed — only this listener does.
+      // Scoped to NEEDS_LOGIN so it only fires on the one case that
+      // matters (we'd concluded "anonymous" and now the opposite is true)
+      // rather than redundantly reloading every normal sign-in a second
+      // time on top of its own explicit reload.
+      if (event === "SIGNED_IN" && NEEDS_LOGIN) window.location.reload();
     });
     return () => sub.subscription.unsubscribe();
   }, []);
