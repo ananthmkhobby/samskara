@@ -19,8 +19,17 @@ precacheAndRoute(self.__WB_MANIFEST);
 // affect WhatsApp's own crawler at all (it never has a Samskara service
 // worker in the first place), but does affect this app's own installed
 // users opening a share link, so it's worth excluding anyway.
+//
+// Any downloadable file under public/ (the Feature Guide PDF, and any
+// future one) is excluded too — a real bug, not hypothetical: opening a
+// PDF via <a target="_blank"> is itself a top-level navigation request,
+// which NavigationRoute was catching and serving the cached app shell
+// for instead of the real file — landing a signed-out visitor on the
+// login page when they clicked "Download the guide" instead of getting
+// the PDF. Matched by extension rather than listing each file, so this
+// doesn't need updating every time a new static download is added.
 registerRoute(new NavigationRoute(createHandlerBoundToURL("/index.html"), {
-  denylist: [/^\/api\//, /^\/s\//],
+  denylist: [/^\/api\//, /^\/s\//, /\.pdf$/i],
 }));
 
 registerRoute(({ url }) => url.pathname.startsWith("/api/"), new NetworkOnly());

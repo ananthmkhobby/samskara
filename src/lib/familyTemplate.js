@@ -11,6 +11,7 @@ export const TEMPLATE_COLUMNS = [
   { key: "parent1Id", header: "Parent 1 ID", width: 14 },
   { key: "parent2Id", header: "Parent 2 ID", width: 14 },
   { key: "spouseId", header: "Spouse ID", width: 14 },
+  { key: "gender", header: "Gender (male/female, optional)", width: 22 },
   { key: "born", header: "Born (YYYY-MM-DD or YYYY)", width: 24 },
   { key: "died", header: "Died (blank if living, \"deceased\" if date unknown)", width: 30 },
   { key: "rashi", header: "Rashi/Sunsign", width: 16 },
@@ -24,8 +25,8 @@ export const TEMPLATE_COLUMNS = [
 ];
 
 const EXAMPLE_ROWS = [
-  { personId: "example-grandpa", name: "Example Grandfather", spouseId: "example-grandma", born: "1930", died: "2005", rashi: "Simha", gotra: "Bharadwaja", places: "Born in Example Village", lifeLesson: "Hard work never goes to waste.", lifeLessonValues: "Discipline, Resilience", summary: "Delete these 3 example rows before adding your own family." },
-  { personId: "example-grandma", name: "Example Grandmother", spouseId: "example-grandpa", born: "1935", city: "Mangalore" },
+  { personId: "example-grandpa", name: "Example Grandfather", spouseId: "example-grandma", gender: "male", born: "1930", died: "2005", rashi: "Simha", gotra: "Bharadwaja", places: "Born in Example Village", lifeLesson: "Hard work never goes to waste.", lifeLessonValues: "Discipline, Resilience", summary: "Delete these 3 example rows before adding your own family." },
+  { personId: "example-grandma", name: "Example Grandmother", spouseId: "example-grandpa", gender: "female", born: "1935", city: "Mangalore" },
   { personId: "example-child", name: "Example Child", parent1Id: "example-grandpa", parent2Id: "example-grandma", born: "1960", originCities: "Mysore; Bangalore; Charlotte, US; Toronto", city: "Bangalore" },
 ];
 
@@ -45,6 +46,7 @@ const INSTRUCTIONS_ROWS = [
   ["Name*", "Full name.", "Narasimha Rao"],
   ["Parent 1 ID / Parent 2 ID", "The Person ID of one or both parents, if they're also in this file.", "narasimha"],
   ["Spouse ID", "The Person ID of their spouse, if also in this file.", "kamala"],
+  ["Gender", "Optional — \"male\" or \"female\". Only ever used to work out relationship terms (Father/Mother, Brother/Sister) for documents like the Vamshavali — nothing else in the app shows or depends on it.", "male"],
   ["Born", "A date (YYYY-MM-DD) or just a year.", "1902 or 1902-03-11"],
   ["Died", "Leave blank if living. Know they've passed but not when? Just write \"deceased\" — it'll be recorded that way instead of guessing a date.", "1978-09-02, or \"deceased\""],
   ["Rashi/Sunsign / Lineage/Gotra", "Optional heritage details.", "Simha / Bharadwaja"],
@@ -322,6 +324,17 @@ export async function parseTemplateWorkbook(arrayBuffer, existingPeople = []) {
     if (died.warning) warnings.push(`Row ${row._rowNum} ("${row._id}"): ${died.warning} for Died.`);
   });
 
+  // Matches people.gender's own check constraint (male/female or null) —
+  // same reasoning as the lifeLessonValues check below, warn-and-drop
+  // rather than block the whole import over one stray value.
+  rows.forEach((row) => {
+    const g = String(row.gender ?? "").trim().toLowerCase();
+    if (!g) { row._gender = null; return; }
+    if (g === "male" || g === "female") { row._gender = g; return; }
+    row._gender = null;
+    warnings.push(`Row ${row._rowNum} ("${row._id}"): Gender "${row.gender}" isn't "male" or "female" — left blank.`);
+  });
+
   const valuesByLower = new Map(VALUES.map((v) => [v.toLowerCase(), v]));
   rows.forEach((row) => {
     const listed = String(row.lifeLessonValues ?? "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -368,6 +381,7 @@ export async function parseTemplateWorkbook(arrayBuffer, existingPeople = []) {
     diedUnknown: row._diedUnknown,
     parents: [row._parent1, row._parent2].filter(Boolean),
     spouse: row._spouse || undefined,
+    gender: row._gender ?? undefined,
     rashi: String(row.rashi ?? "").trim() || undefined,
     gotra: String(row.gotra ?? "").trim() || undefined,
     trust: "approx",

@@ -355,6 +355,7 @@ export async function bulkInsertFamily(familyId, people, marriages, startIndex =
     died: p.died ?? null,
     spouse: p.spouse ?? null,
     parents: p.parents ?? [],
+    gender: p.gender ?? null,
     rashi: p.rashi ?? null,
     gotra: p.gotra ?? null,
     birth_gotra: p.birthGotra ?? null,

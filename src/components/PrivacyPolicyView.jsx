@@ -151,16 +151,16 @@ export default function PrivacyPolicyView() {
       <div className="card" style={{ marginBottom: 18, padding: 20 }}>
         <h4 style={{ fontSize: 15, marginBottom: 10 }}>Deleting your account or your family's data</h4>
         <p className="folio-summary" style={{ marginBottom: 8 }}>
-          If you're signed in, you can delete your own account yourself — go to <b>More → Account</b>, which also
-          lets you download a copy of your data first. If you contributed something to a family others still
-          share, that content stays in the archive (it's part of the family's shared history) but is no longer
-          linked to your account; a family only you were ever part of is removed entirely.
+          Email <b>support@oursamskara.com</b> from your account's address with what you'd like — a copy of your
+          data, your account deleted, or both — and your family name. We'll export everything tied to your account
+          and send it to you, then delete it if that's what you asked for. If you contributed something to a
+          family others still share, that content stays in the archive (it's part of the family's shared history)
+          but is no longer linked to your account; a family only you were ever part of is removed entirely.
         </p>
         <p className="folio-summary">
-          Can't sign in, or want the whole family's archive deleted rather than just your own account? Contact{" "}
-          <b>support@oursamskara.com</b> with your family name and what you'd like deleted — deleting a whole
-          family's archive requires confirmation from a Family Head or Admin. We'll verify the request and confirm
-          the expected timeline before proceeding.
+          Want the whole family's archive deleted rather than just your own account? The same email address
+          handles that too — deleting a whole family's archive requires confirmation from a Family Head or Admin.
+          We'll verify the request and confirm the expected timeline before proceeding.
         </p>
       </div>
 
