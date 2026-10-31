@@ -43,8 +43,8 @@ export default function ConsentGate({ userId, onAccepted }) {
   if (reading) {
     return (
       <div className="login-page login-page-scroll">
-        <button className="login-help-link login-back-link" onClick={() => setReading(null)}>← Back</button>
         <div className="login-help-wrap">
+          <button className="login-help-link login-back-link login-back-link-sticky" onClick={() => setReading(null)}>← Back</button>
           {reading === "privacy" ? <PrivacyPolicyView /> : <TermsOfServiceView />}
         </div>
       </div>
