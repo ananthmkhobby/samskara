@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import JSZip from "jszip";
 import { callApi } from "../lib/apiFetch";
 import { supabase } from "../lib/supabaseClient";
 import { PLAN_TIERS, PLAN_ORDER, LIMIT_LABELS } from "../lib/planTiers";
@@ -95,6 +96,86 @@ function PasswordResetRequestsSection() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Fulfills the "email support for your data or to delete your account"
+// path (AccountSettingsView.jsx's SELF_SERVICE_ENABLED is off; see the
+// Privacy Policy clause) — api/export-user-data.js returns the same
+// metadata export_my_data() always did, PLUS a signed URL for every real
+// photo/audio/video/document the person contributed, so what gets sent
+// back is an actual export, not a JSON file of storage paths nobody but
+// the app itself can resolve. Bundled client-side into one .zip (fetches
+// each signed URL in the browser, not server-side — keeps this endpoint
+// fast and avoids holding potentially large media in a serverless
+// function's memory) so there's one file to attach to the reply email,
+// not a folder of loose links to forward by hand.
+function UserDataExportSection() {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
+
+  async function buildExport() {
+    setBusy(true);
+    setError("");
+    setStatus("Fetching account data…");
+    try {
+      const data = await callApi("/api/export-user-data", { email: email.trim() });
+      const zip = new JSZip();
+      zip.file("data.json", JSON.stringify(data, null, 2));
+
+      const mediaFolder = zip.folder("media");
+      for (let i = 0; i < data.media.length; i++) {
+        const m = data.media[i];
+        setStatus(`Downloading media ${i + 1} of ${data.media.length}…`);
+        try {
+          const res = await fetch(m.url);
+          if (!res.ok) continue;
+          const blob = await res.blob();
+          const ext = (m.url.split("?")[0].match(/\.[a-zA-Z0-9]+$/) || [""])[0] || "";
+          const safeName = (m.title || m.contributionId).toString().replace(/[^a-z0-9-_]+/gi, "_");
+          mediaFolder.file(`${m.type}-${safeName}${ext}`, blob);
+        } catch {
+          // One failed download shouldn't lose the rest of the export —
+          // data.json still lists it (the signed URL), just not bundled.
+        }
+      }
+
+      setStatus("Zipping…");
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `samskara-export-${email.trim().replace(/[^a-z0-9-_@.]+/gi, "_")}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setStatus(`Done — ${data.media.length} media file(s) bundled, ${data.contributions.length} contribution(s) recorded.`);
+    } catch (err) {
+      setError(err.message);
+      setStatus("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ maxWidth: 460, padding: 20, marginTop: 24 }}>
+      <h4 style={{ marginTop: 0 }}>Export a member's data (for a support request)</h4>
+      <p className="form-hint" style={{ marginTop: 0 }}>
+        Builds a single .zip — their contributions, memberships, and consent history as JSON, plus every real photo,
+        audio, video, and document they contributed — ready to attach to a reply email.
+      </p>
+      <input
+        type="email" className="field" placeholder="their-account@example.com" value={email}
+        onChange={(e) => setEmail(e.target.value)} style={{ marginTop: 10, marginBottom: 10 }}
+      />
+      <button type="button" className="btn primary small" disabled={busy || !email.trim()} onClick={buildExport}>
+        {busy ? "Building…" : "Build export (.zip)"}
+      </button>
+      {status && <p className="form-hint" style={{ marginTop: 10 }}>{status}</p>}
+      {error && <p className="form-hint" style={{ color: "var(--maroon-ink)", marginTop: 10 }}>{error}</p>}
     </div>
   );
 }
@@ -893,6 +974,7 @@ export default function SuperAdminView() {
       <ManagePlanSection />
       <BlogTeamSection />
       <PasswordResetRequestsSection />
+      <UserDataExportSection />
       <AdClickLogSection />
       <PushTestSection />
       <PlatformBroadcastSection />
