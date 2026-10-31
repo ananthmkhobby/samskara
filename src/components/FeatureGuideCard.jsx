@@ -3,14 +3,14 @@ import { CloseIcon } from "./Icons";
 
 const DISMISS_KEY = "vamsha.dismissedFeatureGuideCard";
 
-// Temporarily off everywhere (this file, MoreMenu.jsx, HelpView.jsx all
-// check it) — a user flagged a concern about data being downloaded
-// unexpectedly around these entry points. Investigation so far (network
-// traffic on the logged-out/demo view, the actual href of the download
-// link) found no evidence of anything beyond the static PDF fetch, but
-// hiding first and confirming after costs nothing. Flip back to true
-// once that's resolved — nothing else about the feature needs to change.
-export const FEATURE_GUIDE_ENABLED = false;
+// Gates this card, MoreMenu.jsx's grid item, and HelpView.jsx's top card.
+// Was briefly off after a report of the PDF download landing on the login
+// page instead of the file — root cause found and fixed in sw.js: opening
+// a PDF via target="_blank" is a top-level navigation, which the service
+// worker's NavigationRoute was catching and serving the cached app shell
+// for instead of the real file. Not a data-exposure issue (confirmed: the
+// link is a plain static fetch, nothing dynamic, nothing account-related).
+export const FEATURE_GUIDE_ENABLED = true;
 
 // Shown on Home, same dismissible pattern as BlogPromoCard/InstallAppCard —
 // the fix for "people get lost in the middle of many features" without a
