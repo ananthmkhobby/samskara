@@ -53,7 +53,11 @@ async function handleLanding(req, res) {
   }
 
   const base = appUrl(req);
-  const fallbackImage = `${base}/icon-512.png`;
+  // The full branded OG card (1200x630, see public/og-image.png), not the
+  // bare app icon — this is what a missing/expired/unknown token and the
+  // "brand" preview-image-mode both fall back to, so it's worth it being
+  // an actual designed card rather than a flat icon on a maroon square.
+  const fallbackImage = `${base}/og-image.png`;
   const canonical = `${base}/s/${encodeURIComponent(type)}/${encodeURIComponent(token)}`;
 
   // Only "g" (gallery photo) exists for MVP — any other type, or a
