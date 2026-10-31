@@ -11,6 +11,16 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.31.1 — Rate limiting on public unauthenticated endpoints
+
+[PR #29](https://github.com/ananthmkhobby/samskara/pull/29) — a full security review (all 40 tables' RLS policies compared byte-for-byte between test and production, every `api/` endpoint's authorization boundary, and a repo-wide sweep for the NULL-role-bypass bug class previously found and fixed in `reassign_parents()`/`resolve_workbench_task()`) found no live vulnerability, but flagged one real gap: three intentionally-public, unauthenticated endpoints had no abuse protection.
+
+New `supabase/migrations/20261031120000_rate_limits.sql` — a generic atomic (bucket, time-window) counter, same shape as the existing `consume_anon_ai_call()`/`ai_usage_daily`. New `api/_rateLimit.js` — shared helper, IP-hashed bucket key, fails open on an unexpected DB error. Wired into `api/password-reset-requests.js`'s `submit` (5/hour/IP), `api/track-click.js`'s `track` (30/10min/IP, silent no-op over limit), and `api/gallery-export.js`'s code redemption (10/10min/IP — the one that matters most, since the code is that endpoint's entire authorization).
+
+Also swept and manually verified two other functions matching the same vulnerable-looking string pattern (`update_family_name`, `update_family_tagline`/`update_family_logo`) — confirmed safe, both already had an explicit preceding null-role check. Proved this with a real exploit attempt (disposable zero-membership attacker account against a disposable victim family): blocked, as expected.
+
+**Verified**: the rate-limit RPC on production allows exactly 5 calls against a limit of 5, then blocks calls 6–7; the anon key gets "permission denied" calling it directly, confirming only the service-role-backed endpoints can invoke it.
+
 ## v2026.10.31 — Branded WhatsApp/social link-preview image
 
 [PR #28](https://github.com/ananthmkhobby/samskara/pull/28) — the app had no Open Graph image configured anywhere: the bare site link had no preview image at all (`index.html` carried zero OG tags), and the Share Preview Service's fallback (brand mode, or any missing/expired token) plus blog posts without a cover photo either fell back to the plain flat app icon or omitted `og:image` entirely — not catchy in a WhatsApp chat.
