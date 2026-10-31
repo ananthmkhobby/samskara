@@ -76,9 +76,12 @@ export default async function handler(req, res) {
   const title = `${escapeHtml(post.title)} — Samskara Blog`;
   const description = escapeHtml(post.excerpt || plainTextExcerpt(post.body_html));
   const canonical = `${appUrl}/blog/${encodeURIComponent(slug)}`;
+  // Falls back to the branded OG card (see public/og-image.png) instead of
+  // omitting og:image entirely — a post with no cover photo previously
+  // shared with no image at all on WhatsApp/etc.
   const coverUrl = post.cover_image_path
     ? `${url}/storage/v1/object/public/blog-media/${post.cover_image_path}`
-    : null;
+    : `${appUrl}/og-image.png`;
   const publishedDate = post.published_at ? new Date(post.published_at).toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" }) : "";
 
   let html = shell
