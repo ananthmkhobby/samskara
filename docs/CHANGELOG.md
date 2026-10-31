@@ -11,6 +11,16 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.31.5 — CRITICAL: fix invite redemption silently dropped by SIGNED_IN auto-reload
+
+[PR #33](https://github.com/ananthmkhobby/samskara/pull/33) — a regression introduced by v2026.10.31.3 earlier today, found during a final live end-to-end test on production: an existing member redeeming a second family's invite via "I already have an account" signed in successfully but the join silently never happened. Confirmed via the database: zero `family_members` rows created, the invite still unused.
+
+Root cause: the SIGNED_IN auto-reload added earlier today (to fix a magic-link confirmation race) fires on *any* SIGNED_IN event, not just a magic link's. JoinForm awaits `signInWithPassword()`, then calls `redeemInvite()`, then reloads itself — but the global listener fired immediately on SIGNED_IN mid-await, reloading before JoinForm's own code ever reached `redeemInvite()`. The earlier commit's own comment claimed this didn't conflict; it was wrong, and nothing caught it until this live test actually exercised an existing member joining a second family.
+
+Fix: a shared `markExplicitSignInStarting()`/`isExplicitSignInInProgress()` flag in `session.js`. Every call site that signs in/up itself (LoginForm, SignUpForm, JoinForm's both branches) sets it immediately before calling `supabase.auth.signIn*()`/`signUp()`; the listener only auto-reloads when nothing already in flight is handling the sign-in.
+
+**Verified by reproducing the bug live, then reproducing the identical scenario again against the fix**: before, invite unused and zero `family_members` rows; after, `family_members` row created correctly (role: member) and the invite marked used.
+
 ## v2026.10.31.4 — Feature Guide, bulk-upload gender fix, PDF/SW fix, account deletion moved to support
 
 [PR #32](https://github.com/ananthmkhobby/samskara/pull/32) — four pieces, no DB migrations:
