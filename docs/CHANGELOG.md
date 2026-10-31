@@ -11,6 +11,16 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.31.3 — Fix a fresh signup sometimes landing on the demo family
+
+[PR #31](https://github.com/ananthmkhobby/samskara/pull/31) — a user reported registering and seeing the full demo family's Home dashboard instead of the create/join prompt. Root cause: this project requires email confirmation (confirmed live — a real signup attempt hit Supabase's own confirmation-email rate limit, proving it's not auto-confirmed). Clicking the confirmation link is a fresh page load, but supabase-js's `detectSessionInUrl` resolves the magic-link token *asynchronously*; `initDataLayer()` (awaited before the app even mounts) can race ahead of that, see no session yet, and resolve the same anonymous/demo fallback a first-time visitor gets — with nothing re-checking afterward once the token actually finished processing.
+
+Every other sign-in path in this app already reloads manually right after its own `signIn*()` call resolves; this was the one path with no corresponding call site, since no app code runs at the exact moment a magic link gets processed — only the `onAuthStateChange` listener does, and it previously only handled `PASSWORD_RECOVERY`. Fix: handle `SIGNED_IN` too, scoped to `NEEDS_LOGIN` so it fires only for the case that matters.
+
+**Verified end-to-end on production** (full real-UI click-through, not just backend RPCs): sign up → accept consent → create a new family → generate an invite → a second member logs in and redeems it — correctly lands in the real family both times, never the demo. DB-confirmed afterward: 2 members, roles `head`/`member` exactly as expected, zero residue after cleanup.
+
+**Not independently verified**: the specific magic-link race this fix targets wasn't click-tested against a real confirmation email (Supabase rate-limited further sends during testing) — applied from the confirmed race condition and the same reload pattern every other sign-in path in this codebase already uses, not from watching the exact repro resolve.
+
 ## v2026.10.31.2 — Fix "unable to check the consent box" + a sticky-positioning regression
 
 [PR #30](https://github.com/ananthmkhobby/samskara/pull/30) — traced a real, ongoing user complaint to an actual bug. The Privacy Policy view is ~10,245px tall (about 12.6 phone screens) with only one "← Back" link, positioned at the very top. A real person reading through it has no way back to the form without scrolling the whole way back up — so the likely real behavior is reaching for the phone's physical back gesture instead, which (since the "reading" state is client-side React state, not a URL route) navigates away entirely, silently resetting whatever had been typed and which documents had been opened. Confirmed with a real user's screenshot mid-session: "Terms & Conditions ✓" checked, "Privacy Policy" not — exactly the asymmetric-loss pattern this produces (one document opened via the sticky-less in-app link survives; the other, exited via the phone's back gesture, doesn't).
