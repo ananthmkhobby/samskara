@@ -11,6 +11,19 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.31.4 — Feature Guide, bulk-upload gender fix, PDF/SW fix, account deletion moved to support
+
+[PR #32](https://github.com/ananthmkhobby/samskara/pull/32) — four pieces, no DB migrations:
+
+- **Feature Guide**: a downloadable PDF covering every feature in the app, with three discoverable entry points — a dismissible Home card, a promoted (not footer-buried) item in the More menu, and a top card on the Help page. `docs/FEATURE_LIST.md` is the markdown source.
+- **Bulk-upload fix**: the .xlsx family-import template was missing a Gender column even though `people.gender` has existed since mid-October and is already wired through the single-person add flow — anyone imported via spreadsheet silently got no gender at all. Added to the template, parser, and import mapping.
+- **Service worker fix**: found while verifying the Feature Guide PDF — opening a PDF via `target="_blank"` is a top-level navigation, which the service worker's `NavigationRoute` was catching and serving the cached app shell for instead of the real file, landing signed-out visitors on the login page instead of the PDF. Fixed by excluding `.pdf` from the navigation fallback by extension, so this covers any future static download too.
+- **Account deletion/export moved to support**: the self-service "Download your data"/"Delete my account" flow is now a front-end-only toggle (off), replaced with a mailto link to support@oursamskara.com in both the Account settings screen and the Privacy Policy. Backend RPCs untouched, reversible with one line.
+
+**Also verified this round, no code changes needed**: reviewed what the demo account and admin surfaces expose — confirmed the demo family (`DEMO_FAMILY_ID`) is genuine hardcoded sample data ("The Rao Family (Demo)", 21 people), not reachable to any real family's data.
+
+**Separately**: copied production's real first blog post ("What Is Samskara?") into the test database, replacing a placeholder "Test" post — a content change, not a code deploy, done directly against both databases.
+
 ## v2026.10.31.3 — Fix a fresh signup sometimes landing on the demo family
 
 [PR #31](https://github.com/ananthmkhobby/samskara/pull/31) — a user reported registering and seeing the full demo family's Home dashboard instead of the create/join prompt. Root cause: this project requires email confirmation (confirmed live — a real signup attempt hit Supabase's own confirmation-email rate limit, proving it's not auto-confirmed). Clicking the confirmation link is a fresh page load, but supabase-js's `detectSessionInUrl` resolves the magic-link token *asynchronously*; `initDataLayer()` (awaited before the app even mounts) can race ahead of that, see no session yet, and resolve the same anonymous/demo fallback a first-time visitor gets — with nothing re-checking afterward once the token actually finished processing.
