@@ -9,6 +9,7 @@
 // the request, it never resets a password itself.
 import { createClient } from "@supabase/supabase-js";
 import { requireSuperadmin } from "./_superadminAuth.js";
+import { checkRateLimit } from "./_rateLimit.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -28,6 +29,14 @@ export default async function handler(req, res) {
       return;
     }
     const supabase = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
+    // 5 per hour per IP — generous for a real person who mistypes or tries
+    // again, bounded against spamming the requests table or using it as an
+    // account-enumeration oracle (the response is already generic either
+    // way, but there's no reason to let someone hammer it at volume).
+    if (!(await checkRateLimit(supabase, { name: "password_reset_submit", req, windowSeconds: 3600, limit: 5 }))) {
+      res.status(429).json({ error: "Too many requests — please try again in a while." });
+      return;
+    }
     if (!email?.trim() || !EMAIL_RE.test(email.trim())) {
       res.status(400).json({ error: "Enter a valid email address." });
       return;
