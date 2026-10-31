@@ -11,6 +11,14 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.31.6 — SuperAdmin tool to export a member's data including real media
+
+[PR #34](https://github.com/ananthmkhobby/samskara/pull/34) — follow-up on moving account export/deletion to a support-mediated process (v2026.10.31.4): the self-service `export_my_data()` RPC only ever returned JSON with storage *paths*, never the actual photo/video/audio/document bytes — a support-fulfilled export using that alone would be hollow for a family-memory app, where the media is arguably the content that matters most.
+
+`api/export-user-data.js` — superadmin-only, looks up an account by email, returns the same metadata `export_my_data()` always did plus a time-limited (1hr) signed URL for every real media file that person contributed — same privacy scope as the original (only what they contributed, not their whole family's archive). `SuperAdminView.jsx`'s new "Export a member's data" card takes an email, downloads every media file client-side, and bundles everything into one `.zip` (new `jszip` dependency) — one file to attach to a reply email.
+
+**Verified live on test**: API call returned the contribution plus a working signed URL (fetched it, got real PNG bytes back); the full UI flow completed as a superadmin ("Done — 1 media file(s) bundled, 1 contribution(s) recorded.").
+
 ## v2026.10.31.5 — CRITICAL: fix invite redemption silently dropped by SIGNED_IN auto-reload
 
 [PR #33](https://github.com/ananthmkhobby/samskara/pull/33) — a regression introduced by v2026.10.31.3 earlier today, found during a final live end-to-end test on production: an existing member redeeming a second family's invite via "I already have an account" signed in successfully but the join silently never happened. Confirmed via the database: zero `family_members` rows created, the invite still unused.
