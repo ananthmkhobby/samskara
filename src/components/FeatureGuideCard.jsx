@@ -3,6 +3,15 @@ import { CloseIcon } from "./Icons";
 
 const DISMISS_KEY = "vamsha.dismissedFeatureGuideCard";
 
+// Temporarily off everywhere (this file, MoreMenu.jsx, HelpView.jsx all
+// check it) — a user flagged a concern about data being downloaded
+// unexpectedly around these entry points. Investigation so far (network
+// traffic on the logged-out/demo view, the actual href of the download
+// link) found no evidence of anything beyond the static PDF fetch, but
+// hiding first and confirming after costs nothing. Flip back to true
+// once that's resolved — nothing else about the feature needs to change.
+export const FEATURE_GUIDE_ENABLED = false;
+
 // Shown on Home, same dismissible pattern as BlogPromoCard/InstallAppCard —
 // the fix for "people get lost in the middle of many features" without a
 // clear map of what exists. Two destinations on purpose: the downloadable
@@ -14,7 +23,7 @@ export default function FeatureGuideCard({ onNav }) {
     try { return localStorage.getItem(DISMISS_KEY) === "1"; } catch { return false; }
   });
 
-  if (dismissed) return null;
+  if (dismissed || !FEATURE_GUIDE_ENABLED) return null;
 
   function dismiss() {
     try { localStorage.setItem(DISMISS_KEY, "1"); } catch { /* storage unavailable */ }

@@ -1,4 +1,5 @@
 import InstallAppCard from "./InstallAppCard";
+import { FEATURE_GUIDE_ENABLED } from "./FeatureGuideCard";
 
 const ROLE_ROWS = [
   {
@@ -26,14 +27,16 @@ export default function HelpView() {
         <p>How a family tree starts, who's in charge of it, and what each role can do.</p>
       </div>
 
-      <div className="card" style={{ marginBottom: 18, padding: 20 }}>
-        <h4 style={{ fontSize: 15, marginBottom: 10 }}>Feature Guide</h4>
-        <p className="folio-summary" style={{ marginBottom: 12 }}>
-          A one-page-per-topic guide to everything Samskara can do — the tree, sharing, invites, Parampare, Library,
-          and more — each with a short explanation of what it's for.
-        </p>
-        <a href="/samskara-feature-guide.pdf" target="_blank" rel="noreferrer" className="btn primary small">Download the guide (PDF) →</a>
-      </div>
+      {FEATURE_GUIDE_ENABLED && (
+        <div className="card" style={{ marginBottom: 18, padding: 20 }}>
+          <h4 style={{ fontSize: 15, marginBottom: 10 }}>Feature Guide</h4>
+          <p className="folio-summary" style={{ marginBottom: 12 }}>
+            A one-page-per-topic guide to everything Samskara can do — the tree, sharing, invites, Parampare, Library,
+            and more — each with a short explanation of what it's for.
+          </p>
+          <a href="/samskara-feature-guide.pdf" target="_blank" rel="noreferrer" className="btn primary small">Download the guide (PDF) →</a>
+        </div>
+      )}
 
       <div className="card" style={{ marginBottom: 18, padding: 20 }}>
         <h4 style={{ fontSize: 15, marginBottom: 10 }}>Curious first?</h4>
