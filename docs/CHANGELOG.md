@@ -11,6 +11,18 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.31.2 — Fix "unable to check the consent box" + a sticky-positioning regression
+
+[PR #30](https://github.com/ananthmkhobby/samskara/pull/30) — traced a real, ongoing user complaint to an actual bug. The Privacy Policy view is ~10,245px tall (about 12.6 phone screens) with only one "← Back" link, positioned at the very top. A real person reading through it has no way back to the form without scrolling the whole way back up — so the likely real behavior is reaching for the phone's physical back gesture instead, which (since the "reading" state is client-side React state, not a URL route) navigates away entirely, silently resetting whatever had been typed and which documents had been opened. Confirmed with a real user's screenshot mid-session: "Terms & Conditions ✓" checked, "Privacy Policy" not — exactly the asymmetric-loss pattern this produces (one document opened via the sticky-less in-app link survives; the other, exited via the phone's back gesture, doesn't).
+
+Fix: made the "← Back" link `position: sticky` across all three places this flow exists (`ConsentGate.jsx`, and `AuthPanel.jsx`'s `SignUpForm`/`JoinForm`), so it stays pinned to the top of the viewport the entire way through scrolling the document.
+
+**Found and fixed a second bug while verifying the first**: the mobile-overflow safety net from v2026.10.30 (`overflow-x: hidden` on html/body) had a side effect nobody caught at the time — per CSS2.1's overflow resolution, any non-`visible` `overflow-x` forces the browser to compute `overflow-y` as `auto` too, which turns html/body into a scroll container and silently breaks `position: sticky` for every descendant in the entire app, including the sticky back button just added. Caught by directly measuring the button's bounding rect on the test deployment: `position: sticky` computed correctly, but it sat ~2200px off its pinned position after scrolling. Fixed by switching to `overflow-x: clip`, which is exempt from that auto-coercion — same horizontal-overflow protection, without the side effect.
+
+**Verified live on production** (not just test): sticky back button's bounding rect stays at `top: 12` after scrolling 3000px; full round-trip confirmed (open Privacy Policy → scroll → tap sticky Back → returns to form with "✓ Privacy Policy" correctly marked); `overflow-y` confirmed `visible` on both html and body.
+
+Noted but explicitly out of scope for this fix: `ClassicTree.jsx` sets `document.body.style.overflow = "hidden"` unconditionally on mount rather than only during an active pan/zoom gesture — confirmed this doesn't affect the consent flow (no tree renders there), filed as a separate follow-up rather than scope-creeping this fix.
+
 ## v2026.10.31.1 — Rate limiting on public unauthenticated endpoints
 
 [PR #29](https://github.com/ananthmkhobby/samskara/pull/29) — a full security review (all 40 tables' RLS policies compared byte-for-byte between test and production, every `api/` endpoint's authorization boundary, and a repo-wide sweep for the NULL-role-bypass bug class previously found and fixed in `reassign_parents()`/`resolve_workbench_task()`) found no live vulnerability, but flagged one real gap: three intentionally-public, unauthenticated endpoints had no abuse protection.
