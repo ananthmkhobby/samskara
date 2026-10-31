@@ -7,6 +7,7 @@
 // authorization. See the gallery_export_codes migration for why this is
 // deliberately NOT the invites pattern (reusable, read-only).
 import { serviceClient } from "./_memberAuth.js";
+import { checkRateLimit } from "./_rateLimit.js";
 
 const BUCKET = "family-media";
 const SIGNED_URL_TTL_SECONDS = 1800; // 30 min — a real third-party browsing
@@ -64,6 +65,16 @@ export default async function handler(req, res) {
   }
 
   const supabase = serviceClient();
+
+  // 10 per 10 minutes per IP — the code is the entire authorization here
+  // (see file header), so this is the one thing standing between a short
+  // alphanumeric code and someone scripting through the guess space. The
+  // legitimate use (ScanJunction re-redeeming for fresh signed URLs during
+  // one browsing session) is nowhere near this volume.
+  if (!(await checkRateLimit(supabase, { name: "gallery_export_redeem", req, windowSeconds: 600, limit: 10 }))) {
+    res.status(429).json({ error: "Too many attempts — please try again in a while." });
+    return;
+  }
 
   const { data: exportCode, error: codeErr } = await supabase
     .from("gallery_export_codes")

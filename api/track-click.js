@@ -8,6 +8,7 @@
 import crypto from "node:crypto";
 import { serviceClient } from "./_memberAuth.js";
 import { requireSuperadmin } from "./_superadminAuth.js";
+import { checkRateLimit } from "./_rateLimit.js";
 
 const MAX_FIELD_LEN = 300;
 function clip(v) {
@@ -32,6 +33,16 @@ async function handleTrack(req, res) {
   const forwardedFor = req.headers["x-forwarded-for"];
   const ip = (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor)?.split(",")[0]?.trim() || req.headers["x-real-ip"] || null;
   const city = req.headers["x-vercel-ip-city"];
+
+  // 30 per 10 minutes per IP — a real visitor clicking a few tagged ad
+  // links in one session stays well under this; it's only meant to bound
+  // someone flooding ad_click_log with junk rows. Fails open on the
+  // counter itself erroring (see checkRateLimit) since this is a
+  // best-effort beacon already, never worth breaking over.
+  if (!(await checkRateLimit(supabase, { name: "ad_click_track", req, windowSeconds: 600, limit: 30 }))) {
+    res.status(200).json({ ok: true });
+    return;
+  }
 
   try {
     const { error } = await supabase.from("ad_click_log").insert({
