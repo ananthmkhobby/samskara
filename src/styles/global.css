@@ -8,8 +8,18 @@
    fixes it" symptom site-wide, not just on the page that actually overflows.
    This clips any future overflow at the html/body boundary so a single
    mis-sized element can never again drag the entire page's effective zoom
-   level with it. */
-html, body { margin: 0; padding: 0; overflow-x: hidden; }
+   level with it.
+
+   `clip`, not `hidden` — found the hard way: ANY non-"visible" overflow-x
+   value forces the UA to compute overflow-y as "auto" too (CSS2.1 overflow
+   resolution), which turns html/body into a scroll container and breaks
+   `position: sticky` for every single descendant in the app (confirmed:
+   this silently broke the sticky "← Back" button on the Privacy Policy/
+   Terms pages added in the very next commit, measured 2000+px off its
+   pinned position). `overflow-x: clip` is exempt from that auto-coercion
+   — it clips horizontal overflow without making this a scroll container,
+   so overflow-y stays `visible` and sticky positioning keeps working. */
+html, body { margin: 0; padding: 0; overflow-x: clip; }
 #root { min-height: 100vh; }
 body {
   background: var(--parchment); color: var(--ink); font-family: var(--font-body);

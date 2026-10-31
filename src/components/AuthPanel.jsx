@@ -306,7 +306,7 @@ function SignUpForm({ email, setEmail, password, setPassword, name, setName, bus
   if (reading) {
     return (
       <div>
-        <button type="button" className="link-btn" onClick={() => setReading(null)}>← Back</button>
+        <button type="button" className="link-btn login-back-link-sticky" onClick={() => setReading(null)}>← Back</button>
         {reading === "privacy" ? <PrivacyPolicyView /> : <TermsOfServiceView />}
       </div>
     );
@@ -465,7 +465,7 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
   if (reading) {
     return (
       <div>
-        <button type="button" className="link-btn" onClick={() => setReading(null)}>← Back</button>
+        <button type="button" className="link-btn login-back-link-sticky" onClick={() => setReading(null)}>← Back</button>
         {reading === "privacy" ? <PrivacyPolicyView /> : <TermsOfServiceView />}
       </div>
     );

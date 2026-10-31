@@ -14,6 +14,19 @@
 }
 .login-help-link:hover { background: var(--parchment-paper); }
 .login-back-link { left: 18px; right: auto; }
+/* Used specifically where this leads into a long scrollable document (the
+   Privacy Policy / Terms views opened from the consent flow, ~10,000px
+   tall) — real users reported being unable to check the consent box at
+   all, traced to there being no way back to the form without scrolling
+   all the way back up past a dozen screens of legal text. A `position:
+   absolute`/plain-inline back link scrolls away with the content; this
+   stays pinned to the viewport the whole way down and back, same as a
+   native app's sticky header would. */
+.login-back-link-sticky {
+  position: sticky; top: 12px; left: 0; z-index: 10; margin-bottom: 14px;
+  display: inline-flex; width: fit-content;
+  background: var(--parchment-paper); box-shadow: var(--shadow-2, 0 2px 10px rgba(0,0,0,.12));
+}
 /* Mirrors login-back-link's corner — LoginPage itself never renders a back
    link, so the top-left is free for this instead. Two pill buttons, one per
    top corner, rather than stacking both under the single "Help" link where
