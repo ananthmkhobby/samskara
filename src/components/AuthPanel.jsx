@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { redeemInvite, recordConsent, registerNewFamily } from "../data/familyDb";
-import { ACCOUNT_NEEDS_FAMILY, IS_BLOG_AUTHOR } from "../data/session";
+import { ACCOUNT_NEEDS_FAMILY, IS_BLOG_AUTHOR, markExplicitSignInStarting } from "../data/session";
 import { POLICY_VERSION } from "../lib/policy";
 import { SHOW_GOOGLE_AUTH } from "../lib/featureFlags";
 import { callApi } from "../lib/apiFetch";
@@ -123,6 +123,7 @@ function LoginForm({ email, setEmail, password, setPassword, busy, setBusy, erro
     setBusy(true);
     setError("");
     const loginEmail = loginWithUsername ? usernameToEmail(email) : email.trim();
+    markExplicitSignInStarting();
     const { error: err } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
     if (err) {
       setError(err.message);
@@ -259,6 +260,7 @@ function SignUpForm({ email, setEmail, password, setPassword, name, setName, bus
     setBusy(true);
     setError("");
     try {
+      markExplicitSignInStarting();
       const { error: signUpErr } = await supabase.auth.signUp({
         email: email.trim(), password, options: {
           data: { display_name: name.trim() || undefined },
@@ -407,6 +409,7 @@ function JoinForm({ email, setEmail, password, setPassword, name, setName, code,
     setError("");
     try {
       if (!alreadySignedIn) {
+        markExplicitSignInStarting();
         if (isNewAccount) {
           const { error: signUpErr } = await supabase.auth.signUp({
             email: email.trim(), password, options: {

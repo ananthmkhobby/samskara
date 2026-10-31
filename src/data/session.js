@@ -109,3 +109,22 @@ export function setSession(next) {
 export function markConsentGiven() {
   NEEDS_CONSENT = false;
 }
+
+// Set by every form that calls supabase.auth.signInWithPassword()/signUp()
+// itself (LoginForm, JoinForm, SignUpForm — see AuthPanel.jsx), immediately
+// before that call. App.jsx's own onAuthStateChange listener checks this
+// before auto-reloading on a SIGNED_IN event (added to fix a magic-link
+// confirmation race — see that listener's comment) — without this guard,
+// that same reload fires for *any* sign-in, including a form's own
+// explicit one, cutting it off before it finishes its own follow-up work
+// (JoinForm's redeemInvite() call, specifically) and silently dropping it.
+// A real regression, found testing: an existing member joining a second
+// family via invite got signed in but never actually joined, because the
+// global reload won the race against JoinForm's own in-flight submit().
+let EXPLICIT_SIGNIN_IN_PROGRESS = false;
+export function markExplicitSignInStarting() {
+  EXPLICIT_SIGNIN_IN_PROGRESS = true;
+}
+export function isExplicitSignInInProgress() {
+  return EXPLICIT_SIGNIN_IN_PROGRESS;
+}
