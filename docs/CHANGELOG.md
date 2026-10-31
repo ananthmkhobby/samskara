@@ -11,6 +11,14 @@ verified post-deploy.
 
 ## Unreleased
 
+## v2026.10.31 — Branded WhatsApp/social link-preview image
+
+[PR #28](https://github.com/ananthmkhobby/samskara/pull/28) — the app had no Open Graph image configured anywhere: the bare site link had no preview image at all (`index.html` carried zero OG tags), and the Share Preview Service's fallback (brand mode, or any missing/expired token) plus blog posts without a cover photo either fell back to the plain flat app icon or omitted `og:image` entirely — not catchy in a WhatsApp chat.
+
+Added `public/og-image.png`, a designed 1200x630 card built from the app's own brand palette and visual language (the dotted jaali texture from the body background, the same conic-gradient tree mark as the top bar, maroon/gold tokens, Devanagari title + tagline), rendered once via a local Playwright script rather than generated per-request. Wired in as the default `og:image`/`twitter:image` for the homepage, `api/share.js`'s fallback, and `api/blog-post.js`'s no-cover-photo case.
+
+**Verified**: `oursamskara.com/og-image.png` resolves correctly (200, image/png, 1200x630) and the homepage's HTML carries the new meta tags, post-deploy.
+
 ## v2026.10.30 — Fast Family Onboarding (Phase 1, pilot) + mobile layout overflow fix
 
 [PR #27](https://github.com/ananthmkhobby/samskara/pull/27) — lets a joining member assert who they are relative to someone already in the family tree, even when the connecting people in between aren't known or don't exist yet, without ever fabricating a parent/grandparent/spouse. Ships opt-in only (`module_flags.fastOnboarding`, default off) behind a new per-family pilot flag — existing onboarding (`register_new_family`, `redeem_invite`'s non-FFO path, manual admin entry) is completely unchanged for every family that doesn't turn it on.
